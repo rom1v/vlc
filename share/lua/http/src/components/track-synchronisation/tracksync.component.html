@@ -1,0 +1,29 @@
+<!-- track-sync modal Template -->
+<script type="text/x-template" id="track-sync-modal-template">
+    <div>
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Set Track Synchronization</h4>
+                </div>
+                <div class="modal-body" id="">
+                    Playback Rate
+                    <center id="playbackVal">{{ playbackVal }}</center>
+                    <input type="range" name="playbackInput" id="playbackInput" min="-20" max="20" step="0.1"/>
+                    <br>
+                    Audio Delay
+                    <center id="audioDelayVal">{{ audioDelayVal }}</center>
+                    <input type="range" name="audioDelayInput" id="audioDelayInput" min="-20" max="20" step="0.1"/>
+                    <br>
+                    Subtitle Delay
+                    <center id="subDelayVal">{{ subDelayVal }}</center>
+                    <input type="range" name="subDelayInput" id="subDelayInput" min="-20" max="20" step="0.1"/>
+                </div>
+                <div class="modal-footer">
+                </div>
+            </div>
+        </div>
+    </div>
+</script>

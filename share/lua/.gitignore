@@ -1,1 +1,6 @@
 *.luac
+dist/
+css/
+.sass-cache/
+http/node_modules/*
+http/package.json

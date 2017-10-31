@@ -1,0 +1,20 @@
+<!-- equalizer modal Template -->
+<script type="text/x-template" id="equalizer-modal-template">
+    <div>
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Equalizer</h4>
+                </div>
+                <div class="modal-body">
+                    <input type="range" name="equalizerInput" id="equalizerInput" min="-20" max="20" step="0.1"/>
+                    <center id="eqVal">{{ eqVal }}</center>
+                </div>
+                <div class="modal-footer">
+                </div>
+            </div>
+        </div>
+    </div>
+</script>

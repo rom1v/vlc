@@ -1,0 +1,19 @@
+#videoPlayer {
+    padding-right: 12%;
+    padding-left: 2%;
+    left:0;
+    top:0;
+    margin:0;
+    width:90%;
+}
+
+@media screen and (min-device-width: 320px) and (max-device-width: 480px) {
+    #videoPlayer {
+        padding-right: 12%;
+        padding-left: 2%;
+        top: initial;
+        left: initial;
+        margin:0 auto;
+        width:100%;
+    }
+}

@@ -1,0 +1,24 @@
+<!-- vlm modal Template -->
+<script type="text/x-template" id="vlm-modal-template">
+    <div>
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Write your VLM commands here (seperated by new line)</h4>
+                </div>
+                <div class="modal-body">
+                    <textarea id="vlmCommand"></textarea>
+                    <div id="status">
+                    status:
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="vlmButton" class="btn btn-default">Submit</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>

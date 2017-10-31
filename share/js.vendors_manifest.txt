@@ -1,0 +1,5 @@
+--js lua/http/src/vendors/bootstrap/javascripts/bootstrap.js
+--js lua/http/src/vendors/vue/vue.js
+--js lua/http/src/vendors/plyr/plyr.js
+--js lua/http/src/vendors/jstree/jstree.js
+--js_output_file lua/http/dist/js/vendors.min.js

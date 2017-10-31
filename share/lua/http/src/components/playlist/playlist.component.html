@@ -1,0 +1,27 @@
+<!-- Templates -->
+<!-- Playlist Template -->
+<script type="text/x-template" id="playlist-template">
+    <div>
+        <div id="playlistNav" class="playlistNav">
+            <div class="container">
+                <playlist-buttons></playlist-buttons>
+                <div>
+                    <h1 class="playlistHeader">Playlist</h1>
+                </div>
+                <div id="playlist">
+                    <ol type="1">
+                        <li v-for="item in this.$parent.playlistItems">
+                            <button v-on:click="play(item.src, item.id)" class="playlistItem">{{ item.title }}</button>
+                            <button v-on:click="removeItem(item.id)" type="button" class="btn-circle col-xs">
+                                <svg-icon name="delete"></svg-icon>
+                            </button>
+                        </li>
+                    </ol>
+                </div>
+                <div class="playlistNavMobile" id="mobilePlaylistNavButton">
+                    <center><svg-icon name="format-list-bulleted"></svg-icon></center>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>

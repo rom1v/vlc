@@ -1,0 +1,15 @@
+--js lua/http/src/services/command.service.js
+--js lua/http/src/services/bus.service.js
+--js lua/http/src/services/initialize.service.js
+--js lua/http/src/components/player/plyr.methods.js
+--js lua/http/src/components/controls/sidenav.component.js
+--js lua/http/src/components/playlist/playlist.component.js
+--js lua/http/src/components/playlist/buttons.playlist.component.js
+--js lua/http/src/components/controls/filebrowser.component.js
+--js lua/http/src/components/vlm/vlm.component.js
+--js lua/http/src/components/equalizer/equalizer.component.js
+--js lua/http/src/components/track-synchronisation/tracksync.component.js
+--js lua/http/src/components/sot/stream.manager.component.js
+--js lua/http/src/components/svg-icon/svg-icon.component.js
+--js lua/http/src/assets/compiled-icons/*.js
+--js_output_file lua/http/dist/js/script.min.js

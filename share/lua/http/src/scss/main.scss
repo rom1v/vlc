@@ -1,0 +1,15 @@
+// main.scss
+
+// custom global styles
+body {
+    background-color: black;
+}
+
+@media screen and (min-device-width : 320px) and (max-device-width : 480px) {
+    body {
+        height: auto;
+    }
+}
+
+// component styles
+@import 'components.scss';
