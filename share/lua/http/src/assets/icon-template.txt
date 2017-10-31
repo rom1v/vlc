@@ -1,0 +1,10 @@
+import { svgIcon } from '../../components/svg-icon/svg-icon.component.js';
+
+svgIcon.register({
+  '${name}': {
+    width: ${width},
+    height: ${height},
+    viewBox: ${viewBox},
+    data: `${data}`
+  }
+})
