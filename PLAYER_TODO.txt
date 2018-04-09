@@ -1,0 +1,4 @@
+ - Remove input/control.c
+ - Move bookmark handling from input to player
+ - Add Seekpoint/title/chapter
+ - Handle vout/aout
