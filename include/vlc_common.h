@@ -355,6 +355,7 @@ typedef struct config_category_t config_category_t;
 
 /* Input */
 typedef struct input_thread_t input_thread_t;
+typedef struct vlc_player_t vlc_player_t;
 typedef struct input_item_t input_item_t;
 typedef struct input_item_node_t input_item_node_t;
 typedef struct stream_t     stream_t;
