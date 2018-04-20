@@ -132,6 +132,8 @@ vlc_module_end ()
 /*****************************************************************************
  * Local prototypes
  *****************************************************************************/
+namespace { // for ODR
+
 struct filter_sys_t
 {
     /* */
@@ -151,6 +153,7 @@ struct filter_sys_t
     unsigned i_nb_samples;
 };
 
+} // namespace
 
 static block_t *DoWork( filter_t *, block_t * );
 static void *Thread( void * );

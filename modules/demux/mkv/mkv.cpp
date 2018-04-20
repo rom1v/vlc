@@ -41,9 +41,12 @@
 /*****************************************************************************
  * Module descriptor
  *****************************************************************************/
+namespace mkv {
 static int  Open ( vlc_object_t * );
 static void Close( vlc_object_t * );
+} // namespace
 
+using namespace mkv;
 vlc_module_begin ()
     set_shortname( "Matroska" )
     set_description( N_("Matroska stream demuxer" ) )
@@ -78,6 +81,8 @@ vlc_module_begin ()
 
     add_shortcut( "mka", "mkv" )
 vlc_module_end ()
+
+namespace mkv {
 
 struct demux_sys_t;
 
@@ -900,3 +905,5 @@ bool matroska_stream_c::isUsed() const
     }
     return false;
 }
+
+} // namespace

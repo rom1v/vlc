@@ -145,6 +145,8 @@ vlc_module_end ()
  * Local prototypes
  *****************************************************************************/
 
+namespace { // for ODR
+
 typedef struct
 {
     demux_t         *p_demux;
@@ -242,7 +244,6 @@ struct demux_sys_t
     float            f_seek_request;/* In case we receive a seek request while paused*/
 };
 
-
 class RTSPClientVlc : public RTSPClient
 {
 public:
@@ -260,6 +261,8 @@ public:
     }
     demux_sys_t *p_sys;
 };
+
+} // namespace
 
 static int Demux  ( demux_t * );
 static int Control( demux_t *, int, va_list );

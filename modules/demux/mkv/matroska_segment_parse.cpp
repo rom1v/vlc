@@ -41,6 +41,8 @@ extern "C" {
 #include <stdexcept>
 #include <limits>
 
+namespace mkv {
+
 /* GetFourCC helper */
 #define GetFOURCC( p )  __GetFOURCC( (uint8_t*)p )
 static vlc_fourcc_t __GetFOURCC( uint8_t *p )
@@ -2099,3 +2101,5 @@ bool matroska_segment_c::TrackInit( mkv_track_t * p_tk )
 
     return true;
 }
+
+} // namespace
