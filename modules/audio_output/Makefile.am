@@ -8,8 +8,11 @@ libandroid_audiotrack_plugin_la_SOURCES = audio_output/audiotrack.c \
 	video_output/android/utils.c video_output/android/utils.h
 libandroid_audiotrack_plugin_la_CFLAGS = $(AM_CFLAGS)
 
+libandroid_aaudio_plugin_la_SOURCES = audio_output/aaudio.c
+libandroid_aaudio_plugin_la_CFLAGS = $(AM_CFLAGS)
+
 if HAVE_ANDROID
-aout_LTLIBRARIES += libandroid_audiotrack_plugin.la libopensles_android_plugin.la
+aout_LTLIBRARIES += libandroid_audiotrack_plugin.la libopensles_android_plugin.la libandroid_aaudio_plugin.la
 endif
 
 libadummy_plugin_la_SOURCES = audio_output/adummy.c
