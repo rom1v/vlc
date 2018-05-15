@@ -40,6 +40,7 @@ typedef struct aout_sys_t
     AAudioStream *p_audio_stream;
     audio_sample_format_t fmt;
     int64_t i_frames_written;
+    bool b_frames_written_invalid;
 
     /* dlopen/dlsym symbols */
     void *p_so_handle;
@@ -229,11 +230,29 @@ static int TimeGet( audio_output_t *p_aout, mtime_t *mt_delay )
     if( !GetFrameTimestamp( p_aout, &i_ref_position, &mt_ref_time_us ) )
         return -1;
 
-    int64_t i_diff_frames = p_sys->i_frames_written - i_ref_position;
-    mtime_t mt_target_time = mt_ref_time_us + i_diff_frames * CLOCK_FREQ / p_sys->fmt.i_rate;
-    *mt_delay = mt_target_time - mdate();
-    msg_Dbg( p_aout, "++++++++++++ delay = %lld (%lld %lld)", *mt_delay, p_sys->i_frames_written, i_ref_position );
-    return -1;
+    msg_Dbg(p_aout, "ref=%lld:%lld ; now=%lld:%lld", i_ref_position, mt_ref_time_us, p_sys->i_frames_written, mdate());
+    if( p_sys->b_frames_written_invalid )
+    {
+        /* The current implementation of AAudioStream_getFramesRead() returns
+         * invalid values after a flush, so we can't rely on it to determine how
+         * many frames have been flushed. Instead, we reestimate the number of
+         * frames written, by assuming the delay is 0. */
+        mtime_t mt_elapsed = mdate() - mt_ref_time_us;
+        int64_t i_elapsed_frames = mt_elapsed * p_sys->fmt.i_rate / CLOCK_FREQ;
+        msg_Dbg( p_aout, "++++++++++++ reestimate written frames from %lld to %lld", p_sys->i_frames_written, i_ref_position + i_elapsed_frames );
+        p_sys->i_frames_written = i_ref_position + i_elapsed_frames;
+        p_sys->b_frames_written_invalid = false;
+        *mt_delay = 0; /* by assumption */
+    }
+    else
+    {
+        /* estimate delay */
+        int64_t i_diff_frames = p_sys->i_frames_written - i_ref_position;
+        mtime_t mt_target_time = mt_ref_time_us + i_diff_frames * CLOCK_FREQ / p_sys->fmt.i_rate;
+        *mt_delay = mt_target_time - mdate();
+        msg_Dbg( p_aout, "++++++++++++ delay = %lld (%lld %lld)", *mt_delay, p_sys->i_frames_written, i_ref_position );
+    }
+    return 0;
 }
 
 static void Play( audio_output_t *p_aout, block_t *p_block )
@@ -285,6 +304,9 @@ static bool RequestPausedFlush( audio_output_t *p_aout )
     {
         msg_Dbg(p_aout, "================== flushing");
         ret = RequestFlush( p_aout );
+        if( ret )
+            /* after a flush, the frames written count is invalid */
+            p_sys->b_frames_written_invalid = true;
 
         if( playing )
         {
