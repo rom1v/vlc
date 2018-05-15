@@ -48,6 +48,7 @@ typedef struct aout_sys_t
     void            ( *pf_AAudioStreamBuilder_setSampleRate )( AAudioStreamBuilder *, int32_t );
     void            ( *pf_AAudioStreamBuilder_setFormat )( AAudioStreamBuilder *, aaudio_format_t );
     void            ( *pf_AAudioStreamBuilder_setChannelCount )( AAudioStreamBuilder *, int32_t );
+    void            ( *pf_AAudioStreamBuilder_setBufferCapacityInFrames )( AAudioStreamBuilder *, int32_t );
     aaudio_result_t ( *pf_AAudioStreamBuilder_openStream )( AAudioStreamBuilder *, AAudioStream ** );
     void            ( *pf_AAudioStreamBuilder_delete )( AAudioStreamBuilder * );
     aaudio_result_t ( *pf_AAudioStream_requestStart )( AAudioStream * );
@@ -140,6 +141,7 @@ static int OpenAAudioStream( audio_output_t *p_aout, audio_sample_format_t *p_fm
     p_sys->pf_AAudioStreamBuilder_setSampleRate( p_builder, p_fmt->i_rate );
     p_sys->pf_AAudioStreamBuilder_setFormat( p_builder, format );
     p_sys->pf_AAudioStreamBuilder_setChannelCount( p_builder, p_fmt->i_channels );
+    p_sys->pf_AAudioStreamBuilder_setBufferCapacityInFrames( p_builder, p_fmt->i_rate * 2 );
 
     AAudioStream *p_audio_stream;
     result = p_sys->pf_AAudioStreamBuilder_openStream( p_builder, &p_audio_stream );
@@ -298,6 +300,7 @@ static int Open( vlc_object_t *obj )
     AAUDIO_DLSYM( p_sys->pf_AAudioStreamBuilder_setSampleRate, "AAudioStreamBuilder_setSampleRate" );
     AAUDIO_DLSYM( p_sys->pf_AAudioStreamBuilder_setChannelCount, "AAudioStreamBuilder_setChannelCount" );
     AAUDIO_DLSYM( p_sys->pf_AAudioStreamBuilder_setFormat, "AAudioStreamBuilder_setFormat" );
+    AAUDIO_DLSYM( p_sys->pf_AAudioStreamBuilder_setBufferCapacityInFrames, "AAudioStreamBuilder_setBufferCapacityInFrames" );
     AAUDIO_DLSYM( p_sys->pf_AAudioStreamBuilder_openStream, "AAudioStreamBuilder_openStream" );
     AAUDIO_DLSYM( p_sys->pf_AAudioStreamBuilder_delete, "AAudioStreamBuilder_delete" );
     AAUDIO_DLSYM( p_sys->pf_AAudioStream_requestStart, "AAudioStream_requestStart" );
