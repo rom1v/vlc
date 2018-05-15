@@ -43,21 +43,25 @@ typedef struct aout_sys_t
 
     /* dlopen/dlsym symbols */
     void *p_so_handle;
-    aaudio_result_t ( *pf_AAudio_createStreamBuilder )( AAudioStreamBuilder ** );
-    const char     *( *pf_AAudio_convertResultToText )( aaudio_result_t );
-    void            ( *pf_AAudioStreamBuilder_setSampleRate )( AAudioStreamBuilder *, int32_t );
-    void            ( *pf_AAudioStreamBuilder_setFormat )( AAudioStreamBuilder *, aaudio_format_t );
-    void            ( *pf_AAudioStreamBuilder_setChannelCount )( AAudioStreamBuilder *, int32_t );
-    void            ( *pf_AAudioStreamBuilder_setBufferCapacityInFrames )( AAudioStreamBuilder *, int32_t );
-    aaudio_result_t ( *pf_AAudioStreamBuilder_openStream )( AAudioStreamBuilder *, AAudioStream ** );
-    void            ( *pf_AAudioStreamBuilder_delete )( AAudioStreamBuilder * );
-    aaudio_result_t ( *pf_AAudioStream_requestStart )( AAudioStream * );
-    aaudio_result_t ( *pf_AAudioStream_requestStop )( AAudioStream * );
-    aaudio_result_t ( *pf_AAudioStream_requestPause )( AAudioStream * );
-    aaudio_result_t ( *pf_AAudioStream_requestFlush )( AAudioStream * );
-    aaudio_result_t ( *pf_AAudioStream_getTimestamp )( AAudioStream *, clockid_t, int64_t *framePosition, int64_t *timeNanoseconds);
-    aaudio_result_t ( *pf_AAudioStream_write )( AAudioStream *, void *, int32_t numFrames, int64_t timeoutNanoseconds );
-    aaudio_result_t ( *pf_AAudioStream_close )( AAudioStream * );
+    aaudio_result_t       ( *pf_AAudio_createStreamBuilder )( AAudioStreamBuilder ** );
+    const char           *( *pf_AAudio_convertResultToText )( aaudio_result_t );
+    void                  ( *pf_AAudioStreamBuilder_setSampleRate )( AAudioStreamBuilder *, int32_t );
+    void                  ( *pf_AAudioStreamBuilder_setFormat )( AAudioStreamBuilder *, aaudio_format_t );
+    void                  ( *pf_AAudioStreamBuilder_setChannelCount )( AAudioStreamBuilder *, int32_t );
+    void                  ( *pf_AAudioStreamBuilder_setBufferCapacityInFrames )( AAudioStreamBuilder *, int32_t );
+    aaudio_result_t       ( *pf_AAudioStreamBuilder_openStream )( AAudioStreamBuilder *, AAudioStream ** );
+    void                  ( *pf_AAudioStreamBuilder_delete )( AAudioStreamBuilder * );
+    aaudio_result_t       ( *pf_AAudioStream_requestStart )( AAudioStream * );
+    aaudio_result_t       ( *pf_AAudioStream_requestStop )( AAudioStream * );
+    aaudio_result_t       ( *pf_AAudioStream_requestPause )( AAudioStream * );
+    aaudio_result_t       ( *pf_AAudioStream_requestFlush )( AAudioStream * );
+    aaudio_result_t       ( *pf_AAudioStream_getTimestamp )( AAudioStream *, clockid_t,
+                                                             int64_t *framePosition, int64_t *timeNanoseconds);
+    aaudio_result_t       ( *pf_AAudioStream_write )( AAudioStream *, void *, int32_t numFrames, int64_t timeoutNanoseconds );
+    aaudio_result_t       ( *pf_AAudioStream_close )( AAudioStream * );
+    aaudio_stream_state_t ( *pf_AAudioStream_getState )( AAudioStream * );
+    aaudio_result_t       ( *pf_AAudioStream_waitForStateChange )( AAudioStream *, aaudio_stream_state_t inputState,
+                                                                   aaudio_stream_state_t *nextState, int64_t timeoutNanoseconds );
 } aout_sys_t;
 
 static inline void LogAAudioError( audio_output_t *p_aout, const char *msg, aaudio_result_t result )
@@ -65,6 +69,14 @@ static inline void LogAAudioError( audio_output_t *p_aout, const char *msg, aaud
     aout_sys_t *p_sys = p_aout->sys;
 
     msg_Err( p_aout, "%s: %s", msg, p_sys->pf_AAudio_convertResultToText( result ) );
+}
+
+static inline bool WaitForLeavingState( audio_output_t *p_aout, aaudio_stream_state_t current )
+{
+    aout_sys_t *p_sys = p_aout->sys;
+    aaudio_stream_state_t ignore;
+    aaudio_result_t result = p_sys->pf_AAudioStream_waitForStateChange( p_sys->p_audio_stream, current, &ignore, BLOCKING_TIMEOUT );
+    return result == AAUDIO_OK;
 }
 
 static inline bool RequestStart( audio_output_t *p_aout )
@@ -220,13 +232,16 @@ static int TimeGet( audio_output_t *p_aout, mtime_t *mt_delay )
     int64_t i_diff_frames = p_sys->i_frames_written - i_ref_position;
     mtime_t mt_target_time = mt_ref_time_us + i_diff_frames * CLOCK_FREQ / p_sys->fmt.i_rate;
     *mt_delay = mt_target_time - mdate();
-    return 0;
+    msg_Dbg( p_aout, "++++++++++++ delay = %lld (%lld %lld)", *mt_delay, p_sys->i_frames_written, i_ref_position );
+    return -1;
 }
 
 static void Play( audio_output_t *p_aout, block_t *p_block )
 {
     aout_sys_t *p_sys = p_aout->sys;
     assert( p_sys->p_audio_stream );
+
+    msg_Dbg(p_aout, "PLAY ===================================== %d", p_block->i_nb_samples);
 
     aaudio_result_t result = p_sys->pf_AAudioStream_write( p_sys->p_audio_stream,
                                                            p_block->p_buffer,
@@ -250,6 +265,39 @@ static void Pause( audio_output_t *p_aout, bool b_pause, mtime_t mt_date )
         RequestStart( p_aout );
 }
 
+static bool RequestPausedFlush( audio_output_t *p_aout )
+{
+    aout_sys_t *p_sys = p_aout->sys;
+
+    bool ret = false;
+    aaudio_stream_state_t state = p_sys->pf_AAudioStream_getState( p_sys->p_audio_stream );
+    bool playing = state == AAUDIO_STREAM_STATE_STARTING || state == AAUDIO_STREAM_STATE_STARTED;
+    if( playing )
+    {
+        msg_Dbg(p_aout, "================== pause for flushing");
+        if( RequestPause( p_aout ) )
+        {
+            WaitForLeavingState( p_aout, AAUDIO_STREAM_STATE_PAUSING );
+            state = p_sys->pf_AAudioStream_getState( p_sys->p_audio_stream );
+        }
+    }
+    if( state == AAUDIO_STREAM_STATE_PAUSED )
+    {
+        msg_Dbg(p_aout, "================== flushing");
+        ret = RequestFlush( p_aout );
+
+        if( playing )
+        {
+            msg_Dbg(p_aout, "================== resuming");
+            RequestStart( p_aout );
+        }
+    }
+    else
+        msg_Err( p_aout, "Failed to pause the AAudio stream for flushing" );
+
+    return ret;
+}
+
 static void Flush( audio_output_t *p_aout, bool b_wait )
 {
     if( b_wait )
@@ -259,8 +307,8 @@ static void Flush( audio_output_t *p_aout, bool b_wait )
             msleep( delay );
     }
     else
-        // XXX AAudio only supports flushing in paused state
-        RequestFlush( p_aout );
+        /* AAudio only supports flushing in PAUSED state */
+        RequestPausedFlush( p_aout );
 }
 
 static int Open( vlc_object_t *obj )
@@ -310,6 +358,8 @@ static int Open( vlc_object_t *obj )
     AAUDIO_DLSYM( p_sys->pf_AAudioStream_getTimestamp, "AAudioStream_getTimestamp" );
     AAUDIO_DLSYM( p_sys->pf_AAudioStream_write, "AAudioStream_write" );
     AAUDIO_DLSYM( p_sys->pf_AAudioStream_close, "AAudioStream_close" );
+    AAUDIO_DLSYM( p_sys->pf_AAudioStream_getState, "AAudioStream_getState" );
+    AAUDIO_DLSYM( p_sys->pf_AAudioStream_waitForStateChange, "AAudioStream_waitForStateChange" );
 #undef AAUDIO_DLSYM
 
     p_aout->sys = p_sys;
