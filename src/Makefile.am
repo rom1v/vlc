@@ -63,10 +63,12 @@ pluginsinclude_HEADERS = \
 	../include/vlc_keystore.h \
 	../include/vlc_list.h \
 	../include/vlc_md5.h \
+	../include/vlc_media_source.h \
 	../include/vlc_messages.h \
 	../include/vlc_meta.h \
 	../include/vlc_meta_fetcher.h \
 	../include/vlc_media_library.h \
+	../include/vlc_media_tree.h \
 	../include/vlc_memstream.h \
 	../include/vlc_mime.h \
 	../include/vlc_modules.h \
@@ -204,6 +206,10 @@ libvlccore_la_SOURCES = \
 	config/getopt.c \
 	config/vlc_getopt.h \
 	extras/libc.c \
+	media_source/media_source.c \
+	media_source/media_source.h \
+	media_tree/media_tree.c \
+	media_tree/media_tree.h \
 	modules/modules.h \
 	modules/modules.c \
 	modules/bank.c \
