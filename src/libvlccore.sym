@@ -774,3 +774,13 @@ vlc_rd_get_names
 vlc_rd_new
 vlc_rd_release
 vlc_rd_probe_add
+vlc_media_source_Hold
+vlc_media_source_Release
+vlc_media_source_provider_Get
+vlc_media_source_provider_GetMediaSource
+vlc_media_tree_AddListener
+vlc_media_tree_RemoveListener
+vlc_media_tree_Lock
+vlc_media_tree_Unlock
+vlc_media_tree_Find
+vlc_media_tree_listener_added_default
