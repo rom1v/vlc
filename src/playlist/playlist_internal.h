@@ -39,6 +39,7 @@
 
 #include "art.h"
 #include "preparser.h"
+#include "media_browser/media_browser.h"
 
 typedef struct vlc_sd_internal_t vlc_sd_internal_t;
 
@@ -53,8 +54,9 @@ typedef struct playlist_private_t
                            to playlist item mapping */
     void *id_tree; /**< Search tree for item ID to item mapping */
 
-    vlc_sd_internal_t   **pp_sds;
-    int                   i_sds;   /**< Number of service discovery modules */
+    /* temporary, will be removed from the playlist later */
+    media_browser_t *p_mb; /**< Media browser */
+
     input_thread_t *      p_input;  /**< the input thread associated
                                      * with the current item */
     input_resource_t *   p_input_resource; /**< input resources */
