@@ -22,6 +22,7 @@
 #define VLC_MEDIA_BROWSER_H
 
 #include <vlc_common.h>
+#include <vlc_media_tree.h>
 #include <vlc_services_discovery.h>
 
 #ifdef __cplusplus
@@ -34,11 +35,14 @@ typedef struct media_browser_t
     /* all other fields are private */
 } media_browser_t;
 
-/** Add a services discovery module */
-VLC_API int media_browser_Add( media_browser_t *, const char *psz_name );
+/**
+ * Add a services discovery module.
+ *
+ * Return a media tree that must be released by media_tree_Release(). */
+VLC_API media_tree_t *media_browser_Add( media_browser_t *, const char *psz_name );
 
 /** Remove a services discovery module by name */
-VLC_API int media_browser_Remove( media_browser_t *, const char *psz_name );
+VLC_API void media_browser_Remove( media_browser_t *, media_tree_t *p_tree );
 
 // TODO remove below (it's for temporary compatibility)
 
