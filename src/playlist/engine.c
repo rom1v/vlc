@@ -199,9 +199,11 @@ playlist_t *playlist_Create( vlc_object_t *p_parent )
     p->input_tree = NULL;
     p->id_tree = NULL;
 
-    p->p_mb = media_browser_Create( VLC_OBJECT( p_playlist ), p_playlist );
-    if( unlikely( !p->p_mb ) )
+    p->p_media_browser = media_browser_Create( VLC_OBJECT( p_playlist ) );
+    if( unlikely( !p->p_media_browser ) )
         abort();
+
+    ARRAY_INIT( p->media_trees );
 
     VariablesInit( p_playlist );
     vlc_mutex_init( &p->lock );
@@ -304,9 +306,12 @@ void playlist_Destroy( playlist_t *p_playlist )
 {
     playlist_private_t *p_sys = pl_priv(p_playlist);
 
+    /* Remove all services discovery */
+    playlist_ServicesDiscoveryKillAll( p_playlist );
+
     msg_Dbg( p_playlist, "destroying" );
 
-    media_browser_Destroy( p_sys->p_mb );
+    media_browser_Destroy( p_sys->p_media_browser );
 
     playlist_Deactivate( p_playlist );
 

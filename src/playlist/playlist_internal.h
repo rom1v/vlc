@@ -45,6 +45,8 @@ typedef struct vlc_sd_internal_t vlc_sd_internal_t;
 
 void playlist_ServicesDiscoveryKillAll( playlist_t *p_playlist );
 
+TYPEDEF_ARRAY( media_tree_t *, media_tree_array_t );
+
 typedef struct playlist_private_t
 {
     playlist_t           public_data;
@@ -55,7 +57,8 @@ typedef struct playlist_private_t
     void *id_tree; /**< Search tree for item ID to item mapping */
 
     /* temporary, will be removed from the playlist later */
-    media_browser_t *p_mb; /**< Media browser */
+    media_browser_t *p_media_browser; /**< Media browser */
+    media_tree_array_t media_trees;
 
     input_thread_t *      p_input;  /**< the input thread associated
                                      * with the current item */
