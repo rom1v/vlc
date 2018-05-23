@@ -66,6 +66,7 @@ pluginsinclude_HEADERS = \
 	../include/vlc_meta.h \
 	../include/vlc_meta_fetcher.h \
 	../include/vlc_media_library.h \
+	../include/vlc_media_tree.h \
 	../include/vlc_memstream.h \
 	../include/vlc_mime.h \
 	../include/vlc_modules.h \
@@ -204,6 +205,7 @@ libvlccore_la_SOURCES = \
 	config/vlc_getopt.h \
 	extras/libc.c \
 	media_browser/media_browser.c \
+	media_tree/media_tree.c \
 	modules/modules.h \
 	modules/modules.c \
 	modules/bank.c \
