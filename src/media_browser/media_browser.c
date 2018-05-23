@@ -24,15 +24,17 @@
 # include "config.h"
 #endif
 
+#include <assert.h>
 #include <vlc_arrays.h>
 #include <vlc_common.h>
+#include <vlc_media_tree.h>
 #include <vlc_playlist.h>
 #include "libvlc.h"
 #include "playlist/playlist_internal.h"
 
 typedef struct
 {
-    playlist_item_t *p_node;
+    media_tree_t *p_tree;
     services_discovery_t *p_sd; /**< Loaded services discovery module */
     char psz_name[];
 } sd_entry_t;
@@ -42,9 +44,6 @@ TYPEDEF_ARRAY( sd_entry_t *, sd_entry_array_t )
 typedef struct
 {
     media_browser_t public_data;
-
-    /* For now, the media tree is still managed by the playlist */
-    playlist_t *p_playlist;
 
     vlc_mutex_t lock;
     sd_entry_array_t items;
@@ -58,78 +57,54 @@ static void services_discovery_item_added( services_discovery_t *p_sd,
                                            const char *psz_cat )
 {
     assert( !p_parent || !psz_cat );
+    VLC_UNUSED( psz_cat );
 
     /* cf playlist/services_discovery.c:playlist_sd_item_added */
     sd_entry_t *p_entry = p_sd->owner.sys;
-    media_browser_t *p_mb = ( media_browser_t * )p_sd->obj.parent;
-    media_browser_private_t *p_priv = mb_priv( p_mb );
-    playlist_t *p_playlist = p_priv->p_playlist;
-    playlist_item_t *p_node;
+    media_tree_t *p_tree = p_entry->p_tree;
 
     msg_Dbg( p_sd, "adding: %s", p_input->psz_name ? p_input->psz_name : "(null)" );
 
-    const char *psz_longname = p_sd->description ? p_sd->description : "?";
+    media_tree_Lock( p_tree );
 
-    playlist_Lock( p_playlist );
-    if( !p_entry->p_node )
-        p_entry->p_node = playlist_NodeCreate( p_playlist, psz_longname, &p_playlist->root,
-                                               PLAYLIST_END, PLAYLIST_RO_FLAG );
-
+    media_node_t *p_parent_node;
     if( p_parent )
-        p_node = playlist_ItemGetByInput( p_playlist, p_parent );
+        p_parent_node = media_tree_FindByInput( p_tree, p_parent );
     else
-    {
-        if( !psz_cat )
-            p_node = p_entry->p_node;
-        else
-        {
-           /* Parent is NULL (root) and category is specified.
-             * This is clearly a hack. TODO: remove this. */
-            p_node = playlist_ChildSearchName( p_entry->p_node, psz_cat);
-            if ( !p_node )
-                p_node = playlist_NodeCreate( p_playlist, psz_cat, p_entry->p_node,
-                                              PLAYLIST_END, PLAYLIST_RO_FLAG );
-        }
-    }
+        p_parent_node = &p_tree->p_root;
 
-    playlist_NodeAddInput( p_playlist, p_input, p_node, PLAYLIST_END );
-    playlist_Unlock( p_playlist );
+    media_tree_AddByInput( p_tree, p_input, p_parent_node, MEDIA_TREE_END );
+
+    media_tree_Unlock( p_tree );
 }
 
 static void services_discovery_item_removed( services_discovery_t *p_sd, input_item_t *p_input )
 {
     /* cf playlist/services_discovery.c:playlist_sd_item_removed */
     sd_entry_t *p_entry = p_sd->owner.sys;
-    media_browser_t *p_mb = ( media_browser_t * )p_sd->obj.parent;
-    media_browser_private_t *p_priv = mb_priv( p_mb );
-    playlist_t *p_playlist = p_priv->p_playlist;
+    media_tree_t *p_tree = p_entry->p_tree;
 
     msg_Dbg( p_sd, "removing: %s", p_input->psz_name ? p_input->psz_name : "(null)" );
 
-    playlist_Lock( p_playlist );
-    playlist_item_t *p_item = playlist_ItemGetByInput( p_playlist, p_input );
-    if( unlikely( !p_item ) )
+    media_tree_Lock( p_tree );
+
+    media_node_t *p_node = media_tree_FindByInput( p_tree, p_input );
+    if( unlikely( !p_node ) )
     {
         msg_Err( p_sd, "removing item not added"); /* SD plugin bug */
-        playlist_Unlock( p_playlist );
+        media_tree_Unlock( p_tree );
         return;
     }
 
 #ifndef NDEBUG
     /* Check that the item belonged to the SD */
-    for( playlist_item_t *p = p_item->p_parent; p != p_entry->p_node; p = p->p_parent )
+    for( media_node_t *p = p_node->p_parent; p != &p_entry->p_tree->p_root; p = p->p_parent )
         assert( p );
 #endif
 
-    playlist_item_t *p_node = p_item->p_parent;
-    /* if the item was added under a category and the category node
-       becomes empty, delete that node as well */
-    if ( p_node != p_entry->p_node && p_node->i_children == 1)
-        p_item = p_node;
+    media_tree_Remove( p_tree, p_node );
 
-    playlist_NodeDeleteExplicit( p_playlist, p_item,
-                                 PLAYLIST_DELETE_FORCE | PLAYLIST_DELETE_STOP_IF_CURRENT );
-    playlist_Unlock( p_playlist );
+    media_tree_Unlock( p_tree );
 }
 
 static sd_entry_t *CreateEntry( media_browser_t *p_mb, const char *psz_name )
@@ -139,8 +114,14 @@ static sd_entry_t *CreateEntry( media_browser_t *p_mb, const char *psz_name )
         return NULL;
 
     /* vlc_sd_Create() may call services_discovery_item_added(), which will read its
-     * p_node, so it must be initialized first */
-    p_entry->p_node = NULL;
+     * p_tree, so it must be initialized first */
+    p_entry->p_tree = media_tree_Create();
+    if( unlikely( !p_entry->p_tree ) )
+    {
+        free( p_entry );
+        return NULL;
+    }
+
     strcpy( p_entry->psz_name, psz_name );
 
     struct services_discovery_owner_t owner = {
@@ -152,6 +133,7 @@ static sd_entry_t *CreateEntry( media_browser_t *p_mb, const char *psz_name )
     p_entry->p_sd = vlc_sd_Create( p_mb, psz_name, &owner );
     if( unlikely( !p_entry->p_sd ) )
     {
+        media_tree_Release( p_entry->p_tree );
         free( p_entry );
         return NULL;
     }
@@ -161,6 +143,7 @@ static sd_entry_t *CreateEntry( media_browser_t *p_mb, const char *psz_name )
 
 static void DestroyEntry( sd_entry_t *p_entry )
 {
+    media_tree_Release( p_entry->p_tree );
     vlc_sd_Destroy( p_entry->p_sd );
     free( p_entry );
 }
@@ -176,30 +159,35 @@ static int FindEntryIndexByName( media_browser_private_t *p_priv, const char *ps
     return -1;
 }
 
+static int FindEntryIndexByTree( media_browser_private_t *p_priv, const media_tree_t *p_tree )
+{
+    for( int i = 0; i < p_priv->items.i_size; ++i )
+    {
+        sd_entry_t *p_entry = p_priv->items.p_elems[i];
+        if( p_entry->p_tree == p_tree )
+            return i;
+    }
+    return -1;
+}
+
 static sd_entry_t *FindEntryByName( media_browser_private_t *p_priv, const char *psz_name )
 {
     int i = FindEntryIndexByName( p_priv, psz_name );
     return i == -1 ? NULL : p_priv->items.p_elems[i];
 }
 
-static sd_entry_t *RemoveEntryByName( media_browser_private_t *p_priv, const char *psz_name )
+static sd_entry_t *RemoveEntryByTree( media_browser_private_t *p_priv, const media_tree_t *p_tree )
 {
-    int i = FindEntryIndexByName( p_priv, psz_name );
-    if( i == -1 )
-        return NULL;
-
-    sd_entry_t *p_entry = p_priv->items.p_elems[i];
-    ARRAY_REMOVE( p_priv->items, i );
-    return p_entry;
+    int i = FindEntryIndexByTree( p_priv, p_tree );
+    return i == -1 ? NULL : p_priv->items.p_elems[i];
 }
 
-media_browser_t *media_browser_Create( vlc_object_t *p_parent, playlist_t *p_playlist )
+media_browser_t *media_browser_Create( vlc_object_t *p_parent )
 {
     media_browser_private_t *p_priv = vlc_custom_create( p_parent, sizeof( *p_priv ), "media-browser" );
     if( unlikely( !p_priv ) )
         return NULL;
 
-    p_priv->p_playlist = p_playlist;
     vlc_mutex_init( &p_priv->lock );
     ARRAY_INIT( p_priv->items );
     return &p_priv->public_data;
@@ -209,78 +197,45 @@ void media_browser_Destroy( media_browser_t *p_mb )
 {
     media_browser_private_t *p_priv = mb_priv( p_mb );
 
-    /* Remove all services discovery from the playlist */
-    playlist_t *p_playlist = p_priv->p_playlist;
+    /* Destroy all entries */
     FOREACH_ARRAY( sd_entry_t *p_entry, p_priv->items )
-        playlist_item_t *p_node = p_entry->p_node;
-        /* we must destroy the entry before removing the nodes, since calling
-         * vlc_sd_Destroy() may call item_removed() */
         DestroyEntry( p_entry );
-        if ( p_node )
-        {
-            playlist_Lock( p_playlist );
-            playlist_NodeDeleteExplicit( p_playlist, p_node,
-                                         PLAYLIST_DELETE_FORCE | PLAYLIST_DELETE_STOP_IF_CURRENT );
-            playlist_Unlock( p_playlist );
-        }
     FOREACH_END()
 
     vlc_mutex_destroy( &p_priv->lock );
     vlc_object_release( p_mb );
 }
 
-int media_browser_Add( media_browser_t *p_mb, const char *psz_name )
+media_tree_t *media_browser_Add( media_browser_t *p_mb, const char *psz_name )
 {
     sd_entry_t *p_entry = CreateEntry( p_mb, psz_name );
     if( unlikely( !p_entry ) )
-        return VLC_ENOMEM;
+        return NULL;
 
     media_browser_private_t *p_priv = mb_priv( p_mb );
+
+    /* once appended to p_priv->items, it may be released by a concurrent media_browser_Remove()
+     * before this function returns */
+    media_tree_Hold( p_entry->p_tree );
 
     vlc_mutex_lock( &p_priv->lock );
     ARRAY_APPEND( p_priv->items, p_entry );
     vlc_mutex_unlock( &p_priv->lock );
 
-    /* Backward compatibility with Qt UI: create the node even if the SD
-     * has not discovered any item. */
-    playlist_t *p_playlist = p_priv->p_playlist;
-    if( !p_entry->p_node && p_entry->p_sd->description )
-    {
-        playlist_Lock( p_playlist );
-        p_entry->p_node = playlist_NodeCreate( p_playlist, p_entry->p_sd->description,
-                                               &p_playlist->root, PLAYLIST_END, PLAYLIST_RO_FLAG );
-        playlist_Unlock( p_playlist );
-    }
-
-    return VLC_SUCCESS;
+    return p_entry->p_tree;
 }
 
-int media_browser_Remove( media_browser_t *p_mb, const char *psz_name )
+void media_browser_Remove( media_browser_t *p_mb, media_tree_t *p_tree )
 {
     media_browser_private_t *p_priv = mb_priv( p_mb );
 
     vlc_mutex_lock( &p_priv->lock );
-    sd_entry_t *p_entry = RemoveEntryByName( p_priv, psz_name );
+    sd_entry_t *p_entry = RemoveEntryByTree( p_priv, p_tree );
     vlc_mutex_unlock( &p_priv->lock );
 
-    if( unlikely( !p_entry ) )
-    {
-        msg_Warn( p_mb, "Service discovery %s is not loaded", psz_name );
-        return VLC_EGENERIC;
-    }
-
-    /* Remove the playlist node if it exists */
-    playlist_t *p_playlist = p_priv->p_playlist;
-    if ( p_entry->p_node )
-    {
-        playlist_Lock( p_playlist );
-        playlist_NodeDeleteExplicit( p_playlist, p_entry->p_node,
-                                     PLAYLIST_DELETE_FORCE | PLAYLIST_DELETE_STOP_IF_CURRENT );
-        playlist_Unlock( p_playlist );
-    }
+    assert( p_entry );
 
     DestroyEntry( p_entry );
-    return VLC_SUCCESS;
 }
 
 bool media_browser_IsServicesDiscoveryLoaded( media_browser_t *p_mb, const char *psz_name )
