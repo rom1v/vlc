@@ -23,7 +23,7 @@
 
 #include <vlc_media_browser.h>
 
-media_browser_t *media_browser_Create( vlc_object_t *p_parent, playlist_t *p_playlist );
+media_browser_t *media_browser_Create( vlc_object_t *p_parent );
 void media_browser_Destroy( media_browser_t * );
 
 #endif
