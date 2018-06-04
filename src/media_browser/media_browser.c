@@ -25,6 +25,7 @@
 #endif
 
 #include <assert.h>
+#include <stdatomic.h>
 #include <vlc_arrays.h>
 #include <vlc_common.h>
 #include <vlc_media_tree.h>
@@ -34,19 +35,23 @@
 
 typedef struct
 {
-    media_tree_t *p_tree;
-    services_discovery_t *p_sd; /**< Loaded services discovery module */
-    char psz_name[];
-} sd_entry_t;
+    media_source_t public_data;
 
-TYPEDEF_ARRAY( sd_entry_t *, sd_entry_array_t )
+    services_discovery_t *p_sd; /**< Loaded services discovery module */
+    atomic_uint refs;
+    char psz_name[];
+} media_source_private_t;
+
+#define ms_priv( ms ) container_of( ms, media_source_private_t, public_data );
+
+TYPEDEF_ARRAY( media_source_t *, media_source_array_t )
 
 typedef struct
 {
     media_browser_t public_data;
 
     vlc_mutex_t lock;
-    sd_entry_array_t items;
+    media_source_array_t items;
 } media_browser_private_t;
 
 #define mb_priv( mb ) container_of( mb, media_browser_private_t, public_data )
@@ -60,8 +65,8 @@ static void services_discovery_item_added( services_discovery_t *p_sd,
     VLC_UNUSED( psz_cat );
 
     /* cf playlist/services_discovery.c:playlist_sd_item_added */
-    sd_entry_t *p_entry = p_sd->owner.sys;
-    media_tree_t *p_tree = p_entry->p_tree;
+    media_source_t *p_ms = p_sd->owner.sys;
+    media_tree_t *p_tree = p_ms->p_tree;
 
     msg_Dbg( p_sd, "adding: %s", p_input->psz_name ? p_input->psz_name : "(null)" );
 
@@ -81,8 +86,8 @@ static void services_discovery_item_added( services_discovery_t *p_sd,
 static void services_discovery_item_removed( services_discovery_t *p_sd, input_item_t *p_input )
 {
     /* cf playlist/services_discovery.c:playlist_sd_item_removed */
-    sd_entry_t *p_entry = p_sd->owner.sys;
-    media_tree_t *p_tree = p_entry->p_tree;
+    media_source_t *p_ms = p_sd->owner.sys;
+    media_tree_t *p_tree = p_ms->p_tree;
 
     msg_Dbg( p_sd, "removing: %s", p_input->psz_name ? p_input->psz_name : "(null)" );
 
@@ -98,7 +103,7 @@ static void services_discovery_item_removed( services_discovery_t *p_sd, input_i
 
 #ifndef NDEBUG
     /* Check that the item belonged to the SD */
-    for( media_node_t *p = p_node->p_parent; p != &p_entry->p_tree->p_root; p = p->p_parent )
+    for( media_node_t *p = p_node->p_parent; p != &p_ms->p_tree->p_root; p = p->p_parent )
         assert( p );
 #endif
 
@@ -107,79 +112,102 @@ static void services_discovery_item_removed( services_discovery_t *p_sd, input_i
     media_tree_Unlock( p_tree );
 }
 
-static sd_entry_t *CreateEntry( media_browser_t *p_mb, const char *psz_name )
+static media_source_t *MediaSourceCreate( media_browser_t *p_mb, const char *psz_name )
 {
-    sd_entry_t *p_entry = malloc( sizeof( *p_entry ) + strlen( psz_name ) + 1 );
-    if( unlikely( !p_entry ) )
+    media_source_private_t *p_priv = malloc( sizeof( *p_priv ) + strlen( psz_name ) + 1 );
+    if( unlikely( !p_priv ) )
         return NULL;
+
+    atomic_init( &p_priv->refs, 1 );
+
+    media_source_t *p_ms = &p_priv->public_data;
 
     /* vlc_sd_Create() may call services_discovery_item_added(), which will read its
      * p_tree, so it must be initialized first */
-    p_entry->p_tree = media_tree_Create();
-    if( unlikely( !p_entry->p_tree ) )
+    p_ms->p_tree = media_tree_Create();
+    if( unlikely( !p_ms->p_tree ) )
     {
-        free( p_entry );
+        free( p_ms );
         return NULL;
     }
 
-    strcpy( p_entry->psz_name, psz_name );
+    strcpy( p_priv->psz_name, psz_name );
 
     struct services_discovery_owner_t owner = {
-        .sys = p_entry,
+        .sys = p_ms,
         .item_added = services_discovery_item_added,
         .item_removed = services_discovery_item_removed,
     };
 
-    p_entry->p_sd = vlc_sd_Create( p_mb, psz_name, &owner );
-    if( unlikely( !p_entry->p_sd ) )
+    p_priv->p_sd = vlc_sd_Create( p_mb, psz_name, &owner );
+    if( unlikely( !p_priv->p_sd ) )
     {
-        media_tree_Release( p_entry->p_tree );
-        free( p_entry );
+        media_tree_Release( p_ms->p_tree );
+        free( p_ms );
         return NULL;
     }
 
-    return p_entry;
+    return p_ms;
 }
 
-static void DestroyEntry( sd_entry_t *p_entry )
+static void MediaSourceDestroy( media_source_t *p_ms )
 {
-    media_tree_Release( p_entry->p_tree );
-    vlc_sd_Destroy( p_entry->p_sd );
-    free( p_entry );
+    media_source_private_t *p_priv = ms_priv( p_ms );
+    media_tree_Release( p_ms->p_tree );
+    vlc_sd_Destroy( p_priv->p_sd );
+    free( p_priv );
 }
 
-static int FindEntryIndexByName( media_browser_private_t *p_priv, const char *psz_name )
+void media_source_Hold( media_source_t *p_ms )
+{
+    media_source_private_t *p_priv = ms_priv( p_ms );
+    atomic_fetch_add( &p_priv->refs, 1 );
+}
+
+void media_source_Release( media_source_t *p_ms )
+{
+    media_source_private_t *p_priv = ms_priv( p_ms );
+    if( atomic_fetch_sub( &p_priv->refs, 1 ) == 1 )
+        MediaSourceDestroy( p_ms );
+}
+
+static int FindIndexByName( media_browser_private_t *p_priv, const char *psz_name )
 {
     for( int i = 0; i < p_priv->items.i_size; ++i )
     {
-        sd_entry_t *p_entry = p_priv->items.p_elems[i];
-        if( !strcmp( psz_name, p_entry->psz_name ) )
+        media_source_t *p_ms = p_priv->items.p_elems[i];
+        media_source_private_t *p = ms_priv( p_ms );
+        if( !strcmp( psz_name, p->psz_name ) )
             return i;
     }
     return -1;
 }
 
-static int FindEntryIndexByTree( media_browser_private_t *p_priv, const media_tree_t *p_tree )
+static int FindIndex( media_browser_private_t *p_priv, const media_source_t *p_ms )
 {
     for( int i = 0; i < p_priv->items.i_size; ++i )
     {
-        sd_entry_t *p_entry = p_priv->items.p_elems[i];
-        if( p_entry->p_tree == p_tree )
+        media_source_t *p_cur = p_priv->items.p_elems[i];
+        if( p_cur == p_ms )
             return i;
     }
     return -1;
 }
 
-static sd_entry_t *FindEntryByName( media_browser_private_t *p_priv, const char *psz_name )
+static media_source_t *FindByName( media_browser_private_t *p_priv, const char *psz_name )
 {
-    int i = FindEntryIndexByName( p_priv, psz_name );
+    int i = FindIndexByName( p_priv, psz_name );
     return i == -1 ? NULL : p_priv->items.p_elems[i];
 }
 
-static sd_entry_t *RemoveEntryByTree( media_browser_private_t *p_priv, const media_tree_t *p_tree )
+static bool Remove( media_browser_private_t *p_priv, const media_source_t *p_ms )
 {
-    int i = FindEntryIndexByTree( p_priv, p_tree );
-    return i == -1 ? NULL : p_priv->items.p_elems[i];
+    int i = FindIndex( p_priv, p_ms );
+    if( i == -1 )
+        return false;
+
+    ARRAY_REMOVE( p_priv->items, i );
+    return true;
 }
 
 media_browser_t *media_browser_Create( vlc_object_t *p_parent )
@@ -198,44 +226,48 @@ void media_browser_Destroy( media_browser_t *p_mb )
     media_browser_private_t *p_priv = mb_priv( p_mb );
 
     /* Destroy all entries */
-    FOREACH_ARRAY( sd_entry_t *p_entry, p_priv->items )
-        DestroyEntry( p_entry );
+    FOREACH_ARRAY( media_source_t *p_ms, p_priv->items )
+        media_source_Release( p_ms );
     FOREACH_END()
 
     vlc_mutex_destroy( &p_priv->lock );
     vlc_object_release( p_mb );
 }
 
-media_tree_t *media_browser_Add( media_browser_t *p_mb, const char *psz_name )
+media_source_t *media_browser_Add( media_browser_t *p_mb, const char *psz_name )
 {
-    sd_entry_t *p_entry = CreateEntry( p_mb, psz_name );
-    if( unlikely( !p_entry ) )
+    media_source_t *p_ms = MediaSourceCreate( p_mb, psz_name );
+    if( unlikely( !p_ms ) )
         return NULL;
-
-    media_browser_private_t *p_priv = mb_priv( p_mb );
 
     /* once appended to p_priv->items, it may be released by a concurrent media_browser_Remove()
      * before this function returns */
-    media_tree_Hold( p_entry->p_tree );
+    media_source_Hold( p_ms );
+
+    media_browser_private_t *p_priv = mb_priv( p_mb );
 
     vlc_mutex_lock( &p_priv->lock );
-    ARRAY_APPEND( p_priv->items, p_entry );
+    ARRAY_APPEND( p_priv->items, p_ms );
     vlc_mutex_unlock( &p_priv->lock );
 
-    return p_entry->p_tree;
+    return p_ms;
 }
 
-void media_browser_Remove( media_browser_t *p_mb, media_tree_t *p_tree )
+void media_browser_Remove( media_browser_t *p_mb, media_source_t *p_ms )
 {
     media_browser_private_t *p_priv = mb_priv( p_mb );
 
     vlc_mutex_lock( &p_priv->lock );
-    sd_entry_t *p_entry = RemoveEntryByTree( p_priv, p_tree );
+    bool found = Remove( p_priv, p_ms );
     vlc_mutex_unlock( &p_priv->lock );
 
-    assert( p_entry );
+#ifdef NDEBUG
+    VLC_UNUSED( found );
+#else
+    assert( found );
+#endif
 
-    DestroyEntry( p_entry );
+    media_source_Release( p_ms );
 }
 
 bool media_browser_IsServicesDiscoveryLoaded( media_browser_t *p_mb, const char *psz_name )
@@ -243,7 +275,7 @@ bool media_browser_IsServicesDiscoveryLoaded( media_browser_t *p_mb, const char 
     media_browser_private_t *p_priv = mb_priv( p_mb );
 
     vlc_mutex_lock( &p_priv->lock );
-    int i = FindEntryIndexByName( p_priv, psz_name );
+    int i = FindIndexByName( p_priv, psz_name );
     vlc_mutex_unlock( &p_priv->lock );
 
     return i != -1;
@@ -255,11 +287,12 @@ int media_browser_vaControl( media_browser_t *p_mb, const char *psz_name, int i_
 
     vlc_mutex_lock( &p_priv->lock );
 
-    sd_entry_t *p_entry = FindEntryByName( p_priv, psz_name );
-    assert( p_entry );
+    media_source_t *p_ms = FindByName( p_priv, psz_name );
+    assert( p_ms );
 
     // XXX must we keep the lock? (playlist_ServicesDiscoveryControl did)
-    int ret = vlc_sd_control( p_entry->p_sd, i_query, args );
+    media_source_private_t *p = ms_priv( p_ms );
+    int ret = vlc_sd_control( p->p_sd, i_query, args );
 
     vlc_mutex_unlock( &p_priv->lock );
 

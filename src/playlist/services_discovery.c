@@ -33,7 +33,7 @@
 struct playlist_sd_entry_t {
     playlist_t *p_playlist;
     playlist_item_t *p_root;
-    media_tree_t *p_tree;
+    media_source_t *p_ms;
     const char *psz_name;
 };
 
@@ -42,7 +42,6 @@ static void media_tree_node_added( media_tree_t *p_tree,
                                    media_node_t *p_node,
                                    void *userdata )
 {
-    VLC_UNUSED( p_tree );
     assert( p_parent );
     playlist_sd_entry_t *p = userdata;
 
@@ -109,8 +108,8 @@ int playlist_ServicesDiscoveryAdd( playlist_t *p_playlist, const char *psz_name 
     }
 
     media_browser_t *p_media_browser = pl_priv( p_playlist )->p_media_browser;
-    media_tree_t *p_tree = media_browser_Add( p_media_browser, psz_name );
-    if( !p_tree )
+    media_source_t *p_ms = media_browser_Add( p_media_browser, psz_name );
+    if( !p_ms )
     {
         free( p );
         return VLC_ENOMEM;
@@ -128,9 +127,9 @@ int playlist_ServicesDiscoveryAdd( playlist_t *p_playlist, const char *psz_name 
         .pf_node_added = media_tree_node_added,
         .pf_node_removed = media_tree_node_removed,
     };
-    media_tree_Lock( p_tree );
-    media_tree_Attach( p_tree, &callbacks );
-    media_tree_Unlock( p_tree );
+    media_tree_Lock( p_ms->p_tree );
+    media_tree_Attach( p_ms->p_tree, &callbacks );
+    media_tree_Unlock( p_ms->p_tree );
 
     /* use the same big playlist lock for this temporary stuff */
     playlist_private_t *p_priv = pl_priv( p_playlist );
@@ -174,8 +173,8 @@ int playlist_ServicesDiscoveryRemove( playlist_t *p_playlist, const char *psz_na
 
     playlist_Unlock( p_playlist );
 
-    media_browser_Remove( p_priv->p_media_browser, p->p_tree );
-    media_tree_Release( p->p_tree );
+    media_browser_Remove( p_priv->p_media_browser, p->p_ms );
+    media_source_Release( p->p_ms );
 
     free( ( void * )p->psz_name );
     free( p );
@@ -205,6 +204,7 @@ void playlist_ServicesDiscoveryKillAll( playlist_t *p_playlist )
     playlist_private_t *p_priv = pl_priv( p_playlist );
     playlist_Lock( p_playlist );
     FOREACH_ARRAY( playlist_sd_entry_t *p, p_priv->sd_entries )
+        media_source_Release( p->p_ms );
         playlist_NodeDeleteExplicit( p_playlist, p->p_root,
                                      PLAYLIST_DELETE_FORCE | PLAYLIST_DELETE_STOP_IF_CURRENT );
         free( ( void * )p->psz_name );
