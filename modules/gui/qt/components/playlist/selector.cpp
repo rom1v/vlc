@@ -387,7 +387,7 @@ void PLSelector::setSource( QTreeWidgetItem *item )
         /* Find the right item for the SD */
         /* FIXME: searching by name - what could possibly go wrong? */
         pl_item = playlist_ChildSearchName( &(THEPL->root),
-            vlc_gettext(qtu(item->data(0, NAME_ROLE).toString())) );
+            vlc_gettext(qtu(item->data(0, LONGNAME_ROLE).toString())) );
 
         /* Podcasts */
         if( item->data( 0, SPECIAL_ROLE ).toInt() == IS_PODCAST )
