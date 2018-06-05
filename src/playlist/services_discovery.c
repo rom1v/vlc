@@ -116,9 +116,10 @@ int playlist_ServicesDiscoveryAdd( playlist_t *p_playlist, const char *psz_name 
     }
     p->p_ms = p_ms;
 
+    const char *psz_description = p_ms->psz_description ? p_ms->psz_description : "?";
+
     playlist_Lock( p_playlist );
-    // XXX circular dependency to retrieve description, so we use psz_name instead
-    p->p_root = playlist_NodeCreate( p_playlist, psz_name, &p_playlist->root,
+    p->p_root = playlist_NodeCreate( p_playlist, psz_description, &p_playlist->root,
                                      PLAYLIST_END, PLAYLIST_RO_FLAG );
     playlist_Unlock( p_playlist );
 
