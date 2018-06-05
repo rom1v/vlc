@@ -205,10 +205,7 @@ void playlist_ServicesDiscoveryKillAll( playlist_t *p_playlist )
     playlist_private_t *p_priv = pl_priv( p_playlist );
     playlist_Lock( p_playlist );
     FOREACH_ARRAY( playlist_sd_entry_t *p, p_priv->sd_entries )
-        media_tree_Lock( p->p_ms->p_tree );
-        media_tree_Detach( p->p_ms->p_tree ); /* ignore events on SD close*/
-        media_tree_Unlock( p->p_ms->p_tree );
-        media_source_Release( p->p_ms );
+        media_source_DetachAndRelease( p->p_ms );
         playlist_NodeDeleteExplicit( p_playlist, p->p_root,
                                      PLAYLIST_DELETE_FORCE | PLAYLIST_DELETE_STOP_IF_CURRENT );
         free( ( void * )p->psz_name );

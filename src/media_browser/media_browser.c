@@ -164,6 +164,14 @@ void media_source_Hold( media_source_t *p_ms )
     atomic_fetch_add( &p_priv->refs, 1 );
 }
 
+void media_source_DetachAndRelease( media_source_t *p_ms )
+{
+    media_tree_Lock( p_ms->p_tree );
+    media_tree_Detach( p_ms->p_tree ); /* ignore events on SD close*/
+    media_tree_Unlock( p_ms->p_tree );
+    media_source_Release( p_ms );
+}
+
 void media_source_Release( media_source_t *p_ms )
 {
     media_source_private_t *p_priv = ms_priv( p_ms );

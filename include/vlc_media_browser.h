@@ -36,6 +36,7 @@ typedef struct media_source_t
 
 VLC_API void media_source_Hold( media_source_t * );
 VLC_API void media_source_Release( media_source_t * );
+VLC_API void media_source_DetachAndRelease( media_source_t * );
 
 typedef struct media_browser_t
 {
