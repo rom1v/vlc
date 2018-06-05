@@ -308,10 +308,10 @@ void playlist_Destroy( playlist_t *p_playlist )
 
     msg_Dbg( p_playlist, "destroying" );
 
-    media_browser_Destroy( p_sys->p_media_browser );
-
     /* Remove all services discovery */
     playlist_ServicesDiscoveryKillAll( p_playlist );
+
+    media_browser_Destroy( p_sys->p_media_browser );
 
     playlist_Deactivate( p_playlist );
 
