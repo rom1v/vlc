@@ -48,27 +48,29 @@ struct media_tree_t {
     media_node_t p_root;
 };
 
-typedef struct media_tree_callbacks_t
+typedef struct media_tree_connection_t media_tree_connection_t;
+
+typedef struct media_tree_listener_t
 {
     void *userdata;
-    void ( *pf_tree_attached )( media_tree_t *, void *userdata );
+    void ( *pf_tree_connected )( media_tree_t *, void *userdata );
     void ( *pf_node_added )( media_tree_t *, media_node_t *, void *userdata );
     void ( *pf_node_removed )( media_tree_t *, media_node_t *, void *userdata );
-} media_tree_callbacks_t;
+} media_tree_listener_t;
 
 /* default pf_tree_attached callback calling pf_node_added for every node */
-VLC_API void media_tree_attached_default( media_tree_t *, void *userdata );
+VLC_API void media_tree_connected_default( media_tree_t *, void *userdata );
 
 VLC_API media_tree_t *media_tree_Create( vlc_object_t *p_parent );
 
 VLC_API void media_tree_Hold( media_tree_t * );
 VLC_API void media_tree_Release( media_tree_t * );
 
+VLC_API media_tree_connection_t *media_tree_Connect( media_tree_t *, const media_tree_listener_t * );
+VLC_API void media_tree_Disconnect( media_tree_t *, media_tree_connection_t * );
+
 VLC_API void media_tree_Lock( media_tree_t * );
 VLC_API void media_tree_Unlock( media_tree_t * );
-
-VLC_API void media_tree_Attach( media_tree_t *, const media_tree_callbacks_t * );
-VLC_API void media_tree_Detach( media_tree_t * );
 
 VLC_API media_node_t *media_tree_Add( media_tree_t *, input_item_t *, media_node_t *p_parent, int i_pos );
 VLC_API media_node_t *media_tree_Find( media_tree_t *, input_item_t * );
