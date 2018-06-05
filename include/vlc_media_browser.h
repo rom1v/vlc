@@ -32,6 +32,7 @@ extern "C" {
 typedef struct media_source_t
 {
     media_tree_t *p_tree;
+    const char *psz_description;
 } media_source_t;
 
 VLC_API void media_source_Hold( media_source_t * );
