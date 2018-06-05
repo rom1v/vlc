@@ -147,6 +147,9 @@ static media_source_t *MediaSourceCreate( media_browser_t *p_mb, const char *psz
         return NULL;
     }
 
+    /* p_sd->description is set during vlc_sd_Create() */
+    p_ms->psz_description = p_priv->p_sd->description;
+
     return p_ms;
 }
 
