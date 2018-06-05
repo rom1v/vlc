@@ -39,6 +39,7 @@ typedef struct
 
     services_discovery_t *p_sd; /**< Loaded services discovery module */
     atomic_uint refs;
+    media_browser_t *p_owner;
     char psz_name[];
 } media_source_private_t;
 
@@ -112,6 +113,12 @@ static void services_discovery_item_removed( services_discovery_t *p_sd, input_i
     media_tree_Unlock( p_tree );
 }
 
+static inline void AssertLocked( media_browser_t *p_mb )
+{
+    media_browser_private_t *p_priv = mb_priv( p_mb );
+    vlc_assert_locked( &p_priv->lock );
+}
+
 static media_source_t *MediaSourceCreate( media_browser_t *p_mb, const char *psz_name )
 {
     media_source_private_t *p_priv = malloc( sizeof( *p_priv ) + strlen( psz_name ) + 1 );
@@ -150,12 +157,17 @@ static media_source_t *MediaSourceCreate( media_browser_t *p_mb, const char *psz
     /* p_sd->description is set during vlc_sd_Create() */
     p_ms->psz_description = p_priv->p_sd->description;
 
+    p_priv->p_owner = p_mb;
+
     return p_ms;
 }
+
+static void Remove( media_browser_t *, media_source_t * );
 
 static void MediaSourceDestroy( media_source_t *p_ms )
 {
     media_source_private_t *p_priv = ms_priv( p_ms );
+    Remove( p_priv->p_owner, p_ms );
     vlc_sd_Destroy( p_priv->p_sd );
     media_tree_Release( p_ms->p_tree );
     free( p_priv );
@@ -211,8 +223,9 @@ static media_source_t *FindByName( media_browser_private_t *p_priv, const char *
     return i == -1 ? NULL : p_priv->media_sources.p_elems[i];
 }
 
-static bool Remove( media_browser_private_t *p_priv, const media_source_t *p_ms )
+static bool RemoveInternal( media_browser_private_t *p_priv, const media_source_t *p_ms )
 {
+    vlc_assert_locked( &p_priv->lock );
     int i = FindIndex( p_priv, p_ms );
     if( i == -1 )
         return false;
@@ -236,40 +249,52 @@ void media_browser_Destroy( media_browser_t *p_mb )
 {
     media_browser_private_t *p_priv = mb_priv( p_mb );
 
-    /* Destroy all entries */
-    FOREACH_ARRAY( media_source_t *p_ms, p_priv->media_sources )
-        media_source_Release( p_ms );
-    FOREACH_END()
-
     vlc_mutex_destroy( &p_priv->lock );
     vlc_object_release( p_mb );
 }
 
-media_source_t *media_browser_Add( media_browser_t *p_mb, const char *psz_name )
+static media_source_t *AddServiceDiscovery( media_browser_t *p_mb, const char *psz_name )
 {
+    AssertLocked( p_mb );
+
     media_source_t *p_ms = MediaSourceCreate( p_mb, psz_name );
     if( unlikely( !p_ms ) )
         return NULL;
 
-    /* once appended to p_priv->media_sources, it may be released by a concurrent media_browser_Remove()
-     * before this function returns */
-    media_source_Hold( p_ms );
+    media_browser_private_t *p_priv = mb_priv( p_mb );
 
+    ARRAY_APPEND( p_priv->media_sources, p_ms );
+    return p_ms;
+}
+
+media_source_t *media_browser_GetMediaSource( media_browser_t *p_mb, const char *psz_name )
+{
     media_browser_private_t *p_priv = mb_priv( p_mb );
 
     vlc_mutex_lock( &p_priv->lock );
-    ARRAY_APPEND( p_priv->media_sources, p_ms );
+
+    media_source_t *p_ms = FindByName( p_priv, psz_name );
+    if( !p_ms )
+    {
+        p_ms = AddServiceDiscovery( p_mb, psz_name );
+        if( unlikely( !p_ms ) )
+        {
+            vlc_mutex_unlock( &p_priv->lock );
+            return NULL;
+        }
+    }
+
     vlc_mutex_unlock( &p_priv->lock );
 
     return p_ms;
 }
 
-void media_browser_Remove( media_browser_t *p_mb, media_source_t *p_ms )
+static void Remove( media_browser_t *p_mb, media_source_t *p_ms )
 {
     media_browser_private_t *p_priv = mb_priv( p_mb );
 
     vlc_mutex_lock( &p_priv->lock );
-    bool found = Remove( p_priv, p_ms );
+    bool found = RemoveInternal( p_priv, p_ms );
     vlc_mutex_unlock( &p_priv->lock );
 
 #ifdef NDEBUG
@@ -277,8 +302,6 @@ void media_browser_Remove( media_browser_t *p_mb, media_source_t *p_ms )
 #else
     assert( found );
 #endif
-
-    media_source_Release( p_ms );
 }
 
 bool media_browser_IsServicesDiscoveryLoaded( media_browser_t *p_mb, const char *psz_name )

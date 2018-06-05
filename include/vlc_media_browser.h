@@ -45,14 +45,16 @@ typedef struct media_browser_t
     /* all specific fields are private */
 } media_browser_t;
 
+VLC_API media_source_t *media_browser_GetMediaSource( media_browser_t *, const char *psz_name );
+
 /**
  * Add a services discovery module.
  *
  * Return a media tree that must be released by media_tree_Release(). */
-VLC_API media_source_t *media_browser_Add( media_browser_t *, const char *psz_name );
+VLC_API media_source_t *media_browser_Add( media_browser_t *, const char *psz_name ) VLC_DEPRECATED;
 
 /** Remove a services discovery module by name */
-VLC_API void media_browser_Remove( media_browser_t *, media_source_t *p_tree );
+VLC_API void media_browser_Remove( media_browser_t *, media_source_t *p_tree ) VLC_DEPRECATED;
 
 /** Check whether a given services discovery is loaded */
 VLC_API bool media_browser_IsServicesDiscoveryLoaded( media_browser_t *, const char *psz_name ) VLC_DEPRECATED;
