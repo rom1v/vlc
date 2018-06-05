@@ -108,7 +108,7 @@ int playlist_ServicesDiscoveryAdd( playlist_t *p_playlist, const char *psz_name 
     }
 
     media_browser_t *p_media_browser = pl_priv( p_playlist )->p_media_browser;
-    media_source_t *p_ms = media_browser_Add( p_media_browser, psz_name );
+    media_source_t *p_ms = media_browser_GetMediaSource( p_media_browser, psz_name );
     if( !p_ms )
     {
         free( p );
@@ -163,8 +163,6 @@ static playlist_sd_entry_t *RemoveEntry( playlist_t *p_playlist, const char *psz
 
 int playlist_ServicesDiscoveryRemove( playlist_t *p_playlist, const char *psz_name )
 {
-    playlist_private_t *p_priv = pl_priv( p_playlist );
-
     playlist_Lock( p_playlist );
 
     playlist_sd_entry_t *p = RemoveEntry( p_playlist, psz_name );
@@ -175,7 +173,6 @@ int playlist_ServicesDiscoveryRemove( playlist_t *p_playlist, const char *psz_na
 
     playlist_Unlock( p_playlist );
 
-    media_browser_Remove( p_priv->p_media_browser, p->p_ms );
     media_source_Release( p->p_ms );
 
     free( ( void * )p->psz_name );
