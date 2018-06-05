@@ -38,11 +38,11 @@ struct playlist_sd_entry_t {
 };
 
 static void media_tree_node_added( media_tree_t *p_tree,
-                                   media_node_t *p_parent,
                                    media_node_t *p_node,
                                    void *userdata )
 {
     VLC_UNUSED( p_tree );
+    media_node_t *p_parent = p_node->p_parent;
     assert( p_parent );
     playlist_sd_entry_t *p = userdata;
 

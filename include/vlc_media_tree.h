@@ -51,7 +51,7 @@ typedef struct media_tree_callbacks_t
 {
     void *userdata;
     void ( *pf_tree_attached )( media_tree_t *, void *userdata );
-    void ( *pf_node_added )( media_tree_t *, media_node_t *p_parent, media_node_t *, void *userdata );
+    void ( *pf_node_added )( media_tree_t *, media_node_t *, void *userdata );
     void ( *pf_node_removed )( media_tree_t *, media_node_t *, void *userdata );
 } media_tree_callbacks_t;
 

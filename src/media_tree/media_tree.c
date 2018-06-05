@@ -138,7 +138,7 @@ static void NotifyChildren( media_tree_t *p_tree, media_node_t *p_node )
     media_tree_callbacks_t *p_callbacks = &p_priv->callbacks;
 
     FOREACH_ARRAY( media_node_t *p_child, p_node->children )
-        p_callbacks->pf_node_added( p_tree, p_node, p_child, p_callbacks->userdata );
+        p_callbacks->pf_node_added( p_tree, p_child, p_callbacks->userdata );
         NotifyChildren( p_tree, p_child );
     FOREACH_END()
 }
@@ -187,7 +187,7 @@ media_node_t *media_tree_AddByInput( media_tree_t *p_tree,
 
     media_tree_callbacks_t *p_callbacks = &p_priv->callbacks;
     if( p_callbacks->pf_node_added )
-        p_callbacks->pf_node_added( p_tree, p_parent, p_node, p_callbacks->userdata );
+        p_callbacks->pf_node_added( p_tree, p_node, p_callbacks->userdata );
 
     return p_node;
 }
