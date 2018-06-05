@@ -34,6 +34,7 @@ struct playlist_sd_entry_t {
     playlist_t *p_playlist;
     playlist_item_t *p_root;
     media_source_t *p_ms;
+    media_tree_connection_t *p_conn;
     const char *psz_name;
 };
 
@@ -123,15 +124,19 @@ int playlist_ServicesDiscoveryAdd( playlist_t *p_playlist, const char *psz_name 
                                      PLAYLIST_END, PLAYLIST_RO_FLAG );
     playlist_Unlock( p_playlist );
 
-    media_tree_callbacks_t callbacks = {
+    media_tree_listener_t listener = {
         .userdata = p,
-        .pf_tree_attached = media_tree_attached_default,
+        .pf_tree_connected = media_tree_connected_default,
         .pf_node_added = media_tree_node_added,
         .pf_node_removed = media_tree_node_removed,
     };
-    media_tree_Lock( p_ms->p_tree );
-    media_tree_Attach( p_ms->p_tree, &callbacks );
-    media_tree_Unlock( p_ms->p_tree );
+    p->p_conn = media_tree_Connect( p_ms->p_tree, &listener );
+    if( !p->p_conn )
+    {
+        media_source_Release( p->p_ms );
+        free( p );
+        return VLC_ENOMEM;
+    }
 
     /* use the same big playlist lock for this temporary stuff */
     playlist_private_t *p_priv = pl_priv( p_playlist );
@@ -173,6 +178,7 @@ int playlist_ServicesDiscoveryRemove( playlist_t *p_playlist, const char *psz_na
 
     playlist_Unlock( p_playlist );
 
+    media_tree_Disconnect( p->p_ms->p_tree, p->p_conn );
     media_source_Release( p->p_ms );
 
     free( ( void * )p->psz_name );
@@ -203,7 +209,8 @@ void playlist_ServicesDiscoveryKillAll( playlist_t *p_playlist )
     playlist_private_t *p_priv = pl_priv( p_playlist );
     playlist_Lock( p_playlist );
     FOREACH_ARRAY( playlist_sd_entry_t *p, p_priv->sd_entries )
-        media_source_DetachAndRelease( p->p_ms );
+        media_tree_Disconnect( p->p_ms->p_tree, p->p_conn );
+        media_source_Release( p->p_ms );
         playlist_NodeDeleteExplicit( p_playlist, p->p_root,
                                      PLAYLIST_DELETE_FORCE | PLAYLIST_DELETE_STOP_IF_CURRENT );
         free( ( void * )p->psz_name );
