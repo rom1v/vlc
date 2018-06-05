@@ -143,6 +143,7 @@ void media_tree_attached_default( media_tree_t *p_tree, void *userdata )
     NotifyChildren( p_tree, &p_tree->p_root );
 }
 
+// FIXME there should be a list of callbacks, for n clients
 void media_tree_Attach( media_tree_t *p_tree, const media_tree_callbacks_t *p_callbacks )
 {
     AssertLocked( p_tree );
