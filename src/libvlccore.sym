@@ -764,3 +764,4 @@ media_tree_Lock
 media_tree_Unlock
 media_tree_Find
 media_tree_connected_default
+media_tree_subtree_added_default

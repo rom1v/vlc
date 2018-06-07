@@ -55,7 +55,11 @@ static void media_tree_node_added( media_tree_t *p_tree,
         p_parent_item = playlist_ItemGetByInput( p->p_playlist, p_parent->p_input );
     else
         p_parent_item = p->p_root;
-    assert( p_parent_item );
+
+    /* this is a hack, but this whole media_tree-to-playlist adapter is temporary */
+    if( p_parent_item->i_children == -1)
+        p_parent_item->i_children = 0; /* it's a node! */
+
     playlist_NodeAddInput( p->p_playlist, p_node->p_input, p_parent_item, PLAYLIST_END );
 
     playlist_Unlock( p->p_playlist );
@@ -97,8 +101,10 @@ static void media_tree_node_removed( media_tree_t *p_tree,
 
 static const media_tree_callbacks_t media_tree_callbacks = {
     .pf_tree_connected = media_tree_connected_default,
+    .pf_subtree_added = NULL, /* already managed by the playlist */
     .pf_node_added = media_tree_node_added,
     .pf_node_removed = media_tree_node_removed,
+    .pf_input_updated = NULL, /* already managed by playlist */
 };
 
 int playlist_ServicesDiscoveryAdd( playlist_t *p_playlist, const char *psz_name )
