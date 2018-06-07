@@ -60,6 +60,14 @@ typedef struct vlc_media_tree_callbacks_t
     void (*listener_added)(vlc_media_tree_t *, void *userdata);
 
     /**
+     * Called when an input item notifies that a subtree has been added.
+     *
+     * Use vlc_media_tree_subtree_added_default implementation to call
+     * node_added() for every new node.
+     */
+    void (*subtree_added)(vlc_media_tree_t *, const input_item_node_t *, void *userdata);
+
+    /**
      * Called after a new node has been added to the media tree, with lock held.
      */
     void (*node_added)(vlc_media_tree_t *, const input_item_node_t *parent,
@@ -86,6 +94,12 @@ typedef struct vlc_media_tree_listener_t
  * every existing node.
  **/
 VLC_API void vlc_media_tree_listener_added_default(vlc_media_tree_t *, void *userdata);
+
+/**
+ * Default implementation for subtree_added(), which calls node_added()
+ * for every new node.
+ **/
+VLC_API void vlc_media_tree_subtree_added_default(vlc_media_tree_t *, const input_item_node_t *, void *userdata);
 
 /**
  * Add listener. The lock must NOT be held.
@@ -119,6 +133,9 @@ VLC_API void vlc_media_tree_Unlock(vlc_media_tree_t *);
  */
 VLC_API bool vlc_media_tree_Find(vlc_media_tree_t *, const input_item_t *,
                                  input_item_node_t **result, input_item_node_t **result_parent);
+
+VLC_API void vlc_media_tree_Preparse(vlc_media_tree_t *, libvlc_int_t *libvlc,
+                                     input_item_t *);
 
 /** @} */
 

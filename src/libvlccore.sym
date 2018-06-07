@@ -784,3 +784,4 @@ vlc_media_tree_Lock
 vlc_media_tree_Unlock
 vlc_media_tree_Find
 vlc_media_tree_listener_added_default
+vlc_media_tree_subtree_added_default
