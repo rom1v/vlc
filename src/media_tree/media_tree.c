@@ -109,6 +109,17 @@ static void NotifyNodeRemoved(vlc_media_tree_t *tree, const input_item_node_t *p
             listener->cbs->node_removed(tree, parent, node, listener->userdata);
 }
 
+static void NotifySubtreeAdded(vlc_media_tree_t *tree, const input_item_node_t *node)
+{
+    AssertLocked(tree);
+    media_tree_private_t *priv = mt_priv(tree);
+
+    vlc_media_tree_listener_id *listener;
+    vlc_list_foreach(listener, &priv->listeners, node)
+        if (listener->cbs->subtree_added)
+            listener->cbs->subtree_added(tree, node, listener->userdata);
+}
+
 static bool FindNodeByInput(input_item_node_t *parent, const input_item_t *input,
                             input_item_node_t **result, input_item_node_t **result_parent)
 {
@@ -128,6 +139,41 @@ static bool FindNodeByInput(input_item_node_t *parent, const input_item_t *input
     }
 
     return false;
+}
+
+static input_item_node_t *AddChild(input_item_node_t *parent, input_item_t *input);
+
+static void AddSubtree(input_item_node_t *to, input_item_node_t *from)
+{
+    for (int i = 0; i < from->i_children; ++i)
+    {
+        input_item_node_t *child = from->pp_children[i];
+        input_item_node_t *node = AddChild(to, child->p_item);
+        if (unlikely(!node))
+            break; /* what could we do? */
+
+        AddSubtree(node, child);
+    }
+}
+
+static void input_item_subtree_added(input_item_t *input, input_item_node_t *node,
+                                     void *userdata)
+{
+    vlc_media_tree_t *tree = userdata;
+
+    vlc_media_tree_Lock(tree);
+    input_item_node_t *subtree_root;
+    // TODO retrieve the node without traversing the tree
+    bool found = FindNodeByInput(&tree->root, input, &subtree_root, NULL);
+    if (!found) {
+        /* the node probably failed to be allocated */
+        vlc_media_tree_Unlock(tree);
+        return;
+    }
+
+    AddSubtree(subtree_root, node);
+    NotifySubtreeAdded(tree, subtree_root);
+    vlc_media_tree_Unlock(tree);
 }
 
 static void DestroyRootNode(vlc_media_tree_t *tree)
@@ -199,7 +245,7 @@ static void NotifyChildren(vlc_media_tree_t *tree, const input_item_node_t *node
     }
 }
 
-void vlc_media_tree_listener_added_default(vlc_media_tree_t *tree, void *userdata)
+void vlc_media_tree_subtree_added_default(vlc_media_tree_t *tree, const input_item_node_t *node, void *userdata)
 {
     VLC_UNUSED(userdata);
     AssertLocked(tree);
@@ -208,7 +254,12 @@ void vlc_media_tree_listener_added_default(vlc_media_tree_t *tree, void *userdat
     vlc_list_foreach(listener, &priv->listeners, node)
         /* notify "node added" for every node */
         if (listener->cbs->node_added)
-            NotifyChildren(tree, &tree->root, listener);
+            NotifyChildren(tree, node, listener);
+}
+
+void vlc_media_tree_listener_added_default(vlc_media_tree_t *tree, void *userdata)
+{
+    vlc_media_tree_subtree_added_default(tree, &tree->root, userdata);
 }
 
 vlc_media_tree_listener_id *vlc_media_tree_AddListener(vlc_media_tree_t *tree,
@@ -273,4 +324,15 @@ bool vlc_media_tree_Remove(vlc_media_tree_t *tree, input_item_t *input)
     NotifyNodeRemoved(tree, parent, node);
     input_item_node_Delete(node);
     return true;
+}
+
+static const input_preparser_callbacks_t input_preparser_callbacks = {
+    .on_subtree_added = input_item_subtree_added,
+};
+
+void vlc_media_tree_Preparse(vlc_media_tree_t *media_tree,
+                             libvlc_int_t *libvlc, input_item_t *input)
+{
+    vlc_MetadataRequest(libvlc, input, META_REQUEST_OPTION_NONE,
+                        &input_preparser_callbacks, media_tree, -1, NULL);
 }
