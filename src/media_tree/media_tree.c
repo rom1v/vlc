@@ -292,6 +292,8 @@ static media_node_t *AddChild( media_tree_t *p_tree, input_item_t *p_input, medi
     input_item_Hold( p_input );
     RegisterInputEvents( p_tree, p_input );
 
+    libvlc_MetadataRequest( p_tree->obj.libvlc, p_input, 0, -1, p_node );
+
     return p_node;
 }
 
