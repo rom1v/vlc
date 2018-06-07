@@ -537,7 +537,7 @@ playlist_item_t * playlist_NodeAddInput( playlist_t *p_playlist,
 
     playlist_NodeInsert( p_parent, p_item, i_pos );
     playlist_SendAddNotify( p_playlist, p_item );
-    playlist_Preparse( p_playlist, p_item );
+    //playlist_Preparse( p_playlist, p_item );
 
     return p_item;
 }
