@@ -53,7 +53,11 @@ static void media_tree_node_added( media_tree_t *p_tree,
         p_parent_item = playlist_ItemGetByInput( p->p_playlist, p_parent->p_input );
     else
         p_parent_item = p->p_root;
-    assert( p_parent_item );
+
+    /* this is a hack, but this whole media_tree-to-playlist adapter is temporary */
+    if( p_parent_item->i_children == -1)
+        p_parent_item->i_children = 0; /* it's a node! */
+
     playlist_NodeAddInput( p->p_playlist, p_node->p_input, p_parent_item, PLAYLIST_END );
 
     playlist_Unlock( p->p_playlist );
@@ -93,6 +97,14 @@ static void media_tree_node_removed( media_tree_t *p_tree,
     playlist_Unlock( p->p_playlist );
 }
 
+//static void media_tree_input_updated( media_tree_t *p_tree,
+//                                      media_node_t *p_node,
+//                                      void *userdata )
+//{
+//    playlist_sd_entry_t *p = userdata;
+//    var_SetAddress( p->p_playlist, "item-change", p_node->p_input );
+//}
+
 int playlist_ServicesDiscoveryAdd( playlist_t *p_playlist, const char *psz_name )
 {
     playlist_sd_entry_t *p = malloc( sizeof( *p ) );
@@ -127,8 +139,10 @@ int playlist_ServicesDiscoveryAdd( playlist_t *p_playlist, const char *psz_name 
     media_tree_listener_t listener = {
         .userdata = p,
         .pf_tree_connected = media_tree_connected_default,
+        .pf_subtree_added = NULL, /* already managed by playlist */
         .pf_node_added = media_tree_node_added,
         .pf_node_removed = media_tree_node_removed,
+        .pf_input_updated = NULL, /* already managed by playlist */
     };
     p->p_conn = media_tree_Connect( p_ms->p_tree, &listener );
     if( !p->p_conn )
