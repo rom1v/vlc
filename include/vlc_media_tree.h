@@ -53,12 +53,17 @@ typedef struct media_tree_listener_t
 {
     void *userdata;
     void ( *pf_tree_connected )( media_tree_t *, void *userdata );
+    void ( *pf_subtree_added )( media_tree_t *, const media_node_t *, void *userdata );
     void ( *pf_node_added )( media_tree_t *, const media_node_t *, void *userdata );
     void ( *pf_node_removed )( media_tree_t *, const media_node_t *, void *userdata );
+    void ( *pf_input_updated )( media_tree_t *, const media_node_t *, void *userdata );
 } media_tree_listener_t;
 
 /* default pf_tree_attached callback calling pf_node_added for every node */
 VLC_API void media_tree_connected_default( media_tree_t *, void *userdata );
+
+/* default pf_subtree_added callback calling pf_node_added for every node */
+VLC_API void media_tree_subtree_added_default( media_tree_t *, const media_node_t *, void *userdata );
 
 VLC_API media_tree_t *media_tree_Create( vlc_object_t *p_parent );
 
