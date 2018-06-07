@@ -62,124 +62,10 @@ media_tree_t *media_tree_Create( vlc_object_t *p_parent )
     return p_tree;
 }
 
-static void DestroyNodeAndChildren( media_node_t * );
-
-static void DestroyChildren( media_node_t *p_node )
-{
-    FOREACH_ARRAY( media_node_t *p_child, p_node->children )
-        DestroyNodeAndChildren( p_child );
-    FOREACH_END()
-}
-
-static void DestroyNodeAndChildren( media_node_t *p_node )
-{
-    DestroyChildren( p_node );
-    input_item_Release( p_node->p_input );
-    free( p_node );
-}
-
-static void Destroy( media_tree_t *p_tree )
-{
-    media_tree_private_t *p_priv = mt_priv( p_tree );
-    FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
-        free( p_conn );
-    FOREACH_END()
-    ARRAY_RESET( p_priv->connections);
-    DestroyChildren( &p_tree->p_root );
-    vlc_mutex_destroy( &p_priv->lock );
-    vlc_object_release( p_tree );
-}
-
-void media_tree_Hold( media_tree_t *p_tree )
-{
-    media_tree_private_t *p_priv = mt_priv( p_tree );
-    atomic_fetch_add( &p_priv->refs, 1 );
-}
-
-void media_tree_Release( media_tree_t *p_tree )
-{
-    media_tree_private_t *p_priv = mt_priv( p_tree );
-    if( atomic_fetch_sub( &p_priv->refs, 1 ) == 1 )
-        Destroy( p_tree );
-}
-
-void media_tree_Lock( media_tree_t *p_tree )
-{
-    media_tree_private_t *p_priv = mt_priv( p_tree );
-    vlc_mutex_lock( &p_priv->lock );
-}
-
-void media_tree_Unlock( media_tree_t *p_tree )
-{
-    media_tree_private_t *p_priv = mt_priv( p_tree );
-    vlc_mutex_unlock( &p_priv->lock );
-}
-
 static inline void AssertLocked( media_tree_t *p_tree )
 {
     media_tree_private_t *p_priv = mt_priv( p_tree );
     vlc_assert_locked( &p_priv->lock );
-}
-
-static inline void AssertBelong( media_tree_t *p_tree, media_node_t *p_node )
-{
-#ifndef NDEBUG
-    for( media_node_t *p = p_node; p != &p_tree->p_root; p = p->p_parent )
-        assert( p );
-#endif
-}
-
-static media_node_t *AddChild( input_item_t *p_input, media_node_t *p_parent, int i_pos )
-{
-    media_node_t *p_node = malloc( sizeof( *p_node ) );
-    if( unlikely( !p_node ) )
-        return NULL;
-
-    if( i_pos == -1 )
-        i_pos = p_parent->children.i_size;
-
-    p_node->p_input = p_input;
-    p_node->p_parent = p_parent;
-    ARRAY_INIT( p_node->children );
-    ARRAY_INSERT( p_parent->children, p_node, i_pos );
-
-    input_item_Hold( p_input );
-
-    return p_node;
-}
-
-static int FindNodeIndex( media_node_array_t *p_array, media_node_t *p_node )
-{
-    for( int i = 0; i < p_array->i_size; ++i )
-    {
-        media_node_t *p_cur = p_array->p_elems[i];
-        if( p_cur == p_node )
-            return i;
-    }
-
-    return -1;
-}
-
-static void NotifyChildren( media_tree_t *p_tree, media_node_t *p_node, const media_tree_listener_t *p_listener )
-{
-    AssertLocked( p_tree );
-    FOREACH_ARRAY( media_node_t *p_child, p_node->children )
-        p_listener->pf_node_added( p_tree, p_child, p_listener->userdata );
-        NotifyChildren( p_tree, p_child, p_listener );
-    FOREACH_END()
-}
-
-void media_tree_connected_default( media_tree_t *p_tree, void *userdata )
-{
-    VLC_UNUSED( userdata );
-    AssertLocked( p_tree );
-    media_tree_private_t *p_priv = mt_priv( p_tree );
-    FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
-        if( !p_conn->listener.pf_node_added)
-            break; /* nothing to do for this listener */
-        /* notify "node added" for every node */
-        NotifyChildren( p_tree, &p_tree->p_root, &p_conn->listener );
-    FOREACH_END()
 }
 
 static void NotifyTreeConnected( media_tree_t *p_tree )
@@ -210,6 +96,240 @@ static void NotifyNodeRemoved( media_tree_t *p_tree, media_node_t *p_node )
         if( p_conn->listener.pf_node_removed )
             p_conn->listener.pf_node_removed( p_tree, p_node, p_conn->listener.userdata );
     FOREACH_END()
+}
+
+static void NotifySubtreeAdded( media_tree_t *p_tree, media_node_t *p_node )
+{
+    AssertLocked( p_tree );
+    media_tree_private_t *p_priv = mt_priv( p_tree );
+    FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
+        if( p_conn->listener.pf_subtree_added )
+            p_conn->listener.pf_subtree_added( p_tree, p_node, p_conn->listener.userdata );
+    FOREACH_END()
+}
+
+static void NotifyInputChanged( media_tree_t *p_tree, media_node_t *p_node )
+{
+    AssertLocked( p_tree );
+    media_tree_private_t *p_priv = mt_priv( p_tree );
+    FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
+        if( p_conn->listener.pf_input_updated )
+            p_conn->listener.pf_input_updated( p_tree, p_node, p_conn->listener.userdata );
+    FOREACH_END()
+}
+
+static media_node_t *FindNodeByInput( media_node_t *p_node, input_item_t *p_input )
+{
+    if( p_node->p_input == p_input )
+        return p_node;
+
+    FOREACH_ARRAY( media_node_t *p, p_node->children )
+        media_node_t *p_result = FindNodeByInput( p, p_input );
+        if( p_result )
+            return p_result;
+    FOREACH_END()
+
+    return NULL;
+}
+
+static media_node_t *AddChild( media_tree_t *p_tree, input_item_t *p_input, media_node_t *p_parent, int i_pos );
+
+static void AddSubtree( media_tree_t *p_tree, media_node_t *p_to, input_item_node_t *p_from )
+{
+    for( int i = 0; i < p_from->i_children; ++i )
+    {
+        input_item_node_t *p_child = p_from->pp_children[i];
+        media_node_t *p_node = AddChild( p_tree, p_child->p_item, p_to, MEDIA_TREE_END );
+        if( unlikely( !p_node ) )
+        {
+            msg_Warn( p_tree, "Cannot create node");
+            continue;
+        }
+        AddSubtree( p_tree, p_node, p_child );
+    }
+}
+
+static void input_item_subtree_added( const vlc_event_t *p_event, void *userdata )
+{
+    media_tree_t *p_tree = userdata;
+    input_item_t *p_input = p_event->p_obj;
+    input_item_node_t *p_from = p_event->u.input_item_subitem_tree_added.p_root;
+
+    media_tree_Lock( p_tree );
+    // TODO Rather than FindNodeByInput(), store the node associated in the input in a structured userdata
+    media_node_t *p_subtree_root = FindNodeByInput( &p_tree->p_root, p_input );
+    if( unlikely( !p_subtree_root ) )
+    {
+        msg_Warn( p_tree, "Did not find expected node for subtree");
+        media_tree_Unlock( p_tree );
+        return;
+    }
+
+    AddSubtree( p_tree, p_subtree_root, p_from );
+    NotifySubtreeAdded( p_tree, p_subtree_root );
+    media_tree_Unlock( p_tree );
+}
+
+static void input_item_changed( const vlc_event_t *p_event, void *userdata )
+{
+    media_tree_t *p_tree = userdata;
+    input_item_t *p_input = p_event->p_obj;
+
+    media_tree_Lock( p_tree );
+    // TODO Rather than FindNodeByInput(), store the node associated in the input in a structured userdata
+    media_node_t *p_node = FindNodeByInput( &p_tree->p_root, p_input );
+    if( unlikely( !p_node ) )
+    {
+        msg_Warn( p_tree, "Cannot find node");
+        media_tree_Unlock( p_tree );
+        return;
+    }
+
+    NotifyInputChanged( p_tree, p_node );
+    media_tree_Unlock( p_tree );
+}
+
+static void RegisterInputEvents( media_tree_t *p_tree, input_item_t *p_input )
+{
+    vlc_event_manager_t *p_em = &p_input->event_manager;
+    vlc_event_attach( p_em, vlc_InputItemSubItemTreeAdded, input_item_subtree_added, p_tree );
+    vlc_event_attach( p_em, vlc_InputItemDurationChanged, input_item_changed, p_tree );
+    vlc_event_attach( p_em, vlc_InputItemMetaChanged, input_item_changed, p_tree );
+    vlc_event_attach( p_em, vlc_InputItemNameChanged, input_item_changed, p_tree );
+    vlc_event_attach( p_em, vlc_InputItemInfoChanged, input_item_changed, p_tree );
+    vlc_event_attach( p_em, vlc_InputItemErrorWhenReadingChanged, input_item_changed, p_tree );
+}
+
+static void DeregisterInputEvents( media_tree_t *p_tree, input_item_t *p_input )
+{
+    vlc_event_manager_t *p_em = &p_input->event_manager;
+    vlc_event_detach( p_em, vlc_InputItemSubItemTreeAdded, input_item_subtree_added, p_tree );
+    vlc_event_detach( p_em, vlc_InputItemDurationChanged, input_item_changed, p_tree );
+    vlc_event_detach( p_em, vlc_InputItemMetaChanged, input_item_changed, p_tree );
+    vlc_event_detach( p_em, vlc_InputItemNameChanged, input_item_changed, p_tree );
+    vlc_event_detach( p_em, vlc_InputItemInfoChanged, input_item_changed, p_tree );
+    vlc_event_detach( p_em, vlc_InputItemErrorWhenReadingChanged, input_item_changed, p_tree );
+}
+
+static void DestroyNodeAndChildren( media_tree_t *, media_node_t * );
+
+static void DestroyChildren( media_tree_t *p_tree, media_node_t *p_node )
+{
+    FOREACH_ARRAY( media_node_t *p_child, p_node->children )
+        DestroyNodeAndChildren( p_tree, p_child );
+    FOREACH_END()
+}
+
+static void DestroyNodeAndChildren( media_tree_t *p_tree, media_node_t *p_node )
+{
+    DestroyChildren( p_tree, p_node );
+    DeregisterInputEvents( p_tree, p_node->p_input );
+    input_item_Release( p_node->p_input );
+    free( p_node );
+}
+
+static void Destroy( media_tree_t *p_tree )
+{
+    media_tree_private_t *p_priv = mt_priv( p_tree );
+    FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
+        free( p_conn );
+    FOREACH_END()
+    ARRAY_RESET( p_priv->connections);
+    DestroyChildren( p_tree, &p_tree->p_root );
+    vlc_mutex_destroy( &p_priv->lock );
+    vlc_object_release( p_tree );
+}
+
+void media_tree_Hold( media_tree_t *p_tree )
+{
+    media_tree_private_t *p_priv = mt_priv( p_tree );
+    atomic_fetch_add( &p_priv->refs, 1 );
+}
+
+void media_tree_Release( media_tree_t *p_tree )
+{
+    media_tree_private_t *p_priv = mt_priv( p_tree );
+    if( atomic_fetch_sub( &p_priv->refs, 1 ) == 1 )
+        Destroy( p_tree );
+}
+
+void media_tree_Lock( media_tree_t *p_tree )
+{
+    media_tree_private_t *p_priv = mt_priv( p_tree );
+    vlc_mutex_lock( &p_priv->lock );
+}
+
+void media_tree_Unlock( media_tree_t *p_tree )
+{
+    media_tree_private_t *p_priv = mt_priv( p_tree );
+    vlc_mutex_unlock( &p_priv->lock );
+}
+
+static inline void AssertBelong( media_tree_t *p_tree, media_node_t *p_node )
+{
+#ifndef NDEBUG
+    for( media_node_t *p = p_node; p != &p_tree->p_root; p = p->p_parent )
+        assert( p );
+#endif
+}
+
+static media_node_t *AddChild( media_tree_t *p_tree, input_item_t *p_input, media_node_t *p_parent, int i_pos )
+{
+    media_node_t *p_node = malloc( sizeof( *p_node ) );
+    if( unlikely( !p_node ) )
+        return NULL;
+
+    if( i_pos == -1 )
+        i_pos = p_parent->children.i_size;
+
+    p_node->p_input = p_input;
+    p_node->p_parent = p_parent;
+    ARRAY_INIT( p_node->children );
+    ARRAY_INSERT( p_parent->children, p_node, i_pos );
+
+    input_item_Hold( p_input );
+    RegisterInputEvents( p_tree, p_input );
+
+    return p_node;
+}
+
+static int FindNodeIndex( media_node_array_t *p_array, media_node_t *p_node )
+{
+    for( int i = 0; i < p_array->i_size; ++i )
+    {
+        media_node_t *p_cur = p_array->p_elems[i];
+        if( p_cur == p_node )
+            return i;
+    }
+
+    return -1;
+}
+
+static void NotifyChildren( media_tree_t *p_tree, media_node_t *p_node, const media_tree_listener_t *p_listener )
+{
+    AssertLocked( p_tree );
+    FOREACH_ARRAY( media_node_t *p_child, p_node->children )
+        p_listener->pf_node_added( p_tree, p_child, p_listener->userdata );
+        NotifyChildren( p_tree, p_child, p_listener );
+    FOREACH_END()
+}
+
+void media_tree_subtree_added_default( media_tree_t *p_tree, media_node_t *p_node, void *userdata )
+{
+    VLC_UNUSED( userdata );
+    AssertLocked( p_tree );
+    media_tree_private_t *p_priv = mt_priv( p_tree );
+    FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
+        if( !p_conn->listener.pf_node_added)
+            break; /* nothing to do for this listener */
+        /* notify "node added" for every root child */
+        NotifyChildren( p_tree, p_node, &p_conn->listener );
+    FOREACH_END()
+}
+
+void media_tree_connected_default( media_tree_t *p_tree, void *userdata )
+{
+    media_tree_subtree_added_default( p_tree, &p_tree->p_root, userdata );
 }
 
 media_tree_connection_t *media_tree_Connect( media_tree_t *p_tree, const media_tree_listener_t *p_listener )
@@ -265,7 +385,7 @@ media_node_t *media_tree_Add( media_tree_t *p_tree,
 {
     AssertLocked( p_tree );
 
-    media_node_t *p_node = AddChild( p_input, p_parent, i_pos );
+    media_node_t *p_node = AddChild( p_tree, p_input, p_parent, i_pos );
     if( unlikely( !p_node ) )
         return NULL;
 
@@ -274,20 +394,6 @@ media_node_t *media_tree_Add( media_tree_t *p_tree,
     NotifyNodeAdded( p_tree, p_node );
 
     return p_node;
-}
-
-static media_node_t *FindNodeByInput( media_node_t *p_node, input_item_t *p_input )
-{
-    if( p_node->p_input == p_input )
-        return p_node;
-
-    FOREACH_ARRAY( media_node_t *p, p_node->children )
-        media_node_t *p_result = FindNodeByInput( p, p_input );
-        if( p_result )
-            return p_result;
-    FOREACH_END()
-
-    return NULL;
 }
 
 media_node_t *media_tree_Find( media_tree_t *p_tree, input_item_t *p_input )
@@ -313,7 +419,7 @@ media_node_t *media_tree_Remove( media_tree_t *p_tree, media_node_t *p_node )
 
     NotifyNodeRemoved( p_tree, p_node );
 
-    DestroyNodeAndChildren( p_node );
+    DestroyNodeAndChildren( p_tree, p_node );
 
     return NULL;
 }
