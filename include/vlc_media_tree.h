@@ -73,6 +73,14 @@ typedef struct media_tree_callbacks_t
     void ( *pf_tree_connected )( media_tree_t *, void *userdata );
 
     /**
+     * Called when an input item notifies that a subtree has been added.
+     *
+     * Use media_tree_subtree_added_default implementation to call
+     * pf_node_added() for every new node.
+     */
+    void ( *pf_subtree_added )( media_tree_t *, const media_node_t *, void *userdata );
+
+    /**
      * Called when a new node is added to the media tree, with lock held.
      */
     void ( *pf_node_added )( media_tree_t *, const media_node_t *, void *userdata );
@@ -81,6 +89,11 @@ typedef struct media_tree_callbacks_t
      * Called when a node is removed from the media tree, with lock held.
      */
     void ( *pf_node_removed )( media_tree_t *, const media_node_t *, void *userdata );
+
+    /**
+     * Called when an input item is updated.
+     */
+    void ( *pf_input_updated )( media_tree_t *, const media_node_t *, void *userdata );
 } media_tree_callbacks_t;
 
 /**
@@ -88,6 +101,12 @@ typedef struct media_tree_callbacks_t
  * for every existing node.
  **/
 VLC_API void media_tree_connected_default( media_tree_t *, void *userdata );
+
+/**
+ * Default implementation for pf_subtree_added(), which calls pf_node_added()
+ * for every new node.
+ **/
+VLC_API void media_tree_subtree_added_default( media_tree_t *, const media_node_t *, void *userdata );
 
 /**
  * Increase the media tree reference count.
