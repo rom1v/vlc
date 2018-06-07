@@ -1405,7 +1405,7 @@ static int Quit( vlc_object_t *p_this, char const *psz_cmd,
     VLC_UNUSED(p_data); VLC_UNUSED(psz_cmd);
     VLC_UNUSED(oldval); VLC_UNUSED(newval);
 
-    libvlc_Quit( p_this->obj.libvlc );
+    libvlc_Quit( p_this->libvlc );
     return VLC_SUCCESS;
 }
 

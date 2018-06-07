@@ -217,7 +217,7 @@ module_t *vlc_module_load(vlc_object_t *obj, const char *capability,
     }
 
     module_t *module = NULL;
-    const bool b_force_backup = obj->obj.force; /* FIXME: remove this */
+    const bool b_force_backup = obj->force; /* FIXME: remove this */
     va_list args;
 
     va_start(args, probe);
@@ -232,7 +232,7 @@ module_t *vlc_module_load(vlc_object_t *obj, const char *capability,
         if (!strcasecmp ("none", shortcut))
             goto done;
 
-        obj->obj.force = strict && strcasecmp ("any", shortcut);
+        obj->force = strict && strcasecmp ("any", shortcut);
         for (ssize_t i = 0; i < total; i++)
         {
             module_t *cand = mods[i];
@@ -257,7 +257,7 @@ module_t *vlc_module_load(vlc_object_t *obj, const char *capability,
     /* None of the shortcuts matched, fall back to any module */
     if (!strict)
     {
-        obj->obj.force = false;
+        obj->force = false;
         for (ssize_t i = 0; i < total; i++)
         {
             module_t *cand = mods[i];
@@ -277,7 +277,7 @@ module_t *vlc_module_load(vlc_object_t *obj, const char *capability,
     }
 done:
     va_end (args);
-    obj->obj.force = b_force_backup;
+    obj->force = b_force_backup;
     module_list_free (mods);
 
     if (module != NULL)

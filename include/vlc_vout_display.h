@@ -209,7 +209,7 @@ struct vout_display_owner_t {
 };
 
 struct vout_display_t {
-    struct vlc_common_members obj;
+    struct vlc_object_t obj;
 
     /* Module */
     module_t *module;

@@ -45,7 +45,7 @@
 
 struct vlc_logger_t
 {
-    struct vlc_common_members obj;
+    struct vlc_object_t obj;
     vlc_rwlock_t lock;
     vlc_log_cb log;
     void *sys;
@@ -90,7 +90,7 @@ void vlc_vaLog (vlc_object_t *obj, int type, const char *module,
                 const char *file, unsigned line, const char *func,
                 const char *format, va_list args)
 {
-    if (obj != NULL && obj->obj.flags & OBJECT_FLAGS_QUIET)
+    if (obj != NULL && obj->flags & OBJECT_FLAGS_QUIET)
         return;
 
     /* Get basename from the module filename */
@@ -112,7 +112,7 @@ void vlc_vaLog (vlc_object_t *obj, int type, const char *module,
     vlc_log_t msg;
 
     msg.i_object_id = (uintptr_t)obj;
-    msg.psz_object_type = (obj != NULL) ? obj->obj.object_type : "generic";
+    msg.psz_object_type = (obj != NULL) ? obj->object_type : "generic";
     msg.psz_module = module;
     msg.psz_header = NULL;
     msg.file = file;
@@ -120,10 +120,10 @@ void vlc_vaLog (vlc_object_t *obj, int type, const char *module,
     msg.func = func;
     msg.tid = vlc_thread_id();
 
-    for (vlc_object_t *o = obj; o != NULL; o = o->obj.parent)
-        if (o->obj.header != NULL)
+    for (vlc_object_t *o = obj; o != NULL; o = o->parent)
+        if (o->header != NULL)
         {
-            msg.psz_header = o->obj.header;
+            msg.psz_header = o->header;
             break;
         }
 
@@ -137,7 +137,7 @@ void vlc_vaLog (vlc_object_t *obj, int type, const char *module,
 
     /* Pass message to the callback */
     if (obj != NULL)
-        vlc_vaLogCallback(obj->obj.libvlc, type, &msg, format, args);
+        vlc_vaLogCallback(obj->libvlc, type, &msg, format, args);
 }
 
 /**

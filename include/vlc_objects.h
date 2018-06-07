@@ -36,7 +36,7 @@
  * Object also have private properties maintained by the core, see
  * \ref vlc_object_internals_t
  */
-struct vlc_common_members
+struct vlc_object_t
 {
     /** Object type name
      *
@@ -75,39 +75,18 @@ struct vlc_common_members
 };
 
 /**
- * Type-safe vlc_object_t cast
- *
- * This macro attempts to cast a pointer to a compound type to a
- * \ref vlc_object_t pointer in a type-safe manner.
- * It checks if the compound type actually starts with an embedded
- * \ref vlc_object_t structure.
+ * vlc_object_t cast
  */
-#if !defined(__cplusplus)
-# define VLC_OBJECT(x) \
-    _Generic((x)->obj, \
-        struct vlc_common_members: (vlc_object_t *)(x) \
-    )
-#else
-# define VLC_OBJECT(x) ((vlc_object_t *)(x))
-#endif
+#define VLC_OBJECT(x) ((vlc_object_t *)(x))
 
 /* Object flags */
 #define OBJECT_FLAGS_QUIET       0x0002
 #define OBJECT_FLAGS_NOINTERACT  0x0004
 
-/*****************************************************************************
- * The vlc_object_t type. Yes, it's that simple :-)
- *****************************************************************************/
-/** The main vlc_object_t structure */
-struct vlc_object_t
-{
-    struct vlc_common_members obj;
-};
-
 /* The root object */
 struct libvlc_int_t
 {
-    struct vlc_common_members obj;
+    struct vlc_object_t obj;
 };
 
 /*****************************************************************************

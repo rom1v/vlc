@@ -710,7 +710,7 @@ static int SubDrawObject(intf_sys_t *sys, int l, vlc_object_t *p_obj, int i_leve
 {
     char *name = vlc_object_get_name(p_obj);
     MainBoxWrite(sys, l++, "%*s%s%s \"%s\" (%p)", 2 * i_level++, "", prefix,
-                  p_obj->obj.object_type, name ? name : "", (void *)p_obj);
+                  p_obj->object_type, name ? name : "", (void *)p_obj);
     free(name);
 
     vlc_list_t *list = vlc_list_children(p_obj);
@@ -1853,7 +1853,7 @@ static void Close(vlc_object_t *p_this)
 
     endwin();   /* Close the ncurses interface */
 
-    vlc_LogSet(p_this->obj.libvlc, NULL, NULL);
+    vlc_LogSet(p_this->libvlc, NULL, NULL);
     vlc_mutex_destroy(&sys->msg_lock);
     for(unsigned i = 0; i < sizeof sys->msgs / sizeof *sys->msgs; i++) {
         if (sys->msgs[i].item)

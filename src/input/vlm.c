@@ -117,7 +117,7 @@ static vlc_mutex_t vlm_mutex = VLC_STATIC_MUTEX;
  *****************************************************************************/
 vlm_t *vlm_New ( vlc_object_t *p_this, const char *psz_vlmconf )
 {
-    vlm_t *p_vlm = NULL, **pp_vlm = &(libvlc_priv (p_this->obj.libvlc)->p_vlm);
+    vlm_t *p_vlm = NULL, **pp_vlm = &(libvlc_priv (p_this->libvlc)->p_vlm);
 
     /* Avoid multiple creation */
     vlc_mutex_lock( &vlm_mutex );
@@ -135,7 +135,7 @@ vlm_t *vlm_New ( vlc_object_t *p_this, const char *psz_vlmconf )
 
     msg_Dbg( p_this, "creating VLM" );
 
-    p_vlm = vlc_custom_create( p_this->obj.libvlc, sizeof( *p_vlm ),
+    p_vlm = vlc_custom_create( p_this->libvlc, sizeof( *p_vlm ),
                                "vlm daemon" );
     if( !p_vlm )
     {

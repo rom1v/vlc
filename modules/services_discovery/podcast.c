@@ -121,7 +121,7 @@ static void SaveUrls( services_discovery_t *p_sd );
  *****************************************************************************/
 static int Open( vlc_object_t *p_this )
 {
-    if( strcmp( p_this->obj.parent->obj.object_type, "playlist" ) )
+    if( strcmp( p_this->parent->object_type, "playlist" ) )
         return VLC_EGENERIC; /* FIXME: support LibVLC SD too! */
 
     services_discovery_t *p_sd = ( services_discovery_t* )p_this;

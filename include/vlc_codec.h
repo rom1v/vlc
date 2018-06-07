@@ -98,7 +98,7 @@ struct decoder_owner_callbacks
  */
 struct decoder_t
 {
-    struct vlc_common_members obj;
+    struct vlc_object_t obj;
 
     /* Module properties */
     module_t *          p_module;
@@ -216,7 +216,7 @@ struct decoder_cc_desc_t
 
 struct encoder_t
 {
-    struct vlc_common_members obj;
+    struct vlc_object_t obj;
 
     /* Module properties */
     module_t *          p_module;

@@ -141,9 +141,9 @@ intf_sys_t::intf_sys_t(vlc_object_t * const p_this, int port, std::string device
     m_common.pf_set_pause_state  = set_pause_state;
     m_common.pf_set_meta         = set_meta;
 
-    assert( var_Type( m_module->obj.parent->obj.parent, CC_SHARED_VAR_NAME) == 0 );
-    if (var_Create( m_module->obj.parent->obj.parent, CC_SHARED_VAR_NAME, VLC_VAR_ADDRESS ) == VLC_SUCCESS )
-        var_SetAddress( m_module->obj.parent->obj.parent, CC_SHARED_VAR_NAME, &m_common );
+    assert( var_Type( m_module->parent->parent, CC_SHARED_VAR_NAME) == 0 );
+    if (var_Create( m_module->parent->parent, CC_SHARED_VAR_NAME, VLC_VAR_ADDRESS ) == VLC_SUCCESS )
+        var_SetAddress( m_module->parent->parent, CC_SHARED_VAR_NAME, &m_common );
 
     // Start the Chromecast event thread.
     if (vlc_clone(&m_chromecastThread, ChromecastThread, this,
@@ -152,14 +152,14 @@ intf_sys_t::intf_sys_t(vlc_object_t * const p_this, int port, std::string device
         vlc_interrupt_destroy( m_ctl_thread_interrupt );
         vlc_cond_destroy( &m_stateChangedCond );
         vlc_cond_destroy( &m_pace_cond );
-        var_SetAddress( m_module->obj.parent->obj.parent, CC_SHARED_VAR_NAME, NULL );
+        var_SetAddress( m_module->parent->parent, CC_SHARED_VAR_NAME, NULL );
         throw std::runtime_error( "error creating cc thread" );
     }
 }
 
 intf_sys_t::~intf_sys_t()
 {
-    var_Destroy( m_module->obj.parent->obj.parent, CC_SHARED_VAR_NAME );
+    var_Destroy( m_module->parent->parent, CC_SHARED_VAR_NAME );
 
     vlc_mutex_lock(&m_lock);
     if( m_communication )
