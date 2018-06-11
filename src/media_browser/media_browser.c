@@ -28,10 +28,10 @@
 #include <stdatomic.h>
 #include <vlc_arrays.h>
 #include <vlc_common.h>
-#include <vlc_media_tree.h>
 #include <vlc_playlist.h>
 #include "libvlc.h"
 #include "playlist/playlist_internal.h"
+#include "media_tree/media_tree.h"
 
 typedef struct
 {
