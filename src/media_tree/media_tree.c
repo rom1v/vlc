@@ -26,7 +26,8 @@
 
 struct media_tree_connection_t
 {
-    media_tree_listener_t listener;
+    const media_tree_callbacks_t *cbs;
+    void *userdata;
 };
 
 TYPEDEF_ARRAY( media_tree_connection_t *, media_tree_connection_array_t )
@@ -72,8 +73,8 @@ static void NotifyTreeConnected( media_tree_t *p_tree )
     AssertLocked( p_tree );
     media_tree_private_t *p_priv = mt_priv( p_tree );
     FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
-        if( p_conn->listener.pf_tree_connected )
-            p_conn->listener.pf_tree_connected( p_tree, p_conn->listener.userdata );
+        if( p_conn->cbs->pf_tree_connected )
+            p_conn->cbs->pf_tree_connected( p_tree, p_conn->userdata );
     FOREACH_END()
 }
 
@@ -82,8 +83,8 @@ static void NotifyNodeAdded( media_tree_t *p_tree, media_node_t *p_node )
     AssertLocked( p_tree );
     media_tree_private_t *p_priv = mt_priv( p_tree );
     FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
-        if( p_conn->listener.pf_node_added )
-            p_conn->listener.pf_node_added( p_tree, p_node, p_conn->listener.userdata );
+        if( p_conn->cbs->pf_node_added )
+            p_conn->cbs->pf_node_added( p_tree, p_node, p_conn->userdata );
     FOREACH_END()
 }
 
@@ -92,8 +93,8 @@ static void NotifyNodeRemoved( media_tree_t *p_tree, media_node_t *p_node )
     AssertLocked( p_tree );
     media_tree_private_t *p_priv = mt_priv( p_tree );
     FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
-        if( p_conn->listener.pf_node_removed )
-            p_conn->listener.pf_node_removed( p_tree, p_node, p_conn->listener.userdata );
+        if( p_conn->cbs->pf_node_removed )
+            p_conn->cbs->pf_node_removed( p_tree, p_node, p_conn->userdata );
     FOREACH_END()
 }
 
@@ -102,8 +103,8 @@ static void NotifySubtreeAdded( media_tree_t *p_tree, media_node_t *p_node )
     AssertLocked( p_tree );
     media_tree_private_t *p_priv = mt_priv( p_tree );
     FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
-        if( p_conn->listener.pf_subtree_added )
-            p_conn->listener.pf_subtree_added( p_tree, p_node, p_conn->listener.userdata );
+        if( p_conn->cbs->pf_subtree_added )
+            p_conn->cbs->pf_subtree_added( p_tree, p_node, p_conn->userdata );
     FOREACH_END()
 }
 
@@ -112,8 +113,8 @@ static void NotifyInputChanged( media_tree_t *p_tree, media_node_t *p_node )
     AssertLocked( p_tree );
     media_tree_private_t *p_priv = mt_priv( p_tree );
     FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
-        if( p_conn->listener.pf_input_updated )
-            p_conn->listener.pf_input_updated( p_tree, p_node, p_conn->listener.userdata );
+        if( p_conn->cbs->pf_input_updated )
+            p_conn->cbs->pf_input_updated( p_tree, p_node, p_conn->userdata );
     FOREACH_END()
 }
 
@@ -306,12 +307,12 @@ static int FindNodeIndex( media_node_array_t *p_array, media_node_t *p_node )
     return -1;
 }
 
-static void NotifyChildren( media_tree_t *p_tree, media_node_t *p_node, const media_tree_listener_t *p_listener )
+static void NotifyChildren( media_tree_t *p_tree, media_node_t *p_node, const media_tree_connection_t *p_conn )
 {
     AssertLocked( p_tree );
     FOREACH_ARRAY( media_node_t *p_child, p_node->children )
-        p_listener->pf_node_added( p_tree, p_child, p_listener->userdata );
-        NotifyChildren( p_tree, p_child, p_listener );
+        p_conn->cbs->pf_node_added( p_tree, p_child, p_conn->userdata );
+        NotifyChildren( p_tree, p_child, p_conn );
     FOREACH_END()
 }
 
@@ -321,10 +322,10 @@ void media_tree_subtree_added_default( media_tree_t *p_tree, media_node_t *p_nod
     AssertLocked( p_tree );
     media_tree_private_t *p_priv = mt_priv( p_tree );
     FOREACH_ARRAY( media_tree_connection_t *p_conn, p_priv->connections )
-        if( !p_conn->listener.pf_node_added)
+        if( !p_conn->cbs->pf_node_added)
             break; /* nothing to do for this listener */
         /* notify "node added" for every root child */
-        NotifyChildren( p_tree, p_node, &p_conn->listener );
+        NotifyChildren( p_tree, p_node, p_conn );
     FOREACH_END()
 }
 
@@ -333,12 +334,13 @@ void media_tree_connected_default( media_tree_t *p_tree, void *userdata )
     media_tree_subtree_added_default( p_tree, &p_tree->p_root, userdata );
 }
 
-media_tree_connection_t *media_tree_Connect( media_tree_t *p_tree, const media_tree_listener_t *p_listener )
+media_tree_connection_t *media_tree_Connect( media_tree_t *p_tree, const media_tree_callbacks_t *p_callbacks, void *userdata )
 {
     media_tree_connection_t *p_conn = malloc( sizeof( *p_conn ) );
     if( !p_conn )
         return NULL;
-    p_conn->listener = *p_listener;
+    p_conn->cbs = p_callbacks;
+    p_conn->userdata = userdata;
 
     media_tree_private_t *p_priv = mt_priv( p_tree );
     media_tree_Lock( p_tree );
