@@ -208,6 +208,7 @@ libvlccore_la_SOURCES = \
 	media_browser/media_browser.c \
 	media_browser/media_browser.h \
 	media_tree/media_tree.c \
+	media_tree/media_tree.h \
 	modules/modules.h \
 	modules/modules.c \
 	modules/bank.c \

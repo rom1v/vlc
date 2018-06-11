@@ -18,10 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 
+#include "media_tree.h"
 #include <assert.h>
 #include <stdatomic.h>
 #include <vlc_common.h>
-#include <vlc_media_tree.h>
 #include <vlc_threads.h>
 #include "libvlc.h"
 
