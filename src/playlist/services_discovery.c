@@ -105,6 +105,14 @@ static void media_tree_node_removed( media_tree_t *p_tree,
 //    var_SetAddress( p->p_playlist, "item-change", p_node->p_input );
 //}
 
+static const media_tree_callbacks_t media_tree_callbacks = {
+    .pf_tree_connected = media_tree_connected_default,
+    .pf_subtree_added = NULL, /* already managed by playlist */
+    .pf_node_added = media_tree_node_added,
+    .pf_node_removed = media_tree_node_removed,
+    .pf_input_updated = NULL, /* already managed by playlist */
+};
+
 int playlist_ServicesDiscoveryAdd( playlist_t *p_playlist, const char *psz_name )
 {
     playlist_sd_entry_t *p = malloc( sizeof( *p ) );
@@ -136,15 +144,7 @@ int playlist_ServicesDiscoveryAdd( playlist_t *p_playlist, const char *psz_name 
                                      PLAYLIST_END, PLAYLIST_RO_FLAG );
     playlist_Unlock( p_playlist );
 
-    media_tree_listener_t listener = {
-        .userdata = p,
-        .pf_tree_connected = media_tree_connected_default,
-        .pf_subtree_added = NULL, /* already managed by playlist */
-        .pf_node_added = media_tree_node_added,
-        .pf_node_removed = media_tree_node_removed,
-        .pf_input_updated = NULL, /* already managed by playlist */
-    };
-    p->p_conn = media_tree_Connect( p_ms->p_tree, &listener );
+    p->p_conn = media_tree_Connect( p_ms->p_tree, &media_tree_callbacks, p );
     if( !p->p_conn )
     {
         media_source_Release( p->p_ms );
