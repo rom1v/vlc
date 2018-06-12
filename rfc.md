@@ -122,24 +122,21 @@ VLC_API void media_tree_Unlock( media_tree_t * );
 
 ```c
 /* media_tree must be locked */
-VLC_API media_node_t *media_tree_Add( media_tree_t *, input_item_t *, media_node_t *p_parent, int i_pos );
 VLC_API media_node_t *media_tree_Find( media_tree_t *, input_item_t * );
-VLC_API media_node_t *media_tree_Remove( media_tree_t *, media_node_t * );
 ```
 
 Clients may (and typically, will) connect listeners to be notified of content
 changes:
 
 ```c
-typedef struct media_tree_listener_t
+typedef struct media_tree_callbacks_t
 {
-    void *userdata;
     void ( *pf_tree_connected )( media_tree_t *, void *userdata );
     void ( *pf_subtree_added )( media_tree_t *, media_node_t *, void *userdata );
     void ( *pf_node_added )( media_tree_t *, media_node_t *, void *userdata );
     void ( *pf_node_removed )( media_tree_t *, media_node_t *, void *userdata );
     void ( *pf_input_updated )( media_tree_t *, media_node_t *, void *userdata );
-} media_tree_listener_t;
+} media_tree_callbacks_t;
 ```
 
 The `pf_tree_connected()` is useful to get the initial state of the tree when
@@ -171,7 +168,7 @@ To connect/disconnect listeners:
 ```c
 typedef struct media_tree_connection_t media_tree_connection_t;
 
-VLC_API media_tree_connection_t *media_tree_Connect( media_tree_t *, const media_tree_listener_t * );
+VLC_API media_tree_connection_t *media_tree_Connect( media_tree_t *, const media_tree_callbacks_t *, void *userdata );
 VLC_API void media_tree_Disconnect( media_tree_t *, media_tree_connection_t * );
 ```
 
