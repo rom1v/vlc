@@ -31,11 +31,13 @@
 #include "components/playlist/selector.hpp"       /* PLSelector */
 #include "components/playlist/playlist_model.hpp" /* PLModel */
 #include "components/interface_widgets.hpp"       /* CoverArtLabel */
+#include "components/media_tree/media_tree_model.hpp"
 
 #include "util/searchlineedit.hpp"
 
 #include "input_manager.hpp"                      /* art signal */
 #include "main_interface.hpp"                     /* DropEvent TODO remove this*/
+#include <vlc_media_browser.h>
 
 #include <QMenu>
 #include <QSignalMapper>
@@ -79,7 +81,7 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
     CONNECT( THEMIM->getIM(), artChanged( input_item_t * ),
              art, showArtUpdate( input_item_t * ) );
 
-    leftSplitter->addWidget( artContainer );
+    //leftSplitter->addWidget( artContainer );
 
     /*******************
      * Right           *
@@ -139,9 +141,19 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
     /* */
     split = new QSplitter( this );
 
+    QTreeView *view = new QTreeView( this );
+    media_browser_t *mediaBrowser = media_browser_Get( p_intf->obj.libvlc );
+    media_source_t *source = media_browser_GetMediaSource( mediaBrowser, "video_dir" );
+    QObject::connect( view, &QObject::destroyed, [source] {
+        media_source_Release( source );
+    });
+    MediaTreeModel *browserModel = new MediaTreeModel( p_intf, source->p_tree, view );
+    view->setModel( browserModel );
+
     /* Add the two sides of the QSplitter */
     split->addWidget( leftSplitter );
-    split->addWidget( mainView );
+    split->addWidget( view );
+    mainView->hide();
 
     QList<int> sizeList;
     sizeList << 180 << 420 ;
