@@ -59,6 +59,7 @@ extern "C" char **environ;
 #include "recents.hpp"          /* Recents Item destruction */
 #include "util/qvlcapp.hpp"     /* QVLCApplication definition */
 #include "components/playlist/playlist_model.hpp" /* for ~PLModel() */
+#include "components/media_tree/input_item.hpp"
 
 #include <vlc_plugin.h>
 #include <vlc_vout_window.h>
@@ -442,6 +443,8 @@ static int Open( vlc_object_t *p_this, bool isDialogProvider )
     vlc_sem_wait (&ready);
     vlc_sem_destroy (&ready);
     busy = active = true;
+
+    qRegisterMetaType<InputItem>("InputItem");
 
     return VLC_SUCCESS;
 }
