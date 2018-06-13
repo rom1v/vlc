@@ -31,6 +31,7 @@
 #include "components/playlist/selector.hpp"       /* PLSelector */
 #include "components/playlist/playlist_model.hpp" /* PLModel */
 #include "components/interface_widgets.hpp"       /* CoverArtLabel */
+#include "components/media_browser/media_browser_model.hpp"
 
 #include "util/searchlineedit.hpp"
 
@@ -79,7 +80,7 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
     CONNECT( THEMIM->getIM(), artChanged( input_item_t * ),
              art, showArtUpdate( input_item_t * ) );
 
-    leftSplitter->addWidget( artContainer );
+    //leftSplitter->addWidget( artContainer );
 
     /*******************
      * Right           *
@@ -139,9 +140,14 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
     /* */
     split = new QSplitter( this );
 
+    QTreeView *view = new QTreeView( this );
+    MediaBrowserModel *browserModel = nullptr; //new MediaBrowserModel( p_intf, ???, view );
+    view->setModel( browserModel );
+
     /* Add the two sides of the QSplitter */
     split->addWidget( leftSplitter );
-    split->addWidget( mainView );
+    split->addWidget( view );
+    mainView->hide();
 
     QList<int> sizeList;
     sizeList << 180 << 420 ;
