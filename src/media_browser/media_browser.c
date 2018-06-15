@@ -230,6 +230,11 @@ static bool RemoveInternal( media_browser_private_t *p_priv, const media_source_
     return true;
 }
 
+media_browser_t *media_browser_Get( libvlc_int_t *libvlc )
+{
+    return libvlc_priv( libvlc )->p_media_browser;
+}
+
 media_browser_t *media_browser_Create( vlc_object_t *p_parent )
 {
     media_browser_private_t *p_priv = vlc_custom_create( p_parent, sizeof( *p_priv ), "media-browser" );

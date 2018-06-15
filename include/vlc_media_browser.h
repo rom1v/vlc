@@ -44,6 +44,8 @@ typedef struct media_browser_t
     /* all other fields are private */
 } media_browser_t;
 
+VLC_API media_browser_t *media_browser_Get( libvlc_int_t * );
+
 VLC_API media_source_t *media_browser_GetMediaSource( media_browser_t *, const char *psz_name );
 
 // TODO remove below (it's for temporary compatibility)
