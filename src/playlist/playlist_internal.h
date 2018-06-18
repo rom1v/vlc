@@ -39,10 +39,14 @@
 
 #include "art.h"
 #include "preparser.h"
+#include "media_browser/media_browser.h"
 
 typedef struct vlc_sd_internal_t vlc_sd_internal_t;
 
 void playlist_ServicesDiscoveryKillAll( playlist_t *p_playlist );
+
+typedef struct playlist_sd_entry_t playlist_sd_entry_t;
+TYPEDEF_ARRAY( playlist_sd_entry_t *, playlist_sd_entry_array_t );
 
 typedef struct playlist_private_t
 {
@@ -53,8 +57,10 @@ typedef struct playlist_private_t
                            to playlist item mapping */
     void *id_tree; /**< Search tree for item ID to item mapping */
 
-    vlc_sd_internal_t   **pp_sds;
-    int                   i_sds;   /**< Number of service discovery modules */
+    /* temporary, will be removed from the playlist later */
+    media_browser_t *p_media_browser; /**< Media browser */
+    playlist_sd_entry_array_t sd_entries;
+
     input_thread_t *      p_input;  /**< the input thread associated
                                      * with the current item */
     input_resource_t *   p_input_resource; /**< input resources */
@@ -98,7 +104,7 @@ typedef struct playlist_private_t
  *****************************************************************************/
 
 /* Creation/Deletion */
-playlist_t *playlist_Create( vlc_object_t * );
+playlist_t *playlist_Create( vlc_object_t *, media_browser_t * );
 void playlist_Destroy( playlist_t * );
 void playlist_Activate( playlist_t * );
 

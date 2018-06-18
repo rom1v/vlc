@@ -304,3 +304,32 @@ static void Remove( media_source_provider_t *p_msp, media_source_t *p_ms )
 #endif
     vlc_mutex_unlock( &p_priv->lock );
 }
+
+bool media_browser_IsServicesDiscoveryLoaded( media_browser_t *p_mb, const char *psz_name )
+{
+    media_browser_private_t *p_priv = mb_priv( p_mb );
+
+    vlc_mutex_lock( &p_priv->lock );
+    int i = FindIndexByName( p_priv, psz_name );
+    vlc_mutex_unlock( &p_priv->lock );
+
+    return i != -1;
+}
+
+int media_browser_vaControl( media_browser_t *p_mb, const char *psz_name, int i_query, va_list args )
+{
+    media_browser_private_t *p_priv = mb_priv( p_mb );
+
+    vlc_mutex_lock( &p_priv->lock );
+
+    media_source_t *p_ms = FindByName( p_priv, psz_name );
+    assert( p_ms );
+
+    // XXX must we keep the lock? (playlist_ServicesDiscoveryControl did)
+    media_source_private_t *p = ms_priv( p_ms );
+    int ret = vlc_sd_control( p->p_sd, i_query, args );
+
+    vlc_mutex_unlock( &p_priv->lock );
+
+    return ret;
+}

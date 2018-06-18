@@ -138,7 +138,9 @@ static playlist_t *intf_GetPlaylist(libvlc_int_t *libvlc)
     playlist = libvlc_priv(libvlc)->playlist;
     if (playlist == NULL)
     {
-        playlist = playlist_Create(VLC_OBJECT(libvlc));
+        media_browser_t *p_media_browser = libvlc_priv( libvlc )->p_media_browser;
+        assert( p_media_browser );
+        playlist = playlist_Create( VLC_OBJECT( libvlc ), p_media_browser);
         libvlc_priv(libvlc)->playlist = playlist;
     }
     vlc_mutex_unlock(&lock);
