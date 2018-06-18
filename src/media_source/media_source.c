@@ -1,5 +1,5 @@
 /*****************************************************************************
- * media_browser.c : Browser for services discovery
+ * media_source.c : Media source
  *****************************************************************************
  * Copyright (C) 2018 VLC authors and VideoLAN
  *
@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 
-#include "media_browser/media_browser.h"
+#include "media_source/media_source.h"
 
 #ifdef HAVE_CONFIG_H
 # include "config.h"
@@ -40,7 +40,7 @@ typedef struct
 
     services_discovery_t *p_sd;
     atomic_uint refs;
-    media_browser_t *p_owner;
+    media_source_provider_t *p_owner;
     char psz_name[];
 } media_source_private_t;
 
@@ -50,13 +50,13 @@ TYPEDEF_ARRAY( media_source_t *, media_source_array_t )
 
 typedef struct
 {
-    media_browser_t public_data;
+    media_source_provider_t public_data;
 
     vlc_mutex_t lock;
     media_source_array_t media_sources;
-} media_browser_private_t;
+} media_source_provider_private_t;
 
-#define mb_priv( mb ) container_of( mb, media_browser_private_t, public_data )
+#define msp_priv( msp ) container_of( msp, media_source_provider_private_t, public_data )
 
 /* A new item has been added to a certain services discovery */
 static void services_discovery_item_added( services_discovery_t *p_sd,
@@ -114,18 +114,18 @@ static void services_discovery_item_removed( services_discovery_t *p_sd, input_i
     media_tree_Unlock( p_tree );
 }
 
-static const struct services_discovery_callbacks media_browser_sd_cbs = {
+static const struct services_discovery_callbacks media_source_provider_sd_cbs = {
     .item_added = services_discovery_item_added,
     .item_removed = services_discovery_item_removed,
 };
 
-static inline void AssertLocked( media_browser_t *p_mb )
+static inline void AssertLocked( media_source_provider_t *p_msp )
 {
-    media_browser_private_t *p_priv = mb_priv( p_mb );
+    media_source_provider_private_t *p_priv = msp_priv( p_msp );
     vlc_assert_locked( &p_priv->lock );
 }
 
-static media_source_t *MediaSourceCreate( media_browser_t *p_mb, const char *psz_name )
+static media_source_t *MediaSourceCreate( media_source_provider_t *p_msp, const char *psz_name )
 {
     media_source_private_t *p_priv = malloc( sizeof( *p_priv ) + strlen( psz_name ) + 1 );
     if( unlikely( !p_priv ) )
@@ -137,7 +137,7 @@ static media_source_t *MediaSourceCreate( media_browser_t *p_mb, const char *psz
 
     /* vlc_sd_Create() may call services_discovery_item_added(), which will read its
      * p_tree, so it must be initialized first */
-    p_ms->p_tree = media_tree_Create( VLC_OBJECT( p_mb ) );
+    p_ms->p_tree = media_tree_Create( VLC_OBJECT( p_msp ) );
     if( unlikely( !p_ms->p_tree ) )
     {
         free( p_ms );
@@ -147,11 +147,11 @@ static media_source_t *MediaSourceCreate( media_browser_t *p_mb, const char *psz
     strcpy( p_priv->psz_name, psz_name );
 
     struct services_discovery_owner_t owner = {
-        .cbs = &media_browser_sd_cbs,
+        .cbs = &media_source_provider_sd_cbs,
         .sys = p_ms,
     };
 
-    p_priv->p_sd = vlc_sd_Create( p_mb, psz_name, &owner );
+    p_priv->p_sd = vlc_sd_Create( p_msp, psz_name, &owner );
     if( unlikely( !p_priv->p_sd ) )
     {
         media_tree_Release( p_ms->p_tree );
@@ -162,12 +162,12 @@ static media_source_t *MediaSourceCreate( media_browser_t *p_mb, const char *psz
     /* p_sd->description is set during vlc_sd_Create() */
     p_ms->psz_description = p_priv->p_sd->description;
 
-    p_priv->p_owner = p_mb;
+    p_priv->p_owner = p_msp;
 
     return p_ms;
 }
 
-static void Remove( media_browser_t *, media_source_t * );
+static void Remove( media_source_provider_t *, media_source_t * );
 
 static void MediaSourceDestroy( media_source_t *p_ms )
 {
@@ -191,7 +191,7 @@ void media_source_Release( media_source_t *p_ms )
         MediaSourceDestroy( p_ms );
 }
 
-static int FindIndexByName( media_browser_private_t *p_priv, const char *psz_name )
+static int FindIndexByName( media_source_provider_private_t *p_priv, const char *psz_name )
 {
     for( int i = 0; i < p_priv->media_sources.i_size; ++i )
     {
@@ -203,7 +203,7 @@ static int FindIndexByName( media_browser_private_t *p_priv, const char *psz_nam
     return -1;
 }
 
-static int FindIndex( media_browser_private_t *p_priv, const media_source_t *p_ms )
+static int FindIndex( media_source_provider_private_t *p_priv, const media_source_t *p_ms )
 {
     for( int i = 0; i < p_priv->media_sources.i_size; ++i )
     {
@@ -214,13 +214,13 @@ static int FindIndex( media_browser_private_t *p_priv, const media_source_t *p_m
     return -1;
 }
 
-static media_source_t *FindByName( media_browser_private_t *p_priv, const char *psz_name )
+static media_source_t *FindByName( media_source_provider_private_t *p_priv, const char *psz_name )
 {
     int i = FindIndexByName( p_priv, psz_name );
     return i == -1 ? NULL : p_priv->media_sources.p_elems[i];
 }
 
-static bool RemoveInternal( media_browser_private_t *p_priv, const media_source_t *p_ms )
+static bool RemoveInternal( media_source_provider_private_t *p_priv, const media_source_t *p_ms )
 {
     vlc_assert_locked( &p_priv->lock );
     int i = FindIndex( p_priv, p_ms );
@@ -231,14 +231,14 @@ static bool RemoveInternal( media_browser_private_t *p_priv, const media_source_
     return true;
 }
 
-media_browser_t *media_browser_Get( libvlc_int_t *libvlc )
+media_source_provider_t *media_source_provider_Get( libvlc_int_t *libvlc )
 {
-    return libvlc_priv( libvlc )->p_media_browser;
+    return libvlc_priv( libvlc )->p_media_source_provider;
 }
 
-media_browser_t *media_browser_Create( vlc_object_t *p_parent )
+media_source_provider_t *media_source_provider_Create( vlc_object_t *p_parent )
 {
-    media_browser_private_t *p_priv = vlc_custom_create( p_parent, sizeof( *p_priv ), "media-browser" );
+    media_source_provider_private_t *p_priv = vlc_custom_create( p_parent, sizeof( *p_priv ), "media-source-provider" );
     if( unlikely( !p_priv ) )
         return NULL;
 
@@ -247,38 +247,38 @@ media_browser_t *media_browser_Create( vlc_object_t *p_parent )
     return &p_priv->public_data;
 }
 
-void media_browser_Destroy( media_browser_t *p_mb )
+void media_source_provider_Destroy( media_source_provider_t *p_msp )
 {
-    media_browser_private_t *p_priv = mb_priv( p_mb );
+    media_source_provider_private_t *p_priv = msp_priv( p_msp );
 
     vlc_mutex_destroy( &p_priv->lock );
-    vlc_object_release( p_mb );
+    vlc_object_release( p_msp );
 }
 
-static media_source_t *AddServiceDiscovery( media_browser_t *p_mb, const char *psz_name )
+static media_source_t *AddServiceDiscovery( media_source_provider_t *p_msp, const char *psz_name )
 {
-    AssertLocked( p_mb );
+    AssertLocked( p_msp );
 
-    media_source_t *p_ms = MediaSourceCreate( p_mb, psz_name );
+    media_source_t *p_ms = MediaSourceCreate( p_msp, psz_name );
     if( unlikely( !p_ms ) )
         return NULL;
 
-    media_browser_private_t *p_priv = mb_priv( p_mb );
+    media_source_provider_private_t *p_priv = msp_priv( p_msp );
 
     ARRAY_APPEND( p_priv->media_sources, p_ms );
     return p_ms;
 }
 
-media_source_t *media_browser_GetMediaSource( media_browser_t *p_mb, const char *psz_name )
+media_source_t *media_source_provider_GetMediaSource( media_source_provider_t *p_msp, const char *psz_name )
 {
-    media_browser_private_t *p_priv = mb_priv( p_mb );
+    media_source_provider_private_t *p_priv = msp_priv( p_msp );
 
     vlc_mutex_lock( &p_priv->lock );
 
     media_source_t *p_ms = FindByName( p_priv, psz_name );
     if( !p_ms )
     {
-        p_ms = AddServiceDiscovery( p_mb, psz_name );
+        p_ms = AddServiceDiscovery( p_msp, psz_name );
         if( unlikely( !p_ms ) )
         {
             vlc_mutex_unlock( &p_priv->lock );
@@ -291,9 +291,9 @@ media_source_t *media_browser_GetMediaSource( media_browser_t *p_mb, const char 
     return p_ms;
 }
 
-static void Remove( media_browser_t *p_mb, media_source_t *p_ms )
+static void Remove( media_source_provider_t *p_msp, media_source_t *p_ms )
 {
-    media_browser_private_t *p_priv = mb_priv( p_mb );
+    media_source_provider_private_t *p_priv = msp_priv( p_msp );
 
     vlc_mutex_lock( &p_priv->lock );
     bool found = RemoveInternal( p_priv, p_ms );

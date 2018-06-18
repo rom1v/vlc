@@ -43,7 +43,7 @@
 #include "modules/modules.h"
 #include "config/configuration.h"
 #include "playlist/preparser.h"
-#include "media_browser/media_browser.h"
+#include "media_source/media_source.h"
 
 #include <stdio.h>                                              /* sprintf() */
 #include <string.h>
@@ -94,7 +94,7 @@ libvlc_int_t * libvlc_InternalCreate( void )
     priv = libvlc_priv (p_libvlc);
     priv->playlist = NULL;
     priv->p_vlm = NULL;
-    priv->p_media_browser = NULL;
+    priv->p_media_source_provider = NULL;
 
     vlc_ExitInit( &priv->exit );
 
@@ -232,8 +232,8 @@ int libvlc_InternalInit( libvlc_int_t *p_libvlc, int i_argc,
     if( !priv->parser )
         goto error;
 
-    priv->p_media_browser = media_browser_Create( VLC_OBJECT( p_libvlc ) );
-    if( !priv->p_media_browser )
+    priv->p_media_source_provider = media_source_provider_Create( VLC_OBJECT( p_libvlc ) );
+    if( !priv->p_media_source_provider )
         goto error;
 
     /* variables for signalling creation of new files */
@@ -369,8 +369,8 @@ void libvlc_InternalCleanup( libvlc_int_t *p_libvlc )
     msg_Dbg( p_libvlc, "removing all interfaces" );
     intf_DestroyAll( p_libvlc );
 
-    if( priv->p_media_browser )
-        media_browser_Destroy( priv->p_media_browser );
+    if( priv->p_media_source_provider )
+        media_source_provider_Destroy( priv->p_media_source_provider );
 
     libvlc_InternalDialogClean( p_libvlc );
     libvlc_InternalKeystoreClean( p_libvlc );

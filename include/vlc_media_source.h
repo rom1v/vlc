@@ -1,5 +1,5 @@
 /*****************************************************************************
- * vlc_media_browser.h : Browser for services discovery
+ * vlc_media_source.h : Media source
  *****************************************************************************
  * Copyright (C) 2018 VLC authors and VideoLAN
  *
@@ -18,8 +18,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 
-#ifndef VLC_MEDIA_BROWSER_H
-#define VLC_MEDIA_BROWSER_H
+#ifndef VLC_MEDIA_SOURCE_H
+#define VLC_MEDIA_SOURCE_H
 
 #include <vlc_common.h>
 
@@ -38,15 +38,15 @@ typedef struct media_source_t
 VLC_API void media_source_Hold( media_source_t * );
 VLC_API void media_source_Release( media_source_t * );
 
-typedef struct media_browser_t
+typedef struct media_source_provider_t
 {
     struct vlc_common_members obj;
     /* all other fields are private */
-} media_browser_t;
+} media_source_provider_t;
 
-VLC_API media_browser_t *media_browser_Get( libvlc_int_t * );
+VLC_API media_source_provider_t *media_source_provider_Get( libvlc_int_t * );
 
-VLC_API media_source_t *media_browser_GetMediaSource( media_browser_t *, const char *psz_name );
+VLC_API media_source_t *media_source_provider_GetMediaSource( media_source_provider_t *, const char *psz_name );
 
 #ifdef __cplusplus
 }

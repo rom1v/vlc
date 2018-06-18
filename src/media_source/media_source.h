@@ -1,5 +1,5 @@
 /*****************************************************************************
- * media_browser.h : Browser for services discovery
+ * media_source.h : Media source
  *****************************************************************************
  * Copyright (C) 2018 VLC authors and VideoLAN
  *
@@ -18,12 +18,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 
-#ifndef _MEDIA_BROWSER_H
-#define _MEDIA_BROWSER_H
+#ifndef _MEDIA_SOURCE_H
+#define _MEDIA_SOURCE_H
 
-#include <vlc_media_browser.h>
+#include <vlc_media_source.h>
 
-media_browser_t *media_browser_Create( vlc_object_t *p_parent );
-void media_browser_Destroy( media_browser_t * );
+media_source_provider_t *media_source_provider_Create( vlc_object_t *p_parent );
+void media_source_provider_Destroy( media_source_provider_t * );
 
 #endif

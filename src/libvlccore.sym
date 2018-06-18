@@ -754,8 +754,8 @@ vlc_rd_release
 vlc_rd_probe_add
 media_source_Hold
 media_source_Release
-media_browser_Get
-media_browser_GetMediaSource
+media_source_provider_Get
+media_source_provider_GetMediaSource
 media_tree_Hold
 media_tree_Release
 media_tree_Connect
