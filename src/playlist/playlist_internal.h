@@ -38,6 +38,7 @@
 #include <assert.h>
 
 #include "preparser/preparser.h"
+#include "media_source/media_source.h"
 
 void playlist_ServicesDiscoveryKillAll( playlist_t *p_playlist );
 
@@ -50,7 +51,10 @@ typedef struct playlist_private_t
                            to playlist item mapping */
     void *id_tree; /**< Search tree for item ID to item mapping */
 
-    struct vlc_list       sds;
+    /* temporary, will be removed from the playlist later */
+    vlc_media_source_provider_t *media_source_provider;
+    struct vlc_list sd_entries;
+
     input_thread_t *      p_input;  /**< the input thread associated
                                      * with the current item */
     input_resource_t *   p_input_resource; /**< input resources */
@@ -95,7 +99,7 @@ typedef struct playlist_private_t
  *****************************************************************************/
 
 /* Creation/Deletion */
-playlist_t *playlist_Create( vlc_object_t * );
+playlist_t *playlist_Create( vlc_object_t *, vlc_media_source_provider_t * );
 void playlist_Destroy( playlist_t * );
 void playlist_Activate( playlist_t * );
 

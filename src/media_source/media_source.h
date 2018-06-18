@@ -28,4 +28,21 @@ vlc_media_source_provider_t *vlc_media_source_provider_Create(vlc_object_t *pare
 
 void vlc_media_source_provider_Destroy(vlc_media_source_provider_t *);
 
+// TODO remove below (it's for temporary compatibility)
+
+/** Check whether a given services discovery is loaded */
+bool vlc_media_source_provider_IsServicesDiscoveryLoaded(vlc_media_source_provider_t *, const char *name) VLC_DEPRECATED;
+
+/** Query a services discovery */
+int vlc_media_source_provider_vaControl(vlc_media_source_provider_t *, const char *name, int query, va_list args);
+
+static inline int vlc_media_source_provider_Control(vlc_media_source_provider_t *msp, const char *name, int query, ...)
+{
+    va_list args;
+    va_start(args, query);
+    int ret = vlc_media_source_provider_vaControl(msp, name, query, args);
+    va_end(args);
+    return ret;
+}
+
 #endif

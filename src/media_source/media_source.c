@@ -230,3 +230,27 @@ vlc_media_source_t *vlc_media_source_provider_GetMediaSource(vlc_media_source_pr
 
     return ms;
 }
+
+bool vlc_media_source_provider_IsServicesDiscoveryLoaded(vlc_media_source_provider_t *provider, const char *name)
+{
+    vlc_mutex_lock(&provider->lock);
+    vlc_media_source_t *ms = FindByName(provider, name);
+    vlc_mutex_unlock(&provider->lock);
+
+    return ms != NULL;
+}
+
+int vlc_media_source_provider_vaControl(vlc_media_source_provider_t *provider, const char *name, int query, va_list args)
+{
+    vlc_mutex_lock(&provider->lock);
+
+    vlc_media_source_t *ms = FindByName(provider, name);
+    assert(ms);
+
+    media_source_private_t *p = ms_priv(ms);
+    int ret = vlc_sd_control(p->sd, query, args);
+
+    vlc_mutex_unlock(&provider->lock);
+
+    return ret;
+}

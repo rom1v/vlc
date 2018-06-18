@@ -344,13 +344,13 @@ VLC_API int playlist_Import( playlist_t *p_playlist, const char *psz_file );
 /********************** Services discovery ***********************/
 
 /** Add a service discovery module */
-VLC_API int playlist_ServicesDiscoveryAdd(playlist_t *, const char *);
+VLC_API int playlist_ServicesDiscoveryAdd(playlist_t *, const char *) VLC_DEPRECATED;
 /** Remove a services discovery module by name */
-VLC_API int playlist_ServicesDiscoveryRemove(playlist_t *, const char *);
+VLC_API int playlist_ServicesDiscoveryRemove(playlist_t *, const char *) VLC_DEPRECATED;
 /** Check whether a given SD is loaded */
 VLC_API bool playlist_IsServicesDiscoveryLoaded( playlist_t *,const char *) VLC_DEPRECATED;
 /** Query a services discovery */
-VLC_API int playlist_ServicesDiscoveryControl( playlist_t *, const char *, int, ... );
+VLC_API int playlist_ServicesDiscoveryControl( playlist_t *, const char *, int, ... ) VLC_DEPRECATED;
 
 /********************** Renderer ***********************/
 /**
