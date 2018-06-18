@@ -194,7 +194,7 @@ static int VideoSplitterCallback( vlc_object_t *p_this, char const *psz_cmd,
  * \param p_parent the vlc object that is to be the parent of this playlist
  * \return a pointer to the created playlist, or NULL on error
  */
-playlist_t *playlist_Create( vlc_object_t *p_parent )
+playlist_t *playlist_Create( vlc_object_t *p_parent, vlc_media_source_provider_t *media_source_provider )
 {
     playlist_t *p_playlist;
     playlist_private_t *p;
@@ -209,7 +209,9 @@ playlist_t *playlist_Create( vlc_object_t *p_parent )
     p->input_tree = NULL;
     p->id_tree = NULL;
 
-    vlc_list_init(&p->sds);
+    p->media_source_provider = media_source_provider;
+
+    vlc_list_init( &p->sd_entries );
 
     VariablesInit( p_playlist );
     vlc_mutex_init( &p->lock );
