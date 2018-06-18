@@ -74,8 +74,12 @@ int MediaTreeModel::rowCount( const QModelIndex &parent ) const
 
 QVariant MediaTreeModel::data( const QModelIndex &index, int role ) const
 {
-    Q_UNUSED( role );
-    return currentNode.children[index.row()].input->psz_name;
+    // in QML, it will use custom roles for "columns" content
+    // but for now, in Qt widgets, it use DisplayRole + column index
+    // (that's stupid, the same model may not work both in QListView/QTreeView and in QML components)
+    if( role == Qt::DisplayRole )
+        return currentNode.children[index.row()].input->psz_name;
+    return {};
 }
 
 MediaTreeModel::Node::Node( const InputItem &input )
