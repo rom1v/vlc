@@ -26,9 +26,11 @@
 #include <assert.h>
 
 #include <vlc_common.h>
+#include <vlc_media_tree.h>
 #include <vlc_playlist.h>
 #include <vlc_services_discovery.h>
 #include "playlist_internal.h"
+#include "media_source/media_source.h"
 
 struct playlist_sd_entry_t {
     playlist_t *p_playlist;
@@ -114,8 +116,8 @@ int playlist_ServicesDiscoveryAdd( playlist_t *p_playlist, const char *psz_name 
         return VLC_ENOMEM;
     }
 
-    media_browser_t *p_media_browser = pl_priv( p_playlist )->p_media_browser;
-    media_source_t *p_ms = media_browser_GetMediaSource( p_media_browser, psz_name );
+    media_source_provider_t *p_msp = pl_priv( p_playlist )->p_media_source_provider;
+    media_source_t *p_ms = media_source_provider_GetMediaSource( p_msp, psz_name );
     if( !p_ms )
     {
         free( p );
@@ -191,7 +193,7 @@ bool playlist_IsServicesDiscoveryLoaded( playlist_t *p_playlist,
                                          const char *psz_name )
 {
     playlist_private_t *p_priv = pl_priv( p_playlist );
-    return media_browser_IsServicesDiscoveryLoaded( p_priv->p_media_browser, psz_name );
+    return media_source_provider_IsServicesDiscoveryLoaded( p_priv->p_media_source_provider, psz_name );
 }
 
 int playlist_ServicesDiscoveryControl( playlist_t *p_playlist, const char *psz_name, int i_control, ... )
@@ -199,7 +201,7 @@ int playlist_ServicesDiscoveryControl( playlist_t *p_playlist, const char *psz_n
     playlist_private_t *p_priv = pl_priv( p_playlist );
     va_list args;
     va_start( args, i_control );
-    int ret = media_browser_vaControl( p_priv->p_media_browser, psz_name, i_control, args );
+    int ret = media_source_provider_vaControl( p_priv->p_media_source_provider, psz_name, i_control, args );
     va_end( args );
     return ret;
 }

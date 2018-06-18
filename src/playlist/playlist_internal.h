@@ -39,7 +39,7 @@
 
 #include "art.h"
 #include "preparser.h"
-#include "media_browser/media_browser.h"
+#include "media_source/media_source.h"
 
 typedef struct vlc_sd_internal_t vlc_sd_internal_t;
 
@@ -58,7 +58,7 @@ typedef struct playlist_private_t
     void *id_tree; /**< Search tree for item ID to item mapping */
 
     /* temporary, will be removed from the playlist later */
-    media_browser_t *p_media_browser; /**< Media browser */
+    media_source_provider_t *p_media_source_provider; /**< Media source proivder */
     playlist_sd_entry_array_t sd_entries;
 
     input_thread_t *      p_input;  /**< the input thread associated
@@ -104,7 +104,7 @@ typedef struct playlist_private_t
  *****************************************************************************/
 
 /* Creation/Deletion */
-playlist_t *playlist_Create( vlc_object_t *, media_browser_t * );
+playlist_t *playlist_Create( vlc_object_t *, media_source_provider_t * );
 void playlist_Destroy( playlist_t * );
 void playlist_Activate( playlist_t * );
 

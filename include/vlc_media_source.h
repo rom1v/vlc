@@ -48,23 +48,6 @@ VLC_API media_source_provider_t *media_source_provider_Get( libvlc_int_t * );
 
 VLC_API media_source_t *media_source_provider_GetMediaSource( media_source_provider_t *, const char *psz_name );
 
-// TODO remove below (it's for temporary compatibility)
-
-/** Check whether a given services discovery is loaded */
-VLC_API bool media_browser_IsServicesDiscoveryLoaded( media_browser_t *, const char *psz_name ) VLC_DEPRECATED;
-
-/** Query a services discovery */
-VLC_API int media_browser_vaControl( media_browser_t *, const char *psz_name, int i_query, va_list args );
-
-static inline int media_browser_Control( media_browser_t *p_mb, const char *psz_name, int i_query, ... )
-{
-    va_list args;
-    va_start( args, i_query );
-    int ret = media_browser_vaControl( p_mb, psz_name, i_query, args );
-    va_end( args );
-    return ret;
-}
-
 #ifdef __cplusplus
 }
 #endif
