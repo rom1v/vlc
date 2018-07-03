@@ -29,6 +29,8 @@ struct background_worker_config {
      **/
     vlc_tick_t default_timeout;
 
+    int max_threads;
+
     /**
      * Release an entity
      *
