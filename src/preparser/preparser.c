@@ -134,6 +134,7 @@ input_preparser_t* input_preparser_New( vlc_object_t *parent )
 
     struct background_worker_config conf = {
         .default_timeout = var_InheritInteger( parent, "preparse-timeout" ),
+        .max_threads = 2, // TODO configurable by a variable
         .pf_start = PreparserOpenInput,
         .pf_probe = PreparserProbeInput,
         .pf_stop = PreparserCloseInput,

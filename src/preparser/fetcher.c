@@ -404,6 +404,7 @@ static void WorkerInit( input_fetcher_t* fetcher,
 {
     struct background_worker_config conf = {
         .default_timeout = 0,
+        .max_threads = 2, // TODO configurable by a variable
         .pf_start = starter,
         .pf_probe = ProbeWorker,
         .pf_stop = CloseWorker,
