@@ -41,66 +41,85 @@ struct input_preparser_t
     atomic_bool deactivated;
 };
 
-static void InputEvent( input_thread_t *input, void *preparser_,
+typedef struct input_preparser_task_t
+{
+    input_preparser_t* preparser;
+    input_thread_t* input;
+    atomic_int state;
+    atomic_bool done;
+
+} input_preparser_task_t;
+
+static void InputEvent( input_thread_t *input, void *task_,
                         const struct vlc_input_event *event )
 {
     VLC_UNUSED( input );
-    input_preparser_t *preparser = preparser_;
+    input_preparser_task_t* task = task_;
 
     switch( event->type )
     {
         case INPUT_EVENT_STATE:
-            atomic_store( &preparser->state, event->state );
+            atomic_store_explicit( &task->state, event->state, memory_order_relaxed );
             break;
+
         case INPUT_EVENT_DEAD:
-            atomic_store( &preparser->ended, true );
-            background_worker_RequestProbe( preparser->worker );
+            atomic_store_explicit( &task->done, true, memory_order_relaxed );
+            background_worker_RequestProbe( task->preparser->worker );
             break;
-        default:
-            break;
+        default: ;
     }
 }
 
 static int PreparserOpenInput( void* preparser_, void* item_, void** out )
 {
     input_preparser_t* preparser = preparser_;
+    input_preparser_task_t* task = malloc( sizeof *task );
 
-    atomic_store( &preparser->state, INIT_S );
-    atomic_store( &preparser->ended, false );
-    input_thread_t* input = input_CreatePreparser( preparser->owner, InputEvent,
-                                                   preparser, item_ );
-    if( !input )
+    if( unlikely( !task ) )
+        goto error;
+
+    atomic_init( &task->state, 0 );
+    atomic_init( &task->done, false );
+
+    task->preparser = preparser_;
+    task->input = input_CreatePreparser( preparser->owner, InputEvent,
+                                         task, item_ );
+    if( !task->input )
+        goto error;
+
+    if( input_Start( task->input ) )
     {
-        input_item_SignalPreparseEnded( item_, ITEM_PREPARSE_FAILED );
-        return VLC_EGENERIC;
+        input_Close( task->input );
+        goto error;
     }
 
-    if( input_Start( input ) )
-    {
-        input_Close( input );
-        input_item_SignalPreparseEnded( item_, ITEM_PREPARSE_FAILED );
-        return VLC_EGENERIC;
-    }
+    *out = task;
 
-    *out = input;
     return VLC_SUCCESS;
+
+error:
+    free( task );
+    input_item_SignalPreparseEnded( item_, ITEM_PREPARSE_FAILED );
+    return VLC_EGENERIC;
 }
 
-static int PreparserProbeInput( void* preparser_, void* input_ )
+static int PreparserProbeInput( void* preparser_, void* task_ )
 {
-    input_preparser_t* preparser = preparser_;
-    return atomic_load( &preparser->ended );
-    VLC_UNUSED( input_ );
+    input_preparser_task_t* task = task_;
+    return atomic_load_explicit( &task->done, memory_order_acquire );
+    VLC_UNUSED( preparser_ );
 }
 
-static void PreparserCloseInput( void* preparser_, void* input_ )
+static void PreparserCloseInput( void* preparser_, void* task_ )
 {
+    input_preparser_task_t* task = task_;
+
     input_preparser_t* preparser = preparser_;
-    input_thread_t* input = input_;
-    input_item_t* item = input_priv(input)->p_item;
+    input_thread_t* input = task->input;
+    input_item_t* item = input_priv(task->input)->p_item;
 
     int status;
-    switch( atomic_load( &preparser->state ) )
+    switch( atomic_load_explicit( &task->state, memory_order_acquire ) )
     {
         case END_S:
             status = ITEM_PREPARSE_DONE;
@@ -114,6 +133,8 @@ static void PreparserCloseInput( void* preparser_, void* input_ )
 
     input_Stop( input );
     input_Close( input );
+
+    free( task );
 
     if( preparser->fetcher )
     {
