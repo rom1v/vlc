@@ -223,6 +223,8 @@ libvlccore_la_SOURCES = \
 	playlist/loadsave.c \
 	playlist/tree.c \
 	playlist/item.c \
+	playlist/randomizer.c \
+	playlist/randomizer.h \
 	playlist/search.c \
 	playlist/services_discovery.c \
 	playlist/renderer.c \
@@ -534,7 +536,8 @@ check_PROGRAMS = \
 	test_headers \
 	test_mrl_helpers \
 	test_arrays \
-	test_vector
+	test_vector \
+	test_randomizer
 
 TESTS = $(check_PROGRAMS) check_symbols
 
@@ -558,6 +561,8 @@ test_headers_SOURCES = test/headers.c
 test_mrl_helpers_SOURCES = test/mrl_helpers.c
 test_arrays_SOURCES = test/arrays.c
 test_vector_SOURCES = test/vector.c
+test_randomizer_SOURCES = playlist/randomizer.c
+test_randomizer_CFLAGS = -DTEST_RANDOMIZER
 
 AM_LDFLAGS = -no-install
 LDADD = libvlccore.la \
