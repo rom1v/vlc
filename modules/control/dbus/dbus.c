@@ -356,7 +356,7 @@ static void remove_timeout(DBusTimeout *to, void *data)
     size_t idx;
 
     vlc_mutex_lock(&sys->lock);
-    idx = vlc_array_index_of_item(&sys->timeouts, to);
+    idx = vlc_array_find(&sys->timeouts, to);
     vlc_array_remove(&sys->timeouts, idx);
     vlc_mutex_unlock(&sys->lock);
 }
@@ -461,7 +461,7 @@ static void remove_watch( DBusWatch *p_watch, void *p_data )
     size_t idx;
 
     vlc_mutex_lock( &p_sys->lock );
-    idx = vlc_array_index_of_item( &p_sys->watches, p_watch );
+    idx = vlc_array_find( &p_sys->watches, p_watch );
     vlc_array_remove( &p_sys->watches, idx );
     vlc_mutex_unlock( &p_sys->lock );
 }

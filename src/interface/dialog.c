@@ -207,7 +207,7 @@ dialog_add_locked(vlc_dialog_provider *p_provider, enum dialog_type i_type)
 static void
 dialog_remove_locked(vlc_dialog_provider *p_provider, vlc_dialog_id *p_id)
 {
-    ssize_t i_idx = vlc_array_index_of_item(&p_provider->dialog_array, p_id);
+    ssize_t i_idx = vlc_array_find(&p_provider->dialog_array, p_id);
     assert(i_idx >= 0);
     vlc_array_remove(&p_provider->dialog_array, i_idx);
 

@@ -297,8 +297,8 @@ static inline const void *vlc_array_get( const vlc_array_t *ar,
 }
 #endif
 
-static inline ssize_t vlc_array_index_of_item( const vlc_array_t *ar,
-                                               const void *elem )
+static inline ssize_t vlc_array_find( const vlc_array_t *ar,
+                                      const void *elem )
 {
     for( size_t i = 0; i < ar->i_count; i++ )
     {

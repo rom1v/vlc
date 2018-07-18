@@ -629,7 +629,7 @@ static int AddStream( sout_mux_t *p_mux, sout_input_t *p_input )
 
     es_format_Copy( &tk->fmt, p_input->p_fmt );
 
-    tk->i_id = vlc_array_index_of_item( &p_sys->tracks, tk ) + 1;
+    tk->i_id = vlc_array_find( &p_sys->tracks, tk ) + 1;
 
     if( p_sys->b_asf_http )
         p_sys->b_write_header = true;
@@ -667,7 +667,7 @@ static void DelStream( sout_mux_t *p_mux, sout_input_t *p_input )
 
     if( p_sys->b_asf_http )
     {
-        vlc_array_remove( &p_sys->tracks, vlc_array_index_of_item( &p_sys->tracks, tk ) );
+        vlc_array_remove( &p_sys->tracks, vlc_array_find( &p_sys->tracks, tk ) );
         p_sys->b_write_header = true;
     }
 }

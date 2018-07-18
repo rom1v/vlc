@@ -433,7 +433,7 @@ libvlc_media_list_item_at_index( libvlc_media_list_t * p_mlist,
 int libvlc_media_list_index_of_item( libvlc_media_list_t * p_mlist,
                                      libvlc_media_t * p_searched_md )
 {
-    int idx = vlc_array_index_of_item( &p_mlist->items, p_searched_md );
+    int idx = vlc_array_find( &p_mlist->items, p_searched_md );
     if( idx == -1 )
         libvlc_printerr( "Media not found" );
 
