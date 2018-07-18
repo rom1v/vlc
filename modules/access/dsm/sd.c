@@ -82,7 +82,7 @@ static void entry_item_remove( services_discovery_t *p_sd,
     {
         struct entry_item *p_entry_item;
 
-        p_entry_item = vlc_array_item_at_index( &p_sys->entry_item_list, i );
+        p_entry_item = vlc_array_get( &p_sys->entry_item_list, i );
         if( p_entry_item->p_entry == p_entry  )
         {
             services_discovery_RemoveItem( p_sd, p_entry_item->p_item );
@@ -177,7 +177,7 @@ void bdsm_SdClose (vlc_object_t *p_this)
     {
         struct entry_item *p_entry_item;
 
-        p_entry_item = vlc_array_item_at_index( &p_sys->entry_item_list, i );
+        p_entry_item = vlc_array_get( &p_sys->entry_item_list, i );
         input_item_Release( p_entry_item->p_item );
         free( p_entry_item );
     }

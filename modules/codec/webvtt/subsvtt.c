@@ -874,7 +874,7 @@ static void webvtt_domnode_SelectRuleNodes( decoder_t *p_dec, const vlc_css_rule
                                               i_playbacktime, &tempresults );
         }
         for( size_t i=0; i<vlc_array_count(&tempresults); i++ )
-            (void) vlc_array_append( p_results, vlc_array_item_at_index( &tempresults, i ) );
+            (void) vlc_array_append( p_results, vlc_array_get( &tempresults, i ) );
         vlc_array_clear( &tempresults );
     }
 }
@@ -1693,7 +1693,7 @@ static void ApplyCSSRules( decoder_t *p_dec, const vlc_css_rule_t *p_rule,
         {
             for( size_t i=0; i<vlc_array_count(&results); i++ )
             {
-                webvtt_dom_node_t *p_node = vlc_array_item_at_index( &results, i );
+                webvtt_dom_node_t *p_node = vlc_array_get( &results, i );
                 if( !webvtt_domnode_supportsCSSStyle( p_node ) )
                     continue;
 
@@ -1862,7 +1862,7 @@ static void Render( decoder_t *p_dec, vlc_tick_t i_start, vlc_tick_t i_stop )
     for( size_t i=0; i<timedtags.i_count; i++ )
     {
          const webvtt_dom_tag_t *p_tag =
-                 (const webvtt_dom_tag_t *) vlc_array_item_at_index( &timedtags, i );
+                 (const webvtt_dom_tag_t *) vlc_array_get( &timedtags, i );
          if( p_tag->i_start != i_substart ) /* might be duplicates */
          {
              if( i > 0 )

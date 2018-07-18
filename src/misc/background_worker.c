@@ -68,7 +68,7 @@ static void* Thread( void* data )
         {
             if( vlc_array_count( &worker->tail.data ) )
             {
-                item = vlc_array_item_at_index( &worker->tail.data, 0 );
+                item = vlc_array_get( &worker->tail.data, 0 );
                 handle = NULL;
 
                 vlc_array_remove( &worker->tail.data, 0 );
@@ -157,7 +157,7 @@ static void BackgroundWorkerCancel( struct background_worker* worker, void* id)
     for( size_t i = 0; i < vlc_array_count( &worker->tail.data ); )
     {
         struct bg_queued_item* item =
-            vlc_array_item_at_index( &worker->tail.data, i );
+            vlc_array_get( &worker->tail.data, i );
 
         if( id == NULL || item->id == id )
         {

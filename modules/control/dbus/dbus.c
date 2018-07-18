@@ -319,7 +319,7 @@ static void Close   ( vlc_object_t *p_this )
     // Free the events array
     for( size_t i = 0; i < vlc_array_count( &p_sys->events ); i++ )
     {
-        callback_info_t* info = vlc_array_item_at_index( &p_sys->events, i );
+        callback_info_t* info = vlc_array_get( &p_sys->events, i );
         free( info );
     }
     vlc_mutex_destroy( &p_sys->lock );
@@ -389,7 +389,7 @@ static int next_timeout(intf_thread_t *intf)
 
     for (unsigned i = 0; i < count; i++)
     {
-        DBusTimeout *to = vlc_array_item_at_index(&sys->timeouts, i);
+        DBusTimeout *to = vlc_array_get(&sys->timeouts, i);
 
         if (!dbus_timeout_get_enabled(to))
             continue;
@@ -422,7 +422,7 @@ static void process_timeouts(intf_thread_t *intf)
 
     for (size_t i = 0; i < vlc_array_count(&sys->timeouts); i++)
     {
-        DBusTimeout *to = vlc_array_item_at_index(&sys->timeouts, i);
+        DBusTimeout *to = vlc_array_get(&sys->timeouts, i);
 
         if (!dbus_timeout_get_enabled(to))
             continue;
@@ -499,7 +499,7 @@ static int GetPollFds( intf_thread_t *p_intf, struct pollfd *p_fds )
     for( size_t i = 0; i < i_watches; i++ )
     {
         DBusWatch *p_watch = NULL;
-        p_watch = vlc_array_item_at_index( &p_sys->watches, i );
+        p_watch = vlc_array_get( &p_sys->watches, i );
         if( !dbus_watch_get_enabled( p_watch ) )
             continue;
 
@@ -822,7 +822,7 @@ static void *Run( void *data )
         DBusWatch *p_watches[i_watches ? i_watches : 1];
         for( size_t i = 0; i < i_watches; i++ )
         {
-            p_watches[i] = vlc_array_item_at_index( &p_sys->watches, i );
+            p_watches[i] = vlc_array_get( &p_sys->watches, i );
         }
 
         /* Get the list of events to process */
@@ -843,7 +843,7 @@ static void *Run( void *data )
                 if( pp_info )
                 {
                     for( size_t i = 0; i < i_events; i++ )
-                        pp_info[i] = vlc_array_item_at_index( &p_sys->events, i );
+                        pp_info[i] = vlc_array_get( &p_sys->events, i );
                     vlc_array_clear( &p_sys->events );
                 }
             }
@@ -894,7 +894,7 @@ static bool add_event_locked( intf_thread_t *p_intf, callback_info_t *p_info )
     for( size_t i = 0; i < vlc_array_count( &p_intf->p_sys->events ); ++ i )
     {
         callback_info_t *oldinfo =
-            vlc_array_item_at_index( &p_intf->p_sys->events, i );
+            vlc_array_get( &p_intf->p_sys->events, i );
         if( p_info->signal == oldinfo->signal )
         {
             free( p_info );

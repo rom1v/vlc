@@ -872,8 +872,8 @@ sout_stream_t *sout_StreamChainNew(sout_instance_t *p_sout, const char *psz_chai
     vlc_array_init(&module);
     while(i--)
     {
-        p_next = sout_StreamNew( p_sout, vlc_array_item_at_index(&name, i),
-            vlc_array_item_at_index(&cfg, i), p_next);
+        p_next = sout_StreamNew( p_sout, vlc_array_get(&name, i),
+            vlc_array_get(&cfg, i), p_next);
 
         if(!p_next)
             goto error;
@@ -897,15 +897,15 @@ error:
     /* destroy all modules created, starting with the last one */
     int modules = vlc_array_count(&module);
     while(modules--)
-        sout_StreamDelete(vlc_array_item_at_index(&module, modules));
+        sout_StreamDelete(vlc_array_get(&module, modules));
     vlc_array_clear(&module);
 
     /* then destroy all names and config which weren't destroyed by
      * sout_StreamDelete */
     while(i--)
     {
-        free(vlc_array_item_at_index(&name, i));
-        config_ChainDestroy(vlc_array_item_at_index(&cfg, i));
+        free(vlc_array_get(&name, i));
+        config_ChainDestroy(vlc_array_get(&cfg, i));
     }
     vlc_array_clear(&name);
     vlc_array_clear(&cfg);

@@ -228,7 +228,7 @@ dialog_clear_all_locked(vlc_dialog_provider *p_provider)
     for (size_t i = 0; i < vlc_array_count(&p_provider->dialog_array); ++i)
     {
         vlc_dialog_id *p_id =
-            vlc_array_item_at_index(&p_provider->dialog_array, i);
+            vlc_array_get(&p_provider->dialog_array, i);
         dialog_cancel_locked(p_provider, p_id);
     }
 }

@@ -235,7 +235,7 @@ items_exists( struct discovery_sys *p_sys, const char *psz_uri )
 {
     for( size_t i = 0; i < vlc_array_count( &p_sys->items ); ++i )
     {
-        struct item *p_item = vlc_array_item_at_index( &p_sys->items, i );
+        struct item *p_item = vlc_array_get( &p_sys->items, i );
         if( strcmp( p_item->psz_uri, psz_uri ) == 0 )
         {
             p_item->i_last_seen = vlc_tick_now();
@@ -255,7 +255,7 @@ items_timeout( struct discovery_sys *p_sys, services_discovery_t *p_sd,
     /* Remove items that are not seen since TIMEOUT */
     for( size_t i = 0; i < vlc_array_count( &p_sys->items ); ++i )
     {
-        struct item *p_item = vlc_array_item_at_index( &p_sys->items, i );
+        struct item *p_item = vlc_array_get( &p_sys->items, i );
         if( i_now - p_item->i_last_seen > TIMEOUT )
         {
             if( p_sd != NULL )
@@ -273,7 +273,7 @@ items_clear( struct discovery_sys *p_sys )
 {
     for( size_t i = 0; i < vlc_array_count( &p_sys->items ); ++i )
     {
-        struct item *p_item = vlc_array_item_at_index( &p_sys->items, i );
+        struct item *p_item = vlc_array_get( &p_sys->items, i );
         items_release( p_sys, p_item );
     }
     vlc_array_clear( &p_sys->items );

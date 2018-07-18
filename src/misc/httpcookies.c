@@ -287,7 +287,7 @@ void vlc_http_cookies_destroy( vlc_http_cookie_jar_t * p_jar )
         return;
 
     for( size_t i = 0; i < vlc_array_count( &p_jar->cookies ); i++ )
-        cookie_destroy( vlc_array_item_at_index( &p_jar->cookies, i ) );
+        cookie_destroy( vlc_array_get( &p_jar->cookies, i ) );
 
     vlc_array_clear( &p_jar->cookies );
     vlc_mutex_destroy( &p_jar->lock );
@@ -322,7 +322,7 @@ bool vlc_http_cookies_store(vlc_http_cookie_jar_t *p_jar, const char *cookies,
 
     for( size_t i = 0; i < vlc_array_count( &p_jar->cookies ); i++ )
     {
-        http_cookie_t *iter = vlc_array_item_at_index( &p_jar->cookies, i );
+        http_cookie_t *iter = vlc_array_get( &p_jar->cookies, i );
 
         assert( iter->psz_name );
         assert( iter->psz_domain );
@@ -359,7 +359,7 @@ char *vlc_http_cookies_fetch(vlc_http_cookie_jar_t *p_jar, bool secure,
 
     for( size_t i = 0; i < vlc_array_count( &p_jar->cookies ); i++ )
     {
-        const http_cookie_t * cookie = vlc_array_item_at_index( &p_jar->cookies, i );
+        const http_cookie_t * cookie = vlc_array_get( &p_jar->cookies, i );
         if (cookie_should_be_sent(cookie, secure, host, path))
         {
             char *psz_updated_buf = NULL;

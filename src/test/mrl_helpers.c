@@ -85,7 +85,7 @@ int main (void)
             for (size_t j = 0; testcase[i].results[j] != NULL; ++j)
             {
                 assert(j < vlc_array_count(&out) && j < MAX_RESULT);
-                char *res = vlc_array_item_at_index(&out, j);
+                char *res = vlc_array_get(&out, j);
 
                 assert(strcmp(testcase[i].results[j], res) == 0);
 

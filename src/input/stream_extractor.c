@@ -351,7 +351,7 @@ stream_extractor_AttachParsed( stream_t** source, char const* data,
 
     while( idx < count )
     {
-        char* id = vlc_array_item_at_index( &identifiers, idx );
+        char* id = vlc_array_get( &identifiers, idx );
 
         if( vlc_stream_extractor_Attach( source, id, NULL ) )
             break;
@@ -360,7 +360,7 @@ stream_extractor_AttachParsed( stream_t** source, char const* data,
     }
 
     for( size_t i = 0; i < count; ++i )
-        free( vlc_array_item_at_index( &identifiers, i ) );
+        free( vlc_array_get( &identifiers, i ) );
     vlc_array_clear( &identifiers );
 
     return idx == count ? VLC_SUCCESS : VLC_EGENERIC;

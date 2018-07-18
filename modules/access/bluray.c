@@ -944,7 +944,7 @@ typedef struct  fmt_es_pair {
 static int  findEsPairIndex(demux_sys_t *p_sys, int i_id)
 {
     for (size_t i = 0; i < vlc_array_count(&p_sys->es); ++i)
-        if (((fmt_es_pair_t*)vlc_array_item_at_index(&p_sys->es, i))->i_id == i_id)
+        if (((fmt_es_pair_t*)vlc_array_get(&p_sys->es, i))->i_id == i_id)
             return i;
 
     return -1;
@@ -953,7 +953,7 @@ static int  findEsPairIndex(demux_sys_t *p_sys, int i_id)
 static int  findEsPairIndexByEs(demux_sys_t *p_sys, es_out_id_t *p_es)
 {
     for (size_t i = 0; i < vlc_array_count(&p_sys->es); ++i)
-        if (((fmt_es_pair_t*)vlc_array_item_at_index(&p_sys->es, i))->p_es == p_es)
+        if (((fmt_es_pair_t*)vlc_array_get(&p_sys->es, i))->p_es == p_es)
             return i;
 
     return -1;
@@ -1089,7 +1089,7 @@ static void esOutDel(es_out_t *p_out, es_out_id_t *p_es)
 
     int idx = findEsPairIndexByEs(p_sys, p_es);
     if (idx >= 0) {
-        free(vlc_array_item_at_index(&p_sys->es, idx));
+        free(vlc_array_get(&p_sys->es, idx));
         vlc_array_remove(&p_sys->es, idx);
     }
 
@@ -1115,7 +1115,7 @@ static void esOutDestroy(es_out_t *p_out)
     demux_sys_t *p_sys = p_demux->p_sys;
 
     for (size_t i = 0; i < vlc_array_count(&p_sys->es); ++i)
-        free(vlc_array_item_at_index(&p_sys->es, i));
+        free(vlc_array_get(&p_sys->es, i));
     vlc_array_clear(&p_sys->es);
     free(es_out_sys);
 }
@@ -2256,7 +2256,7 @@ static void blurayStreamSelect(demux_t *p_demux, uint32_t i_type, uint32_t i_id)
     if (i_pid > 0) {
         int i_idx = findEsPairIndex(p_sys, i_pid);
         if (i_idx >= 0) {
-            fmt_es_pair_t *p_pair = vlc_array_item_at_index(&p_sys->es, i_idx);
+            fmt_es_pair_t *p_pair = vlc_array_get(&p_sys->es, i_idx);
             assert(p_pair->p_es);
 
             if (i_type == BD_EVENT_PG_TEXTST_STREAM && !p_sys->b_spu_enable)

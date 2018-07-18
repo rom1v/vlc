@@ -199,7 +199,7 @@ void libvlc_media_list_release( libvlc_media_list_t * p_mlist )
 
     for( size_t i = 0; i < vlc_array_count( &p_mlist->items ); i++ )
     {
-        libvlc_media_t* p_md = vlc_array_item_at_index( &p_mlist->items, i );
+        libvlc_media_t* p_md = vlc_array_get( &p_mlist->items, i );
         libvlc_media_release( p_md );
     }
 
@@ -392,7 +392,7 @@ int libvlc_media_list_internal_remove_index( libvlc_media_list_t * p_mlist,
         return -1;
     }
 
-    p_md = vlc_array_item_at_index( &p_mlist->items, index );
+    p_md = vlc_array_get( &p_mlist->items, index );
 
     notify_item_deletion( p_mlist, p_md, index, EventWillHappen );
     vlc_array_remove( &p_mlist->items, index );
@@ -419,7 +419,7 @@ libvlc_media_list_item_at_index( libvlc_media_list_t * p_mlist,
         return NULL;
     }
 
-    p_md = vlc_array_item_at_index( &p_mlist->items, index );
+    p_md = vlc_array_get( &p_mlist->items, index );
     libvlc_media_retain( p_md );
     return p_md;
 }

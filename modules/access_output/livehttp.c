@@ -522,7 +522,7 @@ static uint32_t segmentAmountNeeded( sout_access_out_sys_t *p_sys )
     float duration = .0f;
     for( size_t index = 1; index <= vlc_array_count( &p_sys->segments_t ); index++ )
     {
-        output_segment_t* segment = vlc_array_item_at_index( &p_sys->segments_t, vlc_array_count( &p_sys->segments_t ) - index );
+        output_segment_t* segment = vlc_array_get( &p_sys->segments_t, vlc_array_count( &p_sys->segments_t ) - index );
         duration += segment->f_seglength;
 
         if( duration >= (float)( 3 * p_sys->i_seglen ) )
@@ -547,10 +547,10 @@ static bool isFirstItemRemovable( sout_access_out_sys_t *p_sys, uint32_t i_first
      */
     for( unsigned int index = 0; index < i_index_offset; index++ )
     {
-        output_segment_t *segment = vlc_array_item_at_index( &p_sys->segments_t, p_sys->i_segment - i_firstseg + index );
+        output_segment_t *segment = vlc_array_get( &p_sys->segments_t, p_sys->i_segment - i_firstseg + index );
         duration += segment->f_seglength;
     }
-    output_segment_t *first = vlc_array_item_at_index( &p_sys->segments_t, 0 );
+    output_segment_t *first = vlc_array_get( &p_sys->segments_t, 0 );
 
     return duration >= (first->f_seglength + (float)(p_sys->i_numsegs * p_sys->i_seglen));
 }
@@ -612,7 +612,7 @@ static int updateIndexAndDel( sout_access_out_t *p_access, sout_access_out_sys_t
             //scale to i_index_offset..numsegs + i_index_offset
             uint32_t index = i - i_firstseg + i_index_offset;
 
-            output_segment_t *segment = vlc_array_item_at_index( &p_sys->segments_t, index );
+            output_segment_t *segment = vlc_array_get( &p_sys->segments_t, index );
             if( p_sys->key_uri &&
                 ( !psz_current_uri ||  strcmp( psz_current_uri, segment->psz_key_uri ) )
               )
@@ -688,7 +688,7 @@ static int updateIndexAndDel( sout_access_out_t *p_access, sout_access_out_sys_t
            isFirstItemRemovable( p_sys, i_firstseg, i_index_offset )
          )
     {
-         output_segment_t *segment = vlc_array_item_at_index( &p_sys->segments_t, 0 );
+         output_segment_t *segment = vlc_array_get( &p_sys->segments_t, 0 );
          msg_Dbg( p_access, "Removing segment number %d", segment->i_segment_number );
          vlc_array_remove( &p_sys->segments_t, 0 );
 
@@ -712,7 +712,7 @@ static void closeCurrentSegment( sout_access_out_t *p_access, sout_access_out_sy
 {
     if ( p_sys->i_handle >= 0 )
     {
-        output_segment_t *segment = vlc_array_item_at_index( &p_sys->segments_t, vlc_array_count( &p_sys->segments_t ) - 1 );
+        output_segment_t *segment = vlc_array_get( &p_sys->segments_t, vlc_array_count( &p_sys->segments_t ) - 1 );
 
         if( p_sys->key_uri )
         {
@@ -806,7 +806,7 @@ static void Close( vlc_object_t * p_this )
 
     while( vlc_array_count( &p_sys->segments_t ) > 0 )
     {
-        output_segment_t *segment = vlc_array_item_at_index( &p_sys->segments_t, 0 );
+        output_segment_t *segment = vlc_array_get( &p_sys->segments_t, 0 );
         vlc_array_remove( &p_sys->segments_t, 0 );
         if( p_sys->b_delsegs && p_sys->i_numsegs && segment->psz_filename )
         {

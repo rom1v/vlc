@@ -94,7 +94,7 @@ static void QueueIncomingRequests( fingerprinter_sys_t *p_sys )
 
     for( size_t i = vlc_array_count( &p_sys->incoming.queue ); i > 0 ; i-- )
     {
-        fingerprint_request_t *r = vlc_array_item_at_index( &p_sys->incoming.queue, i - 1 );
+        fingerprint_request_t *r = vlc_array_get( &p_sys->incoming.queue, i - 1 );
         if( vlc_array_append( &p_sys->processing.queue, r ) )
             fingerprint_request_Delete( r );
     }
@@ -109,7 +109,7 @@ static fingerprint_request_t * GetResult( fingerprinter_thread_t *f )
     vlc_mutex_lock( &p_sys->results.lock );
     if ( vlc_array_count( &p_sys->results.queue ) )
     {
-        r = vlc_array_item_at_index( &p_sys->results.queue, 0 );
+        r = vlc_array_get( &p_sys->results.queue, 0 );
         vlc_array_remove( &p_sys->results.queue, 0 );
     }
     vlc_mutex_unlock( &p_sys->results.lock );
@@ -121,7 +121,7 @@ static void ApplyResult( fingerprint_request_t *p_r, size_t i_resultid )
     if ( i_resultid >= vlc_array_count( & p_r->results.metas_array ) ) return;
 
     vlc_meta_t *p_meta = (vlc_meta_t *)
-            vlc_array_item_at_index( & p_r->results.metas_array, i_resultid );
+            vlc_array_get( & p_r->results.metas_array, i_resultid );
     input_item_t *p_item = p_r->p_item;
     vlc_mutex_lock( &p_item->lock );
     vlc_meta_Merge( p_item->p_meta, p_meta );
@@ -277,18 +277,18 @@ static void Close(vlc_object_t *p_this)
 static void CleanSys( fingerprinter_sys_t *p_sys )
 {
     for ( size_t i = 0; i < vlc_array_count( &p_sys->incoming.queue ); i++ )
-        fingerprint_request_Delete( vlc_array_item_at_index( &p_sys->incoming.queue, i ) );
+        fingerprint_request_Delete( vlc_array_get( &p_sys->incoming.queue, i ) );
     vlc_array_clear( &p_sys->incoming.queue );
     vlc_mutex_destroy( &p_sys->incoming.lock );
 
     for ( size_t i = 0; i < vlc_array_count( &p_sys->processing.queue ); i++ )
-        fingerprint_request_Delete( vlc_array_item_at_index( &p_sys->processing.queue, i ) );
+        fingerprint_request_Delete( vlc_array_get( &p_sys->processing.queue, i ) );
     vlc_array_clear( &p_sys->processing.queue );
     vlc_mutex_destroy( &p_sys->processing.lock );
     vlc_cond_destroy( &p_sys->processing.cond );
 
     for ( size_t i = 0; i < vlc_array_count( &p_sys->results.queue ); i++ )
-        fingerprint_request_Delete( vlc_array_item_at_index( &p_sys->results.queue, i ) );
+        fingerprint_request_Delete( vlc_array_get( &p_sys->results.queue, i ) );
     vlc_array_clear( &p_sys->results.queue );
     vlc_mutex_destroy( &p_sys->results.lock );
 }
@@ -338,7 +338,7 @@ static void *Run( void *opaque )
         while( vlc_array_count( &p_sys->processing.queue ) )
         {
             int canc = vlc_savecancel();
-            fingerprint_request_t *p_data = vlc_array_item_at_index( &p_sys->processing.queue, 0 );
+            fingerprint_request_t *p_data = vlc_array_get( &p_sys->processing.queue, 0 );
 
             char *psz_uri = input_item_GetURI( p_data->p_item );
             if ( psz_uri != NULL )
