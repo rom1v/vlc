@@ -240,6 +240,8 @@ libvlccore_la_SOURCES = \
 	playlist_new/playlist.h \
 	playlist_new/preparse.c \
 	playlist_new/preparse.h \
+	playlist_new/randomizer.c \
+	playlist_new/randomizer.h \
 	playlist_new/request.c \
 	preparser/art.c \
 	preparser/art.h \
@@ -553,7 +555,8 @@ check_PROGRAMS = \
 	test_arrays \
 	test_vector \
 	test_shared_data_ptr \
-	test_playlist
+	test_playlist \
+	test_randomizer
 
 TESTS = $(check_PROGRAMS) check_symbols
 
@@ -588,6 +591,8 @@ test_playlist_SOURCES = playlist_new/test.c \
 	playlist_new/preparse.c \
 	playlist_new/request.c
 test_playlist_CFLAGS = -DTEST_PLAYLIST
+test_randomizer_SOURCES = playlist_new/randomizer.c
+test_randomizer_CFLAGS = -DTEST_RANDOMIZER
 
 AM_LDFLAGS = -no-install
 LDADD = libvlccore.la \
