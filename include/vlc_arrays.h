@@ -25,6 +25,9 @@
 #ifndef VLC_ARRAYS_H_
 #define VLC_ARRAYS_H_
 
+#include <vlc_common.h>
+#include <assert.h>
+
 /**
  * \file
  * This file defines functions, structures and macros for handling arrays in vlc
@@ -257,12 +260,17 @@ static inline void *realloc_or_free( void *p, size_t sz )
  ************************************************************************/
 typedef struct vlc_array_t
 {
+    size_t i_capacity;
     size_t i_count;
     void ** pp_elems;
 } vlc_array_t;
 
+#define VLC_ARRAY_MAX_LENGTH (SIZE_MAX / sizeof(void *))
+#define VLC_ARRAY_MIN_ALLOC 10
+
 static inline void vlc_array_init( vlc_array_t * p_array )
 {
+    p_array->i_capacity = 0;
     p_array->i_count = 0;
     p_array->pp_elems = NULL;
 }
@@ -308,21 +316,100 @@ static inline ssize_t vlc_array_find( const vlc_array_t *ar,
     return -1;
 }
 
+static inline int vlc_array_resize_(vlc_array_t *array, size_t target)
+{
+    void **pp = (void **) vlc_reallocarray(array->pp_elems,
+                                           target, sizeof(void *));
+    if (unlikely(!pp))
+        return -1;
+
+    array->pp_elems = pp;
+    array->i_capacity = target;
+    return 0;
+}
+
+static inline size_t vlc_array_mul_by_growth_factor_(size_t value)
+{
+    /* integer multiplication by 1.5 */
+    return value + (value >> 1);
+}
+
+static inline int vlc_array_reserve(vlc_array_t *array, size_t min_capacity)
+{
+    if (min_capacity <= array->i_capacity)
+        return 0; /* nothing to do */
+
+    if (min_capacity > VLC_ARRAY_MAX_LENGTH)
+        return -1;
+
+    if (min_capacity < VLC_ARRAY_MIN_ALLOC)
+        min_capacity = VLC_ARRAY_MIN_ALLOC; /* do not allocate tiny arrays */
+
+    /* multiply by 1.5 first (this may not overflow due to the way
+     * VLC_ARRAY_MAX_LENGTH is defined, unless sizeof(void *) == 1, which will
+     * never happen) */
+    size_t new_capacity = vlc_array_mul_by_growth_factor_(array->i_capacity);
+    /* if it's still not sufficient */
+    if (new_capacity < min_capacity)
+        new_capacity = min_capacity;
+    else if (new_capacity > VLC_ARRAY_MAX_LENGTH)
+        /* the capacity must never exceed VLC_ARRAY_MAX_LENGTH */
+        new_capacity = VLC_ARRAY_MAX_LENGTH;
+
+    return vlc_array_resize_(array, new_capacity);
+}
+
+static inline int vlc_array_shrink_to_(vlc_array_t *array,
+                                       size_t target)
+{
+    if (array->i_capacity == target)
+        return 0;
+
+    if (target == 0)
+    {
+        vlc_array_clear(array);
+        return 0;
+    }
+
+    return vlc_array_resize_(array, target);
+}
+
+static inline int vlc_array_shrink(vlc_array_t *array)
+{
+    if (array->i_capacity <= VLC_ARRAY_MIN_ALLOC)
+        return 0; /* do not shrink to tiny length */
+
+    size_t grown_count = vlc_array_mul_by_growth_factor_(array->i_count);
+    if (array->i_capacity - 5 < grown_count)
+        return 0; /* no need to shrink */
+
+    size_t target = array->i_count < VLC_ARRAY_MIN_ALLOC - 3
+                    ? VLC_ARRAY_MIN_ALLOC
+                    : array->i_count + 5;
+    if (target >= array->i_capacity)
+        return 0; /* do not grow */
+
+    return vlc_array_shrink_to_(array, target);
+}
+
+static inline int vlc_array_shrink_to_fit(vlc_array_t *array)
+{
+    return vlc_array_shrink_to_(array, array->i_count);
+}
+
 /* Write */
 static inline int vlc_array_insert( vlc_array_t *ar, void *elem, int idx )
 {
-    void **pp = (void **)realloc( ar->pp_elems,
-                                  sizeof( void * ) * (ar->i_count + 1) );
-    if( unlikely(pp == NULL) )
+    if (unlikely(vlc_array_reserve(ar, ar->i_count + 1)))
         return VLC_ENOMEM;
 
+    void **pp = ar->pp_elems;
     size_t tail = ar->i_count - idx;
     if( tail > 0 )
         memmove( pp + idx + 1, pp + idx, sizeof( void * ) * tail );
 
-    pp[idx] = elem;
+    ar->pp_elems[idx] = elem;
     ar->i_count++;
-    ar->pp_elems = pp;
     return VLC_SUCCESS;
 }
 
@@ -334,13 +421,10 @@ static inline void vlc_array_insert_or_abort( vlc_array_t *ar, void *elem, int i
 
 static inline int vlc_array_append( vlc_array_t *ar, void *elem )
 {
-    void **pp = (void **)realloc( ar->pp_elems,
-                                  sizeof( void * ) * (ar->i_count + 1) );
-    if( unlikely(pp == NULL) )
+    if (unlikely(vlc_array_reserve(ar, ar->i_count + 1)))
         return VLC_ENOMEM;
 
-    pp[ar->i_count++] = elem;
-    ar->pp_elems = pp;
+    ar->pp_elems[ar->i_count++] = elem;
     return VLC_SUCCESS;
 }
 
@@ -359,20 +443,8 @@ static inline void vlc_array_remove( vlc_array_t *ar, size_t idx )
         memmove( pp + idx, pp + idx + 1, sizeof( void * ) * tail );
 
     ar->i_count--;
-
-    if( ar->i_count > 0 )
-    {
-        pp = (void **)realloc( pp, sizeof( void * ) * ar->i_count );
-        if( likely(pp != NULL) )
-            ar->pp_elems = pp;
-    }
-    else
-    {
-        free( pp );
-        ar->pp_elems = NULL;
-    }
+    vlc_array_shrink(ar);
 }
-
 
 /************************************************************************
  * Dictionaries

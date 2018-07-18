@@ -224,6 +224,105 @@ static void test_vlc_array_find(void)
     vlc_array_clear(&array);
 }
 
+static void test_vlc_array_grow()
+{
+    vlc_array_t array;
+    vlc_array_init(&array);
+
+    char data;
+
+    for (int i = 0; i < 50; ++i)
+        ASSERT_SUCCESS(vlc_array_append(&array, &data)); /* append */
+
+    assert(vlc_array_count(&array) == 50);
+
+    for (int i = 0; i < 25; ++i)
+        ASSERT_SUCCESS(vlc_array_insert(&array, &data, 20)); /* insert from the middle */
+
+    assert(vlc_array_count(&array) == 75);
+
+    for (int i = 0; i < 25; ++i)
+        ASSERT_SUCCESS(vlc_array_insert(&array, &data, 0)); /* prepend */
+
+    assert(vlc_array_count(&array) == 100);
+
+    for (int i = 0; i < 50; ++i)
+        vlc_array_remove(&array, 20); /* remove from the middle */
+
+    assert(vlc_array_count(&array) == 50);
+
+    for (int i = 0; i < 25; ++i)
+        vlc_array_remove(&array, 0); /* remove from the head */
+
+    assert(vlc_array_count(&array) == 25);
+
+    for (int i = 24; i >= 0; --i)
+        vlc_array_remove(&array, i); /* remove from the tail */
+
+    assert(vlc_array_count(&array) == 0);
+
+    vlc_array_clear(&array);
+}
+
+static void test_vlc_array_exp_growth()
+{
+    vlc_array_t array;
+    vlc_array_init(&array);
+
+    char data;
+    size_t old_capacity = array.i_capacity;
+    int realloc_count = 0;
+    for (int i = 0; i < 10000; ++i)
+    {
+        ASSERT_SUCCESS(vlc_array_append(&array, &data));
+        if (array.i_capacity != old_capacity)
+        {
+            realloc_count++;
+            old_capacity = array.i_capacity;
+        }
+    }
+
+    /* Test specifically for an expected growth factor of 1.5. In practice, the
+     * result is even lower (19) due to the first alloc of size 10 */
+    assert(realloc_count <= 23); /* ln(10000) / ln(1.5) ~= 23 */
+
+    realloc_count = 0;
+    for (int i = 9999; i >= 0; --i)
+    {
+        vlc_array_remove(&array, i);
+        if (array.i_capacity != old_capacity)
+        {
+            realloc_count++;
+            old_capacity = array.i_capacity;
+        }
+    }
+
+    /* Same expectation for removals */
+    assert(realloc_count <= 23);
+
+    vlc_array_clear(&array);
+}
+
+static void test_vlc_array_reserve()
+{
+    vlc_array_t array;
+    vlc_array_init(&array);
+
+    vlc_array_reserve(&array, 800);
+    assert(array.i_capacity >= 800);
+
+    size_t initial_capacity = array.i_capacity;
+
+    char data;
+    for (int i = 0; i < 800; ++i)
+    {
+        ASSERT_SUCCESS(vlc_array_append(&array, &data));
+        assert(array.i_capacity == initial_capacity); /* no realloc */
+    }
+
+    vlc_array_clear(&array);
+}
+
 int main(void)
 {
     test_array_insert_remove();
@@ -233,4 +332,7 @@ int main(void)
 
     test_vlc_array_insert_remove();
     test_vlc_array_find();
+    test_vlc_array_grow();
+    test_vlc_array_reserve();
+    test_vlc_array_exp_growth();
 }
