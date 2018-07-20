@@ -1,5 +1,5 @@
 /*****************************************************************************
- * arrays.c : Test for ARRAY_* macros
+ * arrays.c : Test for VLC arrays
  *****************************************************************************
  * Copyright (C) 2018 VLC authors and VideoLAN
  *
@@ -157,10 +157,80 @@ static void test_array_bsearch(void)
     ARRAY_RESET(array);
 }
 
+#define ASSERT_SUCCESS(expr) \
+    do { \
+        int assert_success_result = (expr); \
+        assert(assert_success_result == VLC_SUCCESS); \
+    } while (0);
+
+static void test_vlc_array_insert_remove(void)
+{
+    vlc_array_t array;
+    vlc_array_init(&array);
+
+    char data[32];
+
+    ASSERT_SUCCESS(vlc_array_append(&array, &data[0]));
+    assert(vlc_array_count(&array) == 1);
+    assert(vlc_array_get(&array, 0) == &data[0]);
+
+    vlc_array_remove(&array, 0);
+    assert(vlc_array_count(&array) == 0);
+
+    ASSERT_SUCCESS(vlc_array_append(&array, &data[1]));
+    ASSERT_SUCCESS(vlc_array_append(&array, &data[2]));
+    ASSERT_SUCCESS(vlc_array_append(&array, &data[3]));
+    vlc_array_remove(&array, 1);
+    assert(vlc_array_count(&array) == 2);
+    assert(vlc_array_get(&array, 0) == &data[1]);
+    assert(vlc_array_get(&array, 1) == &data[3]);
+
+    vlc_array_insert(&array, &data[4], 1);
+    assert(vlc_array_count(&array) == 3);
+    assert(vlc_array_get(&array, 0) == &data[1]);
+    assert(vlc_array_get(&array, 1) == &data[4]);
+    assert(vlc_array_get(&array, 2) == &data[3]);
+
+    vlc_array_clear(&array);
+}
+
+static void test_vlc_array_find(void)
+{
+    vlc_array_t array;
+    vlc_array_init(&array);
+
+    char data[10];
+
+    for (int i = 0; i < 10; ++i)
+        ASSERT_SUCCESS(vlc_array_append(&array, &data[i]));
+
+    ssize_t idx;
+
+    idx = vlc_array_find(&array, &data[0]);
+    assert(idx == 0);
+
+    idx = vlc_array_find(&array, &data[1]);
+    assert(idx == 1);
+
+    idx = vlc_array_find(&array, &data[4]);
+    assert(idx == 4);
+
+    idx = vlc_array_find(&array, &data[9]);
+    assert(idx == 9);
+
+    idx = vlc_array_find(&array, "some other pointer");
+    assert(idx == -1);
+
+    vlc_array_clear(&array);
+}
+
 int main(void)
 {
     test_array_insert_remove();
     test_array_foreach();
     test_array_find();
     test_array_bsearch();
+
+    test_vlc_array_insert_remove();
+    test_vlc_array_find();
 }
