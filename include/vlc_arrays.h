@@ -446,6 +446,12 @@ static inline void vlc_array_remove( vlc_array_t *ar, size_t idx )
     vlc_array_shrink(ar);
 }
 
+static inline void vlc_array_swap_remove(vlc_array_t *array, size_t idx)
+{
+    array->pp_elems[idx] = array->pp_elems[array->i_count - 1];
+    array->i_count--;
+}
+
 /************************************************************************
  * Dictionaries
  ************************************************************************/

@@ -194,6 +194,26 @@ static void test_vlc_array_insert_remove(void)
     vlc_array_clear(&array);
 }
 
+static void test_vlc_array_swap_remove(void)
+{
+    vlc_array_t array;
+    vlc_array_init(&array);
+
+    char data[4];
+
+    ASSERT_SUCCESS(vlc_array_append(&array, &data[0]));
+    ASSERT_SUCCESS(vlc_array_append(&array, &data[1]));
+    ASSERT_SUCCESS(vlc_array_append(&array, &data[2]));
+    ASSERT_SUCCESS(vlc_array_append(&array, &data[3]));
+    assert(vlc_array_count(&array) == 4);
+
+    vlc_array_swap_remove(&array, 1);
+    assert(vlc_array_count(&array) == 3);
+    assert(vlc_array_get(&array, 0) == &data[0]);
+    assert(vlc_array_get(&array, 1) == &data[3]);
+    assert(vlc_array_get(&array, 2) == &data[2]);
+}
+
 static void test_vlc_array_find(void)
 {
     vlc_array_t array;
@@ -331,6 +351,7 @@ int main(void)
     test_array_bsearch();
 
     test_vlc_array_insert_remove();
+    test_vlc_array_swap_remove();
     test_vlc_array_find();
     test_vlc_array_grow();
     test_vlc_array_reserve();
