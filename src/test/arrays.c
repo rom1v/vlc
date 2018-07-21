@@ -343,6 +343,29 @@ static void test_vlc_array_reserve()
     vlc_array_clear(&array);
 }
 
+static void test_vlc_array_foreach(void)
+{
+    vlc_array_t array;
+    vlc_array_init(&array);
+
+    char data[10];
+
+    for (int i = 0; i < 10; ++i)
+        ASSERT_SUCCESS(vlc_array_append(&array, &data[i]));
+
+    int count = 0;
+    char *p = data;
+    char *item;
+    VLC_ARRAY_FOREACH(item, &array)
+    {
+        assert(item == p++);
+        count++;
+    }
+    assert(count == 10);
+
+    vlc_array_clear(&array);
+}
+
 int main(void)
 {
     test_array_insert_remove();
@@ -356,4 +379,5 @@ int main(void)
     test_vlc_array_grow();
     test_vlc_array_reserve();
     test_vlc_array_exp_growth();
+    test_vlc_array_foreach();
 }

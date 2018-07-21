@@ -452,6 +452,12 @@ static inline void vlc_array_swap_remove(vlc_array_t *array, size_t idx)
     array->i_count--;
 }
 
+#define VLC_ARRAY_FOREACH(item, array) \
+    for (size_t vlc_array_foreach_##item = 0; \
+         vlc_array_foreach_##item < (array)->i_count && \
+            ((item) = (array)->pp_elems[vlc_array_foreach_##item], 1); \
+         ++vlc_array_foreach_##item)
+
 /************************************************************************
  * Dictionaries
  ************************************************************************/
