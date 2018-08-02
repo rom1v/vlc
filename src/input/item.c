@@ -1301,15 +1301,6 @@ void input_item_node_RemoveNode( input_item_node_t *parent,
     TAB_REMOVE(parent->i_children, parent->pp_children, child);
 }
 
-void input_item_node_PostAndDelete( input_item_node_t *p_root )
-{
-    vlc_event_send( &p_root->p_item->event_manager, &(vlc_event_t) {
-        .type = vlc_InputItemSubItemTreeAdded,
-        .u.input_item_subitem_tree_added.p_root = p_root } );
-
-    input_item_node_Delete( p_root );
-}
-
 /* Called by es_out when a new Elementary Stream is added or updated. */
 void input_item_UpdateTracksInfo(input_item_t *item, const es_format_t *fmt)
 {

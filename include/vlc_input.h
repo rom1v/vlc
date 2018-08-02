@@ -389,6 +389,9 @@ typedef enum input_event_type_e
     /* A vout_thread_t object has been created/deleted by *the input* */
     INPUT_EVENT_VOUT,
 
+    /* (pre-)parsing events */
+    INPUT_EVENT_PARSING,
+
 } input_event_type_e;
 
 #define VLC_INPUT_CAPABILITIES_SEEKABLE (1<<0)
@@ -470,6 +473,16 @@ struct vlc_input_event
         vlc_tick_t subtitle_delay;
         /* INPUT_EVENT_CACHE */
         float cache;
+        /* INPUT_EVENT_PARSING */
+        struct {
+            enum {
+                VLC_INPUT_PARSING_SUBTREE_ADDED,
+            } action;
+            union {
+                /* VLC_INPUT_PARSING_SUBTREE_ADDED */
+                input_item_node_t *root;
+            };
+        } parsing;
     };
 };
 
