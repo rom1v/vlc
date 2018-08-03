@@ -35,6 +35,11 @@
  */
 typedef struct input_preparser_t input_preparser_t;
 
+typedef struct input_preparser_callbacks_t {
+    void (*on_preparse_ended)(input_item_t *, int status);
+    void (*on_subtree_added)(input_item_t *, input_item_node_t *subtree);
+} input_preparser_callbacks_t;
+
 /**
  * This function creates the preparser object and thread.
  */
@@ -56,6 +61,7 @@ input_preparser_t *input_preparser_New( vlc_object_t * );
  */
 void input_preparser_Push( input_preparser_t *, input_item_t *,
                            input_item_meta_request_option_t,
+                           const input_preparser_callbacks_t *cbs,
                            int timeout, void *id );
 
 void input_preparser_fetcher_Push( input_preparser_t *, input_item_t *,
