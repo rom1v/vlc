@@ -200,12 +200,13 @@ static void input_item_add_subnode( libvlc_media_t *md,
 /**************************************************************************
  * input_item_subitemtree_added (Private) (vlc event Callback)
  **************************************************************************/
-static void input_item_subitemtree_added( const vlc_event_t * p_event,
-                                          void * user_data )
+static void input_item_subtree_added(input_item_t *item,
+                                     input_item_node_t *node,
+                                     void *user_data)
 {
+    VLC_UNUSED(item);
     libvlc_media_t * p_md = user_data;
     libvlc_event_t event;
-    input_item_node_t *node = p_event->u.input_item_subitem_tree_added.p_root;
 
     /* FIXME FIXME FIXME
      * Recursive function calls seem much simpler for this. But playlists are
@@ -345,10 +346,6 @@ static void install_input_item_observer( libvlc_media_t *p_md )
                       input_item_duration_changed,
                       p_md );
     vlc_event_attach( &p_md->p_input_item->event_manager,
-                      vlc_InputItemSubItemTreeAdded,
-                      input_item_subitemtree_added,
-                      p_md );
-    vlc_event_attach( &p_md->p_input_item->event_manager,
                       vlc_InputItemPreparseEnded,
                       input_item_preparse_ended,
                       p_md );
@@ -366,10 +363,6 @@ static void uninstall_input_item_observer( libvlc_media_t *p_md )
     vlc_event_detach( &p_md->p_input_item->event_manager,
                       vlc_InputItemDurationChanged,
                       input_item_duration_changed,
-                      p_md );
-    vlc_event_detach( &p_md->p_input_item->event_manager,
-                      vlc_InputItemSubItemTreeAdded,
-                      input_item_subitemtree_added,
                       p_md );
     vlc_event_detach( &p_md->p_input_item->event_manager,
                       vlc_InputItemPreparseEnded,
@@ -778,6 +771,10 @@ libvlc_media_get_duration( libvlc_media_t * p_md )
     return from_mtime(input_item_GetDuration( p_md->p_input_item ));
 }
 
+static const input_preparser_callbacks_t input_preparser_callbacks = {
+    .on_subtree_added = input_item_subtree_added,
+};
+
 static int media_parse(libvlc_media_t *media, bool b_async,
                        libvlc_media_parse_flag_t parse_flag, int timeout)
 {
@@ -811,7 +808,7 @@ static int media_parse(libvlc_media_t *media, bool b_async,
             parse_scope |= META_REQUEST_OPTION_SCOPE_NETWORK;
         if (parse_flag & libvlc_media_do_interact)
             parse_scope |= META_REQUEST_OPTION_DO_INTERACT;
-        ret = libvlc_MetadataRequest(libvlc, item, parse_scope, timeout, media);
+        ret = libvlc_MetadataRequest(libvlc, item, parse_scope, &input_preparser_callbacks, media, timeout, media);
         if (ret != VLC_SUCCESS)
             return ret;
     }

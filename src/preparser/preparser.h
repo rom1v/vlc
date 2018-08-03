@@ -56,6 +56,8 @@ input_preparser_t *input_preparser_New( vlc_object_t * );
  */
 void input_preparser_Push( input_preparser_t *, input_item_t *,
                            input_item_meta_request_option_t,
+                           const input_preparser_callbacks_t *cbs,
+                           void *cbs_userdata,
                            int timeout, void *id );
 
 void input_preparser_fetcher_Push( input_preparser_t *, input_item_t *,

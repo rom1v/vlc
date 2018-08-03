@@ -39,6 +39,7 @@
 
 typedef struct input_item_opaque input_item_opaque_t;
 typedef struct input_item_slave input_item_slave_t;
+typedef struct input_preparser_callbacks_t input_preparser_callbacks_t;
 
 struct info_t
 {
@@ -390,6 +391,8 @@ enum input_item_preparse_status
 
 VLC_API int libvlc_MetadataRequest( libvlc_int_t *, input_item_t *,
                                     input_item_meta_request_option_t,
+                                    const input_preparser_callbacks_t *cbs,
+                                    void *cbs_userdata,
                                     int, void * );
 VLC_API int libvlc_ArtRequest(libvlc_int_t *, input_item_t *,
                               input_item_meta_request_option_t );

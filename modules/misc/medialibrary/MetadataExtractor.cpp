@@ -170,6 +170,7 @@ medialibrary::parser::Status MetadataExtractor::run( medialibrary::parser::IItem
                           &MetadataExtractor::onSubItemAdded, std::addressof( ctx ) ) )
         return medialibrary::parser::Status::Fatal;
 
+    // TODO listen input thread directly
     input_Start( ctx.input.get() );
 
     {

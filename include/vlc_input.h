@@ -558,6 +558,11 @@ enum input_query_e
     INPUT_MODIFY_PCR_SYSTEM,/* arg1=int absolute, arg2=vlc_tick_t   res=can fail */
 };
 
+typedef struct input_preparser_callbacks_t {
+    void (*on_preparse_ended)(input_item_t *, int status, void *userdata);
+    void (*on_subtree_added)(input_item_t *, input_item_node_t *subtree, void *userdata);
+} input_preparser_callbacks_t;
+
 /** @}*/
 
 /*****************************************************************************
