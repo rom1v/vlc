@@ -87,9 +87,9 @@ void vlc_event_manager_fini( vlc_event_manager_t * p_em )
     {
         struct vlc_event_listeners_group_t *slot = p_em->events + i;
 
-        FOREACH_ARRAY( listener, slot->listeners )
+        ARRAY_FOREACH( listener, slot->listeners )
             free( listener );
-        FOREACH_END()
+
         ARRAY_RESET( slot->listeners );
     }
 }
@@ -108,9 +108,8 @@ void vlc_event_send( vlc_event_manager_t * p_em,
 
     vlc_mutex_lock( &p_em->lock ) ;
 
-    FOREACH_ARRAY( listener, slot->listeners )
+    ARRAY_FOREACH( listener, slot->listeners )
         listener->pf_callback( p_event, listener->p_user_data );
-    FOREACH_END()
 
     vlc_mutex_unlock( &p_em->lock );
 }
@@ -150,23 +149,22 @@ void vlc_event_detach( vlc_event_manager_t *p_em,
                        void *p_user_data )
 {
     vlc_event_listeners_group_t *slot = &p_em->events[event_type];
-    struct vlc_event_listener_t * listener;
 
     vlc_mutex_lock( &p_em->lock );
 
-    FOREACH_ARRAY( listener, slot->listeners )
+    for (int i = 0; i < slot->listeners.i_size; ++i)
+    {
+        struct vlc_event_listener_t *listener = slot->listeners.p_elems[i];
         if( listener->pf_callback == pf_callback &&
             listener->p_user_data == p_user_data )
         {
             /* that's our listener */
-            ARRAY_REMOVE( slot->listeners,
-                          fe_idx /* This comes from the macro (and that's why
-                                    I hate macro) */ );
+            ARRAY_REMOVE( slot->listeners, i );
             vlc_mutex_unlock( &p_em->lock );
             free( listener );
             return;
         }
-    FOREACH_END()
+    }
 
     vlc_assert_unreachable();
 }
