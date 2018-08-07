@@ -58,6 +58,28 @@ static void test_array_insert_remove(void)
     ARRAY_RESET(array);
 }
 
+static void test_array_swap_remove(void)
+{
+    DECL_ARRAY(int) array;
+    ARRAY_INIT(array);
+
+    ARRAY_APPEND(array, 3);
+    ARRAY_APPEND(array, 14);
+    ARRAY_APPEND(array, 15);
+    ARRAY_APPEND(array, 92);
+    ARRAY_APPEND(array, 65);
+    assert(array.i_size == 5);
+
+    ARRAY_SWAP_REMOVE(array, 1);
+    assert(array.i_size == 4);
+    assert(ARRAY_VAL(array, 0) == 3);
+    assert(ARRAY_VAL(array, 1) == 65);
+    assert(ARRAY_VAL(array, 2) == 15);
+    assert(ARRAY_VAL(array, 3) == 92);
+
+    ARRAY_RESET(array);
+}
+
 static void test_array_foreach(void)
 {
     DECL_ARRAY(int) array;
@@ -162,6 +184,7 @@ static void test_array_bsearch(void)
 int main(void)
 {
     test_array_insert_remove();
+    test_array_swap_remove();
     test_array_foreach();
     test_array_find();
     test_array_bsearch();
