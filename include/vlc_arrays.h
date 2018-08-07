@@ -238,6 +238,9 @@ static inline void *realloc_or_free( void *p, size_t sz )
     _ARRAY_SHRINK(array);                                                   \
   } while(0)
 
+#define ARRAY_SWAP_REMOVE(array, pos)                                       \
+    (array).p_elems[pos] = (array).p_elems[--(array).i_size]
+
 #define ARRAY_VAL(array, pos) array.p_elems[pos]
 
 #define ARRAY_BSEARCH(array, elem, zetype, key, answer) \
