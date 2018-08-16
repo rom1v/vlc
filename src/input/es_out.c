@@ -3173,7 +3173,6 @@ static void EsOutUpdateInfo( es_out_t *out, es_out_id_t *es, const es_format_t *
 
         input_SendEventEsUpdate(p_input, &update);
 
-        update.i_id = es->i_meta_id;
         input_item_UpdateTracksInfo(input_GetItem(p_input), &update);
     }
 
