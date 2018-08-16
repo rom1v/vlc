@@ -62,6 +62,7 @@ void input_SendEventEsDel( input_thread_t *p_input, enum es_format_category_e i_
 void input_SendEventEsAdd( input_thread_t *p_input, const char *psz_title,
                            const es_format_t *fmt );
 void input_SendEventEsSelect( input_thread_t *p_input, enum es_format_category_e i_cat, int i_id ); /* i_id == -1 will unselect */
+void input_SendEventEsUpdate( input_thread_t *p_input, const es_format_t *fmt );
 
 void input_SendEventTeletextAdd( input_thread_t *p_input,
                                  int i_teletext, const char *psz_text );

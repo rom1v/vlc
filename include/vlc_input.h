@@ -440,6 +440,7 @@ struct vlc_input_event
         struct {
             enum {
                 VLC_INPUT_ES_ADDED,
+                VLC_INPUT_ES_UPDATED,
                 VLC_INPUT_ES_DELETED,
                 VLC_INPUT_ES_SELECTED,
             } action;
@@ -449,6 +450,9 @@ struct vlc_input_event
                     const char *title;
                     const es_format_t *fmt;
                 } added;
+                struct {
+                    const es_format_t *fmt;
+                } updated;
                 struct {
                     enum es_format_category_e cat;
                     int id;
