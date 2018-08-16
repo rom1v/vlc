@@ -218,21 +218,21 @@ void input_SendEventProgramScrambled( input_thread_t *p_input, int i_group, bool
     });
 }
 
-void input_SendEventEsAdd( input_thread_t *p_input,
-                           enum es_format_category_e i_cat, int i_id,
-                           const char *psz_text )
+void input_SendEventEsAdd( input_thread_t *p_input, const char *psz_title,
+                           const es_format_t *p_fmt )
 {
     input_thread_private_t *priv = input_priv(p_input);
-    priv->i_last_es_cat = i_cat;
-    priv->i_last_es_id = i_id;
+    priv->i_last_es_cat = p_fmt->i_cat;
+    priv->i_last_es_id = p_fmt->i_id;
 
     input_SendEvent( p_input, &(struct vlc_input_event) {
         .type = INPUT_EVENT_ES,
         .es = {
             .action = VLC_INPUT_ES_ADDED,
-            .cat = i_cat,
-            .id = i_id,
-            .title = psz_text
+            .added = {
+                .title = psz_title,
+                .fmt = p_fmt,
+            }
         }
     });
 }
@@ -243,8 +243,10 @@ void input_SendEventEsDel( input_thread_t *p_input,
         .type = INPUT_EVENT_ES,
         .es = {
             .action = VLC_INPUT_ES_DELETED,
-            .cat = i_cat,
-            .id = i_id,
+            .deleted = {
+                .cat = i_cat,
+                .id = i_id,
+            },
         }
     });
 }
@@ -255,8 +257,10 @@ void input_SendEventEsSelect( input_thread_t *p_input,
         .type = INPUT_EVENT_ES,
         .es = {
             .action = VLC_INPUT_ES_SELECTED,
-            .cat = i_cat,
-            .id = i_id,
+            .selected = {
+                .cat = i_cat,
+                .id = i_id,
+            }
         }
     });
 }

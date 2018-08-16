@@ -970,7 +970,7 @@ static void EsOutESVarUpdateGeneric( es_out_t *out, const es_format_t *fmt,
         }
     }
 
-    input_SendEventEsAdd( p_input, fmt->i_cat, fmt->i_id, text.psz_string );
+    input_SendEventEsAdd( p_input, text.psz_string, fmt );
     if( EsFmtIsTeletext( fmt ) )
     {
         char psz_page[3+1];

@@ -443,9 +443,21 @@ struct vlc_input_event
                 VLC_INPUT_ES_DELETED,
                 VLC_INPUT_ES_SELECTED,
             } action;
-            enum es_format_category_e cat;
-            int id; /**< id == -1 will unselect */
-            const char *title;
+            union
+            {
+                struct {
+                    const char *title;
+                    const es_format_t *fmt;
+                } added;
+                struct {
+                    enum es_format_category_e cat;
+                    int id;
+                } deleted;
+                struct {
+                    enum es_format_category_e cat;
+                    int id; /**< id == -1 will unselect */
+                } selected;
+            };
         } es;
         /* INPUT_EVENT_TELETEXT */
         struct {

@@ -324,7 +324,7 @@ void input_LegacyEvents( input_thread_t *p_input, void *user_data,
             {
                 case VLC_INPUT_ES_ADDED:
                 {
-                    const char *varname = GetEsVarName( event->es.cat );
+                    const char *varname = GetEsVarName( event->es.added.fmt->i_cat );
                     if( varname )
                     {
                         size_t count;
@@ -334,23 +334,23 @@ void input_LegacyEvents( input_thread_t *p_input, void *user_data,
                             /* First one, we need to add the "Disable" choice */
                             VarListAdd( p_input, varname, -1, _("Disable") );
                         }
-                        VarListAdd( p_input, varname, event->es.id,
-                                    event->es.title );
+                        VarListAdd( p_input, varname, event->es.added.fmt->i_id,
+                                    event->es.added.title );
                     }
                     break;
                 }
                 case VLC_INPUT_ES_DELETED:
                 {
-                    const char *varname = GetEsVarName( event->es.cat );
+                    const char *varname = GetEsVarName( event->es.deleted.cat );
                     if( varname )
-                        VarListDel( p_input, varname, event->es.id );
+                        VarListDel( p_input, varname, event->es.deleted.id );
                     break;
                 }
                 case VLC_INPUT_ES_SELECTED:
                 {
-                    const char *varname = GetEsVarName( event->es.cat );
+                    const char *varname = GetEsVarName( event->es.selected.cat );
                     if( varname )
-                        VarListSelect( p_input, varname, event->es.id );
+                        VarListSelect( p_input, varname, event->es.selected.id );
                     break;
                 }
             }
