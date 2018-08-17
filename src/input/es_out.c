@@ -79,7 +79,6 @@ typedef struct
 struct es_out_id_t
 {
     /* ES ID */
-    int       i_id;
     es_out_pgrm_t *p_pgrm;
 
     /* */
@@ -429,7 +428,7 @@ static es_out_id_t *EsOutGetFromID( es_out_t *out, int i_id )
     }
 
     foreach_es_then_es_slaves(es)
-        if (es->i_id == i_id)
+        if (es->fmt.i_id == i_id)
             return es;
     return NULL;
 }
@@ -922,9 +921,8 @@ static vlc_tick_t EsOutGetBuffering( es_out_t *out )
     return i_delay;
 }
 
-static void EsOutESVarUpdateGeneric( es_out_t *out, int i_id,
-                                     const es_format_t *fmt, const char *psz_language,
-                                     bool b_delete )
+static void EsOutESVarUpdateGeneric( es_out_t *out, const es_format_t *fmt,
+                                     const char *psz_language, bool b_delete )
 {
     es_out_sys_t *p_sys = container_of(out, es_out_sys_t, out);
     input_thread_t    *p_input = p_sys->p_input;
@@ -935,9 +933,9 @@ static void EsOutESVarUpdateGeneric( es_out_t *out, int i_id,
     if( b_delete )
     {
         if( EsFmtIsTeletext( fmt ) )
-            input_SendEventTeletextDel( p_sys->p_input, i_id );
+            input_SendEventTeletextDel( p_sys->p_input, fmt->i_id );
 
-        input_SendEventEsDel( p_input, fmt->i_cat, i_id );
+        input_SendEventEsDel( p_input, fmt->i_cat, fmt->i_id );
         return;
     }
 
@@ -972,24 +970,23 @@ static void EsOutESVarUpdateGeneric( es_out_t *out, int i_id,
         }
     }
 
-    input_SendEventEsAdd( p_input, fmt->i_cat, i_id, text.psz_string );
+    input_SendEventEsAdd( p_input, fmt->i_cat, fmt->i_id, text.psz_string );
     if( EsFmtIsTeletext( fmt ) )
     {
         char psz_page[3+1];
         snprintf( psz_page, sizeof(psz_page), "%d%2.2x",
                   fmt->subs.teletext.i_magazine,
                   fmt->subs.teletext.i_page );
-        input_SendEventTeletextAdd( p_sys->p_input,
-                                    i_id, fmt->subs.teletext.i_magazine >= 0 ? psz_page : NULL );
+        input_SendEventTeletextAdd( p_sys->p_input, fmt->i_id,
+                                    fmt->subs.teletext.i_magazine >= 0 ? psz_page : NULL );
     }
 
     free( text.psz_string );
 }
 
-static void EsOutESVarUpdate( es_out_t *out, es_out_id_t *es,
-                              bool b_delete )
+static void EsOutESVarUpdate( es_out_t *out, es_out_id_t *es, bool b_delete )
 {
-    EsOutESVarUpdateGeneric( out, es->i_id, &es->fmt, es->psz_language, b_delete );
+    EsOutESVarUpdateGeneric( out, &es->fmt, es->psz_language, b_delete );
 }
 
 static bool EsOutIsProgramVisible( es_out_t *out, int i_group )
@@ -1561,7 +1558,6 @@ static es_out_id_t *EsOutAddSlaveLocked( es_out_t *out, const es_format_t *fmt,
     if( !es->fmt.i_original_fourcc )
         es->fmt.i_original_fourcc = es->fmt.i_codec;
 
-    es->i_id = es->fmt.i_id;
     es->i_meta_id = p_sys->i_id++; /* always incremented */
     es->b_scrambled = false;
     es->b_forced = false;
@@ -1732,7 +1728,7 @@ static void EsSelect( es_out_t *out, es_out_id_t *es )
 
     if( EsIsSelected( es ) )
     {
-        msg_Warn( p_input, "ES 0x%x is already selected", es->i_id );
+        msg_Warn( p_input, "ES 0x%x is already selected", es->fmt.i_id );
         return;
     }
 
@@ -1761,7 +1757,7 @@ static void EsSelect( es_out_t *out, es_out_id_t *es )
                 if( !var_GetBool( p_input, b_sout ? "sout-video" : "video" ) )
                 {
                     msg_Dbg( p_input, "video is disabled, not selecting ES 0x%x",
-                             es->i_id );
+                             es->fmt.i_id );
                     return;
                 }
             }
@@ -1770,7 +1766,7 @@ static void EsSelect( es_out_t *out, es_out_id_t *es )
                 if( !var_GetBool( p_input, b_sout ? "sout-audio" : "audio" ) )
                 {
                     msg_Dbg( p_input, "audio is disabled, not selecting ES 0x%x",
-                             es->i_id );
+                             es->fmt.i_id );
                     return;
                 }
             }
@@ -1779,7 +1775,7 @@ static void EsSelect( es_out_t *out, es_out_id_t *es )
                 if( !var_GetBool( p_input, b_sout ? "sout-spu" : "spu" ) )
                 {
                     msg_Dbg( p_input, "spu is disabled, not selecting ES 0x%x",
-                             es->i_id );
+                             es->fmt.i_id );
                     return;
                 }
             }
@@ -1792,8 +1788,8 @@ static void EsSelect( es_out_t *out, es_out_id_t *es )
     }
 
     /* Mark it as selected */
-    input_SendEventEsSelect( p_input, es->fmt.i_cat, es->i_id );
-    input_SendEventTeletextSelect( p_input, EsFmtIsTeletext( &es->fmt ) ? es->i_id : -1 );
+    input_SendEventEsSelect( p_input, es->fmt.i_cat, es->fmt.i_id );
+    input_SendEventTeletextSelect( p_input, EsFmtIsTeletext( &es->fmt ) ? es->fmt.i_id : -1 );
 }
 
 static void EsDeleteCCChannels( es_out_t *out, es_out_id_t *parent )
@@ -1805,7 +1801,7 @@ static void EsDeleteCCChannels( es_out_t *out, es_out_id_t *parent )
         return;
 
     es_out_id_t *spu_es = EsOutGetSelectedCat( out, SPU_ES );
-    const int i_spu_id = spu_es ? spu_es->i_id : -1;
+    const int i_spu_id = spu_es ? spu_es->fmt.i_id : -1;
 
     uint64_t i_bitmap = parent->cc.i_bitmap;
     for( int i = 0; i_bitmap > 0; i++, i_bitmap >>= 1 )
@@ -1813,7 +1809,7 @@ static void EsDeleteCCChannels( es_out_t *out, es_out_id_t *parent )
         if( (i_bitmap & 1) == 0 || !parent->cc.pp_es[i] )
             continue;
 
-        if( i_spu_id == parent->cc.pp_es[i]->i_id )
+        if( i_spu_id == parent->cc.pp_es[i]->fmt.i_id )
         {
             /* Force unselection of the CC */
             input_SendEventEsSelect( p_input, SPU_ES, -1 );
@@ -1832,7 +1828,7 @@ static void EsUnselect( es_out_t *out, es_out_id_t *es, bool b_update )
 
     if( !EsIsSelected( es ) )
     {
-        msg_Warn( p_input, "ES 0x%x is already unselected", es->i_id );
+        msg_Warn( p_input, "ES 0x%x is already unselected", es->fmt.i_id );
         return;
     }
 
@@ -1926,7 +1922,7 @@ static void EsOutSelect( es_out_t *out, es_out_id_t *es, bool b_force )
         /* user designated by ID ES have higher prio than everything */
         if ( p_esprops->i_id >= 0 )
         {
-            if( es->i_id == p_esprops->i_id )
+            if( es->fmt.i_id == p_esprops->i_id )
                 wanted_es = es;
         }
         /* then per pos */
@@ -1964,7 +1960,7 @@ static void EsOutSelect( es_out_t *out, es_out_id_t *es, bool b_force )
                     if( current_es_idx < 0 ) /* No es is currently selected by lang pref */
                     {
                         /* If demux has specified a track */
-                        if( p_esprops->i_demux_id >= 0 && es->i_id == p_esprops->i_demux_id )
+                        if( p_esprops->i_demux_id >= 0 && es->fmt.i_id == p_esprops->i_demux_id )
                         {
                             wanted_es = es;
                         }
@@ -1982,7 +1978,7 @@ static void EsOutSelect( es_out_t *out, es_out_id_t *es, bool b_force )
         }
         /* If there is no user preference, select the default subtitle
          * or adapt by ES priority */
-        else if( p_esprops->i_demux_id >= 0 && es->i_id == p_esprops->i_demux_id )
+        else if( p_esprops->i_demux_id >= 0 && es->fmt.i_id == p_esprops->i_demux_id )
         {
             wanted_es = es;
         }
@@ -2025,7 +2021,7 @@ static void EsOutCreateCCChannels( es_out_t *out, vlc_fourcc_t codec, uint64_t i
         if( (i_bitmap & 1) == 0 || (i_existingbitmap & 1) )
             continue;
 
-        msg_Dbg( p_input, "Adding CC track %d for es[%d]", 1+i, parent->i_id );
+        msg_Dbg( p_input, "Adding CC track %d for es[%d]", 1+i, parent->fmt.i_id );
 
         es_format_Init( &fmt, SPU_ES, codec );
         fmt.subs.cc.i_channel = i;
@@ -2227,7 +2223,7 @@ static void EsOutDelLocked( es_out_t *out, es_out_id_t *es )
                 if (EsIsSelected(other))
                 {
                     input_SendEventEsSelect(p_sys->p_input, es->fmt.i_cat,
-                                            other->i_id);
+                                            es->fmt.i_id);
                     if( p_esprops->p_main_es == NULL )
                         p_esprops->p_main_es = other;
                 }
@@ -2460,7 +2456,7 @@ static int EsOutVaControlLocked( es_out_t *out, int i_query, va_list args )
             if (EsIsSelected(es))
             {
                 EsDestroyDecoder(out, es);
-                *++selected_es = es->i_id;
+                *++selected_es = es->fmt.i_id;
             }
             else
                 *++selected_es = -1;
@@ -2509,13 +2505,13 @@ static int EsOutVaControlLocked( es_out_t *out, int i_query, va_list args )
         else
         {
             /*if( es->fmt.i_cat == VIDEO_ES )
-                p_sys->i_default_video_id = es->i_id;
+                p_sys->i_default_video_id = es->fmt.i_id;
             else
             if( es->fmt.i_cat == AUDIO_ES )
-                p_sys->i_default_audio_id = es->i_id;
+                p_sys->i_default_audio_id = es->fmt.i_id;
             else*/
             if( es->fmt.i_cat == SPU_ES )
-                p_sys->sub.i_demux_id = es->i_id;
+                p_sys->sub.i_demux_id = es->fmt.i_id;
         }
         return VLC_SUCCESS;
     }
@@ -3193,9 +3189,9 @@ static void EsOutUpdateInfo( es_out_t *out, es_out_id_t *es, const es_format_t *
         return;
 
     /* Add information */
-    if( es->i_meta_id != es->i_id )
+    if( es->i_meta_id != es->fmt.i_id )
         info_category_AddInfo( p_cat, _("Original ID"),
-                       "%d", es->i_id );
+                       "%d", es->fmt.i_id );
 
     const vlc_fourcc_t i_codec_fourcc = ( p_fmt_es->i_original_fourcc )?
                                p_fmt_es->i_original_fourcc : p_fmt_es->i_codec;
