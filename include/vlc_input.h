@@ -426,13 +426,24 @@ struct vlc_input_event_program {
 
 struct vlc_input_event_es {
     enum {
+
         VLC_INPUT_ES_ADDED,
         VLC_INPUT_ES_DELETED,
         VLC_INPUT_ES_UPDATED,
         VLC_INPUT_ES_SELECTED,
         VLC_INPUT_ES_UNSELECTED,
     } action;
+    /**
+     * ES track id: only valid from the event callback, unless the id is held
+     * by the user with vlc_es_Hold(). */
+    vlc_es_id_t *id;
+    /**
+     * Title of ES track, can be updated after the VLC_INPUT_ES_UPDATED event.
+     */
     const char *title;
+    /**
+     * ES track information, can be updated after the VLC_INPUT_ES_UPDATED event.
+     */
     const es_format_t *fmt;
 };
 
