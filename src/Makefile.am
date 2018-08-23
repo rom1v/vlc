@@ -78,6 +78,7 @@ pluginsinclude_HEADERS = \
 	../include/vlc_picture_pool.h \
 	../include/vlc_player.h \
 	../include/vlc_playlist.h \
+	../include/vlc_playlist_new.h \
 	../include/vlc_plugin.h \
 	../include/vlc_probe.h \
 	../include/vlc_rand.h \
@@ -224,6 +225,7 @@ libvlccore_la_SOURCES = \
 	playlist/item.c \
 	playlist/randomizer.c \
 	playlist/randomizer.h \
+	playlist/playlist.c \
 	playlist/search.c \
 	playlist/services_discovery.c \
 	playlist/renderer.c \
@@ -529,7 +531,8 @@ check_PROGRAMS = \
 	test_headers \
 	test_mrl_helpers \
 	test_arrays \
-	test_randomizer
+	test_randomizer \
+	test_playlist
 
 TESTS = $(check_PROGRAMS) check_symbols
 
@@ -554,6 +557,9 @@ test_mrl_helpers_SOURCES = test/mrl_helpers.c
 test_arrays_SOURCES = test/arrays.c
 test_randomizer_SOURCES = playlist/randomizer.c
 test_randomizer_CFLAGS = -DTEST
+test_playlist_SOURCES = playlist/playlist.c
+#test_playlist_LDADD = $(LDADD) $(LIBS_libvlccore)
+test_playlist_CFLAGS = -DTEST
 
 AM_LDFLAGS = -no-install
 LDADD = libvlccore.la \
