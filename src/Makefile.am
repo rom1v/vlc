@@ -78,6 +78,7 @@ pluginsinclude_HEADERS = \
 	../include/vlc_picture_pool.h \
 	../include/vlc_player.h \
 	../include/vlc_playlist.h \
+	../include/vlc_playlist_new.h \
 	../include/vlc_plugin.h \
 	../include/vlc_probe.h \
 	../include/vlc_rand.h \
@@ -224,6 +225,7 @@ libvlccore_la_SOURCES = \
 	playlist/item.c \
 	playlist/randomizer.c \
 	playlist/randomizer.h \
+	playlist/playlist.c \
 	playlist/search.c \
 	playlist/services_discovery.c \
 	playlist/renderer.c \
