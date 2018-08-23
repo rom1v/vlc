@@ -979,9 +979,10 @@ test_prev_across_reshuffle_loops(void)
     {
         assert(randomizer_HasPrev(&randomizer));
         vlc_playlist_item_t *item = randomizer_Prev(&randomizer);
+        assert(item);
 
         int j;
-        for (j = 3; j >= 0; j++)
+        for (j = 3; j >= 0; --j)
             if (item == actualnew[j])
                 break;
         bool in_actualnew = j != 0;
