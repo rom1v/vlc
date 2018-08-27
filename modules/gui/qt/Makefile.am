@@ -126,6 +126,14 @@ libqt_plugin_la_SOURCES = \
 	gui/qt/components/mediacenter/mlserie.cpp \
 	gui/qt/components/mediacenter/mlserie.hpp \
 	gui/qt/components/mediacenter/mlmovie.hpp \
+	gui/qt/components/mediacenter/mlalbummodel.cpp \
+	gui/qt/components/mediacenter/mlalbummodel.hpp \
+	gui/qt/components/mediacenter/mlalbumtrackmodel.cpp \
+	gui/qt/components/mediacenter/mlalbumtrackmodel.hpp \
+	gui/qt/components/mediacenter/mlartistmodel.cpp \
+	gui/qt/components/mediacenter/mlartistmodel.hpp \
+	gui/qt/components/mediacenter/mlgenremodel.cpp \
+	gui/qt/components/mediacenter/mlgenremodel.hpp \
 	gui/qt/components/playlist/views.cpp \
 	gui/qt/components/playlist/views.hpp \
 	gui/qt/components/playlist/vlc_model.cpp \
@@ -252,6 +260,10 @@ nodist_libqt_plugin_la_SOURCES = \
 	gui/qt/components/mediacenter/mlgenre.moc.cpp \
 	gui/qt/components/mediacenter/mlmovie.moc.cpp \
 	gui/qt/components/mediacenter/mlserie.moc.cpp \
+	gui/qt/components/mediacenter/mlalbummodel.moc.cpp \
+	gui/qt/components/mediacenter/mlalbumtrackmodel.moc.cpp \
+	gui/qt/components/mediacenter/mlartistmodel.moc.cpp \
+	gui/qt/components/mediacenter/mlgenremodel.moc.cpp \
 	gui/qt/components/playlist/views.moc.cpp \
 	gui/qt/components/playlist/vlc_model.moc.cpp \
 	gui/qt/components/playlist/playlist_model.moc.cpp \
