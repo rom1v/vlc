@@ -2975,7 +2975,7 @@ AS_IF([test "${enable_tiger}" != "no"], [
 ])
 
 dnl
-dnl  check if we can build the css selector engine 
+dnl  check if we can build the css selector engine
 dnl
 AC_ARG_ENABLE([css],
 AS_HELP_STRING([--enable-css], [CSS selector engine (default auto)]))
@@ -3746,7 +3746,7 @@ AC_ARG_ENABLE([qt],
 ])
 have_qt5_x11="no"
 AS_IF([test "${enable_qt}" != "no"], [
-  PKG_CHECK_MODULES([QT], [Qt5Core >= 5.9.0 Qt5Widgets Qt5Gui Qt5Svg], [
+  PKG_CHECK_MODULES([QT], [Qt5Core >= 5.9.0 Qt5Widgets Qt5Gui Qt5Quick Qt5QuickWidgets Qt5QuickControls2 Qt5Svg], [
       PKG_CHECK_MODULES([QT5_X11], [Qt5X11Extras], [
           have_qt5_x11="yes"
       ],[
@@ -4268,7 +4268,7 @@ AS_IF([test "${SYS}" = "mingw32"], [
 AM_CONDITIONAL([HAVE_MAKENSIS], [test "x$MAKENSIS" != "xno" && test "$nsis_version_ok" = "yes"])
 
 dnl
-dnl Check wether we have the PROCESS_MITIGATION_IMAGE_LOAD_POLICY 
+dnl Check wether we have the PROCESS_MITIGATION_IMAGE_LOAD_POLICY
 dnl It should only be available when building for win10, but some SDKs define it unconditionnaly
 dnl
 if test "${SYS}" = "mingw32"; then
