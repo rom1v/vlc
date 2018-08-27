@@ -31,6 +31,19 @@
 #include "components/playlist/selector.hpp"       /* PLSelector */
 #include "components/playlist/playlist_model.hpp" /* PLModel */
 #include "components/interface_widgets.hpp"       /* CoverArtLabel */
+#include "components/playlist_new/playlist_model.hpp"
+#include <vlc_playlist_new.h>
+
+#include "components/mediacenter/mcmedialib.hpp"
+
+#include "components/mediacenter/mcmedialib.hpp"
+#include "components/mediacenter/mlqmltypes.hpp"
+#include "components/mediacenter/mlalbummodel.hpp"
+#include "components/mediacenter/mlartistmodel.hpp"
+#include "components/mediacenter/mlalbumtrackmodel.hpp"
+#include "components/mediacenter/mlgenremodel.hpp"
+
+#include "components/video_overlay.hpp"
 
 #include "util/searchlineedit.hpp"
 
@@ -41,6 +54,7 @@
 #include <QSignalMapper>
 #include <QSlider>
 #include <QStackedWidget>
+#include <QtQml/QQmlContext>
 
 /**********************************************************************
  * Playlist Widget. The embedded playlist
@@ -52,38 +66,43 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
 
     setContentsMargins( 0, 3, 0, 3 );
 
-    QGridLayout *layout = new QGridLayout( this );
-    layout->setMargin( 0 ); layout->setSpacing( 0 );
+    QVBoxLayout *mainLayout = new QVBoxLayout( this );
 
-    /*******************
-     * Left            *
-     *******************/
-    /* We use a QSplitter for the left part */
-    leftSplitter = new QSplitter( Qt::Vertical, this );
+    /* Initiailisation of the MediaCenter view */
 
-    /* Source Selector */
-    selector = new PLSelector( this, p_intf );
-    leftSplitter->addWidget( selector );
+    mediacenterView = new QQuickWidget(this);
 
     /* Create a Container for the Art Label
        in order to have a beautiful resizing for the selector above it */
-    artContainer = new QStackedWidget;
+    QQmlContext *rootCtx = mediacenterView->rootContext();
+    MCMediaLib *medialib = new MCMediaLib(_p_i, mediacenterView, mediacenterView);
 
-    /* Art label */
-    CoverArtLabel *art = new CoverArtLabel( artContainer, p_intf );
-    art->setToolTip( qtr( "Double click to get media information" ) );
-    artContainer->addWidget( art );
+    rootCtx->setContextProperty( "medialib", medialib );
 
-    CONNECT( THEMIM->getIM(), artChanged( QString ),
-             art, showArtUpdate( const QString& ) );
-    CONNECT( THEMIM->getIM(), artChanged( input_item_t * ),
-             art, showArtUpdate( input_item_t * ) );
+    qRegisterMetaType<MLParentId>();
+    qmlRegisterType<MLAlbumModel>( "org.videolan.medialib", 0, 1, "MLAlbumModel" );
+    qmlRegisterType<MLArtistModel>( "org.videolan.medialib", 0, 1, "MLArtistModel" );
+    qmlRegisterType<MLAlbumTrackModel>( "org.videolan.medialib", 0, 1, "MLAlbumTrackModel" );
+    qmlRegisterType<MLGenreModel>( "org.videolan.medialib", 0, 1, "MLGenreModel" );
+    //expose base object, they aren't instanciable from QML side
+    qmlRegisterType<MLAlbum>();
+    qmlRegisterType<MLArtist>();
+    qmlRegisterType<MLAlbumTrack>();
+    qmlRegisterType<MLGenre>();
 
-    leftSplitter->addWidget( artContainer );
+    mediacenterView->setSource( QUrl ( QStringLiteral("qrc:/qml/MainInterface.qml") ) );
+    mediacenterView->setResizeMode( QQuickWidget::SizeRootObjectToView );
 
     /*******************
      * Right           *
      *******************/
+
+    QWidget* playlistWidget = new QWidget(this);
+
+    QVBoxLayout *playlistLayout = new QVBoxLayout();
+    playlistWidget->setLayout( playlistLayout );
+    playlistLayout->setMargin( 0 ); playlistLayout->setSpacing( 0 );
+
     /* Initialisation of the playlist */
     playlist_t * p_playlist = THEPL;
     PL_LOCK;
@@ -94,11 +113,11 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
 
     PLModel *model = PLModel::getPLModel( p_intf );
 
-    mainView = new StandardPLPanel( this, p_intf, p_root, selector, model );
+    mainView = new StandardPLPanel( this, p_intf, p_root, model );
 
     QHBoxLayout *topbarLayout = new QHBoxLayout();
     topbarLayout->setSpacing( 10 );
-    layout->addLayout( topbarLayout, 0, 0 );
+    playlistLayout->addLayout( topbarLayout );
 
     /* Location Bar */
     locationBar = new LocationBar( model );
@@ -130,56 +149,50 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
     CONNECT( mainView, viewChanged( const QModelIndex& ),
              this, changeView( const QModelIndex &) );
 
-    /* Connect the activation of the selector to a redefining of the PL */
-    DCONNECT( selector, categoryActivated( playlist_item_t *, bool ),
-              mainView, setRootItem( playlist_item_t *, bool ) );
     mainView->setRootItem( p_root, false );
-    CONNECT( selector, SDCategorySelected(bool), mainView, setWaiting(bool) );
+    playlistLayout->addWidget( mainView );
 
     /* */
     split = new QSplitter( this );
 
     /* Add the two sides of the QSplitter */
-    split->addWidget( leftSplitter );
-    split->addWidget( mainView );
+    split->addWidget( mediacenterView );
+    split->addWidget( playlistWidget );
 
     QList<int> sizeList;
-    sizeList << 180 << 420 ;
+    sizeList << 420 << 180;
     split->setSizes( sizeList );
     split->setStretchFactor( 0, 0 );
     split->setStretchFactor( 1, 3 );
     split->setCollapsible( 1, false );
-    leftSplitter->setMaximumWidth( 250 );
+
+    mainLayout->addWidget( split );
 
     /* In case we want to keep the splitter information */
     // components shall never write there setting to a fixed location, may infer
     // with other uses of the same component...
     getSettings()->beginGroup("Playlist");
     split->restoreState( getSettings()->value("splitterSizes").toByteArray());
-    leftSplitter->restoreState( getSettings()->value("leftSplitterGeometry").toByteArray() );
     getSettings()->endGroup();
-
-    layout->addWidget( split, 1, 0, 1, -1 );
 
     setAcceptDrops( true );
     setWindowTitle( qtr( "Playlist" ) );
     setWindowRole( "vlc-playlist" );
     setWindowIcon( QApplication::windowIcon() );
+
+    videoOverlay = new VideoOverlay(this);
 }
 
 PlaylistWidget::~PlaylistWidget()
 {
     getSettings()->beginGroup("Playlist");
     getSettings()->setValue( "splitterSizes", split->saveState() );
-    getSettings()->setValue( "leftSplitterGeometry", leftSplitter->saveState() );
     getSettings()->endGroup();
     msg_Dbg( p_intf, "Playlist Destroyed" );
 }
 
 void PlaylistWidget::dropEvent( QDropEvent *event )
 {
-    if( selector->getCurrentItemCategory() != IS_PL ) return;
-
     if( p_intf->p_sys->p_mi )
         p_intf->p_sys->p_mi->dropEventPlay( event, false );
 }
@@ -205,14 +218,12 @@ void PlaylistWidget::closeEvent( QCloseEvent *event )
 
 void PlaylistWidget::forceHide()
 {
-    leftSplitter->hide();
     mainView->hide();
     updateGeometry();
 }
 
 void PlaylistWidget::forceShow()
 {
-    leftSplitter->show();
     mainView->show();
     updateGeometry();
 }

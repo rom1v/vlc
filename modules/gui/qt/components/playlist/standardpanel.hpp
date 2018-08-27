@@ -57,8 +57,8 @@ class StandardPLPanel: public QWidget
     Q_OBJECT
 
 public:
-    StandardPLPanel( PlaylistWidget *, intf_thread_t *,
-                     playlist_item_t *, PLSelector *, VLCModel * );
+    StandardPLPanel(PlaylistWidget *, intf_thread_t *,
+                     playlist_item_t *, VLCModel * );
     virtual ~StandardPLPanel();
 
     enum { ICON_VIEW = 0,
@@ -78,8 +78,6 @@ protected:
 
 private:
     intf_thread_t *p_intf;
-
-    PLSelector  *p_selector;
 
     QTreeView         *treeView;
     PlIconView        *iconView;

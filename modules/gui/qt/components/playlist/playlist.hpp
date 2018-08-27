@@ -34,11 +34,15 @@
 
 //#include <vlc_playlist_legacy.h>
 
+#include <QtWidgets/QStackedWidget>
+
 #include <QSplitter>
 
 #include <QPushButton>
 #include <QSplitterHandle>
 #include <QMouseEvent>
+
+#include <QtQuickWidgets/QQuickWidget>
 
 class StandardPLPanel;
 class LocationBar;
@@ -47,6 +51,8 @@ class SearchLineEdit;
 class QModelIndex;
 class QStackedWidget;
 class PLSelector;
+class VideoOverlay;
+
 
 class PlaylistWidget : public QWidget
 {
@@ -59,12 +65,11 @@ public:
     void setSearchFieldFocus();
     QStackedWidget *artContainer;
     StandardPLPanel      *mainView;
+    QQuickWidget         *mediacenterView;
+    VideoOverlay         *videoOverlay;
 
 private:
-    QSplitter            *leftSplitter;
     QSplitter            *split;
-
-    PLSelector           *selector;
 
     LocationBar          *locationBar;
     SearchLineEdit       *searchEdit;

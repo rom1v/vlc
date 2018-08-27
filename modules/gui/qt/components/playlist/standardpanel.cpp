@@ -81,12 +81,10 @@ inline QModelIndex popupIndex( QAbstractItemView *view );
 StandardPLPanel::StandardPLPanel( PlaylistWidget *_parent,
                                   intf_thread_t *_p_intf,
                                   playlist_item_t *p_root,
-                                  PLSelector *_p_selector,
                                   VLCModel *_p_model )
                 : QWidget( _parent ),
                   model( _p_model ),
-                  p_intf( _p_intf ),
-                  p_selector( _p_selector )
+                  p_intf( _p_intf )
 {
     viewStack = new QStackedLayout( this );
     viewStack->setSpacing( 0 ); viewStack->setMargin( 0 );
@@ -457,35 +455,12 @@ void StandardPLPanel::toggleColumnShown( int i )
 /* Search in the playlist */
 void StandardPLPanel::search( const QString& searchText )
 {
-    int type;
-    QString name;
-    bool can_search;
-    p_selector->getCurrentItemInfos( &type, &can_search, &name );
 
-    if( type != SD_TYPE || !can_search )
-    {
-        bool flat = ( currentView == iconView ||
-                      currentView == listView ||
-                      currentView == picFlowView );
-        model->filter( searchText,
-                       flat ? currentView->rootIndex() : QModelIndex(),
-                       !flat );
-    }
 }
 
 void StandardPLPanel::searchDelayed( const QString& searchText )
 {
-    int type;
-    QString name;
-    bool can_search;
-    p_selector->getCurrentItemInfos( &type, &can_search, &name );
 
-    if( type == SD_TYPE && can_search )
-    {
-        if( !name.isEmpty() && !searchText.isEmpty() )
-            playlist_ServicesDiscoveryControl( THEPL, qtu( name ), SD_CMD_SEARCH,
-                                              qtu( searchText ) );
-    }
 }
 
 /* Set the root of the new Playlist */
@@ -554,7 +529,7 @@ bool StandardPLPanel::eventFilter ( QObject *obj, QEvent * event )
     }
     else if ( event->type() == QEvent::Paint )
     {/* Warn! Don't filter events from anything else than views ! */
-        if ( model->rowCount() == 0 && p_selector->getCurrentItemCategory() == PL_ITEM_TYPE )
+        if ( model->rowCount() == 0 )
         {
             QWidget *viewport = qobject_cast<QWidget *>( obj );
             QStylePainter painter( viewport );

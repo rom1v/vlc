@@ -36,7 +36,6 @@
 class AbstractPLItem
 {
     friend class PLItem; /* super ugly glue stuff */
-    friend class MLItem;
     friend class VLCModel;
     friend class PLModel;
     friend class MLModel;
