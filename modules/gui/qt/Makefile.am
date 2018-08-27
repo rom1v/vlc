@@ -112,6 +112,8 @@ libqt_plugin_la_SOURCES = \
 	gui/qt/components/mediacenter/mcmedialib.hpp \
 	gui/qt/components/mediacenter/mlhelper.hpp \
 	gui/qt/components/mediacenter/mlqmltypes.hpp \
+	gui/qt/components/mediacenter/mlbasemodel.cpp \
+	gui/qt/components/mediacenter/mlbasemodel.hpp \
 	gui/qt/components/playlist/views.cpp \
 	gui/qt/components/playlist/views.hpp \
 	gui/qt/components/playlist/vlc_model.cpp \
@@ -231,6 +233,7 @@ nodist_libqt_plugin_la_SOURCES = \
 	gui/qt/components/epg/EPGWidget.moc.cpp \
 	gui/qt/components/mediacenter/mcmedialib.moc.cpp \
 	gui/qt/components/mediacenter/mlqmltypes.moc.cpp \
+	gui/qt/components/mediacenter/mlbasemodel.moc.cpp \
 	gui/qt/components/playlist/views.moc.cpp \
 	gui/qt/components/playlist/vlc_model.moc.cpp \
 	gui/qt/components/playlist/playlist_model.moc.cpp \
