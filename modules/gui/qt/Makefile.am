@@ -108,6 +108,9 @@ libqt_plugin_la_SOURCES = \
 	gui/qt/components/epg/EPGView.cpp gui/qt/components/epg/EPGView.hpp \
 	gui/qt/components/epg/EPGWidget.cpp \
 	gui/qt/components/epg/EPGWidget.hpp \
+	gui/qt/components/mediacenter/mcmedialib.cpp \
+	gui/qt/components/mediacenter/mcmedialib.hpp \
+	gui/qt/components/mediacenter/mlhelper.hpp \
 	gui/qt/components/mediacenter/mlqmltypes.hpp \
 	gui/qt/components/playlist/views.cpp \
 	gui/qt/components/playlist/views.hpp \
@@ -226,6 +229,7 @@ nodist_libqt_plugin_la_SOURCES = \
 	gui/qt/components/epg/EPGRuler.moc.cpp \
 	gui/qt/components/epg/EPGView.moc.cpp \
 	gui/qt/components/epg/EPGWidget.moc.cpp \
+	gui/qt/components/mediacenter/mcmedialib.moc.cpp \
 	gui/qt/components/mediacenter/mlqmltypes.moc.cpp \
 	gui/qt/components/playlist/views.moc.cpp \
 	gui/qt/components/playlist/vlc_model.moc.cpp \
