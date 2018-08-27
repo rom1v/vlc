@@ -164,6 +164,20 @@
         <file alias="KeyNavigableListView.qml">qml/utils/KeyNavigableListView.qml</file>
         <file alias="ToolTipArea.qml">qml/utils/ToolTipArea.qml</file>
     </qresource>
+    <qresource prefix="/mediacenter">
+        <file alias="MCDisplay.qml">qml/mediacenter/MCDisplay.qml</file>
+        <file alias="Presentation.qml">qml/mediacenter/Presentation.qml</file>
+        <file alias="MusicAlbumsDisplay.qml">qml/mediacenter/MusicAlbumsDisplay.qml</file>
+        <file alias="MusicAlbumsGridExpandDelegate.qml">qml/mediacenter/MusicAlbumsGridExpandDelegate.qml</file>
+        <file alias="MusicArtistsDisplay.qml">qml/mediacenter/MusicArtistsDisplay.qml</file>
+        <file alias="MusicGenresDisplay.qml">qml/mediacenter/MusicGenresDisplay.qml</file>
+        <file alias="MusicTracksDisplay.qml">qml/mediacenter/MusicTracksDisplay.qml</file>
+        <file alias="ArtistGridView.qml">qml/mediacenter/ArtistGridView.qml</file>
+        <file alias="ArtistListView.qml">qml/mediacenter/ArtistListView.qml</file>
+        <file alias="MusicTrackListDisplay.qml">qml/mediacenter/MusicTrackListDisplay.qml</file>
+        <file alias="ArtistTopBanner.qml">qml/mediacenter/ArtistTopBanner.qml</file>
+        <file alias="ScanProgressBar.qml">qml/mediacenter/ScanProgressBar.qml</file>
+    </qresource>
     <qresource prefix="/style">
         <file alias="qmldir">qml/style/qmldir</file>
         <file alias="VLCStyle.qml">qml/style/VLCStyle.qml</file>
