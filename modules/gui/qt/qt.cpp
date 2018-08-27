@@ -574,6 +574,8 @@ static void *Thread( void *obj )
     /* Start the QApplication here */
     QVLCApp app( argc, argv );
 
+    app.setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+
     /* Set application direction to locale direction,
      * necessary for  RTL locales */
     app.setLayoutDirection(QLocale().textDirection());
