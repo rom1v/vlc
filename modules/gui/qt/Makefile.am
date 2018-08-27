@@ -494,7 +494,9 @@ libqt_plugin_la_RES = \
 	gui/qt/pixmaps/update.svg \
 	gui/qt/pixmaps/valid.svg \
 	gui/qt/pixmaps/search_clear.svg \
-	gui/qt/pixmaps/lock.svg
+	gui/qt/pixmaps/lock.svg \
+	gui/qt/qml/style/qmldir \
+	gui/qt/qml/style/VLCStyle.qml
 EXTRA_DIST += gui/qt/vlc.qrc $(libqt_plugin_la_RES)
 
 nodist_libqt_plugin_la_SOURCES += gui/qt/resources.cpp
