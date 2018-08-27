@@ -495,6 +495,24 @@ libqt_plugin_la_RES = \
 	gui/qt/pixmaps/valid.svg \
 	gui/qt/pixmaps/search_clear.svg \
 	gui/qt/pixmaps/lock.svg \
+	gui/qt/qml/utils/ToolTipArea.qml \
+	gui/qt/qml/utils/GridItem.qml \
+	gui/qt/qml/utils/ListItem.qml \
+	gui/qt/qml/utils/MultiCoverPreview.qml \
+	gui/qt/qml/utils/KeyNavigableGridView.qml \
+	gui/qt/qml/utils/KeyNavigableListView.qml \
+	gui/qt/qml/utils/SelectableDelegateModel.qml \
+	gui/qt/qml/mediacenter/ArtistListView.qml \
+	gui/qt/qml/mediacenter/ArtistTopBanner.qml \
+	gui/qt/qml/mediacenter/MCDisplay.qml \
+	gui/qt/qml/mediacenter/MusicAlbumsDisplay.qml \
+	gui/qt/qml/mediacenter/MusicAlbumsGridExpandDelegate.qml \
+	gui/qt/qml/mediacenter/MusicArtistsDisplay.qml \
+	gui/qt/qml/mediacenter/MusicGenresDisplay.qml \
+	gui/qt/qml/mediacenter/MusicTracksDisplay.qml \
+	gui/qt/qml/mediacenter/MusicTrackListDisplay.qml \
+	gui/qt/qml/mediacenter/Presentation.qml \
+	gui/qt/qml/mediacenter/ScanProgressBar.qml \
 	gui/qt/qml/style/qmldir \
 	gui/qt/qml/style/VLCStyle.qml
 EXTRA_DIST += gui/qt/vlc.qrc $(libqt_plugin_la_RES)

@@ -155,6 +155,15 @@
         <file alias="addon_red.svg">pixmaps/addons/addon_red.svg</file>
         <file alias="addon_yellow.svg">pixmaps/addons/addon_yellow.svg</file>
     </qresource>
+    <qresource prefix="/utils">
+        <file alias="MultiCoverPreview.qml">qml/utils/MultiCoverPreview.qml</file>
+        <file alias="GridItem.qml">qml/utils/GridItem.qml</file>
+        <file alias="ListItem.qml">qml/utils/ListItem.qml</file>
+        <file alias="SelectableDelegateModel.qml">qml/utils/SelectableDelegateModel.qml</file>
+        <file alias="KeyNavigableGridView.qml">qml/utils/KeyNavigableGridView.qml</file>
+        <file alias="KeyNavigableListView.qml">qml/utils/KeyNavigableListView.qml</file>
+        <file alias="ToolTipArea.qml">qml/utils/ToolTipArea.qml</file>
+    </qresource>
     <qresource prefix="/style">
         <file alias="qmldir">qml/style/qmldir</file>
         <file alias="VLCStyle.qml">qml/style/VLCStyle.qml</file>
