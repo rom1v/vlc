@@ -98,6 +98,7 @@ pluginsinclude_HEADERS = \
 	../include/vlc_tls.h \
 	../include/vlc_url.h \
 	../include/vlc_variables.h \
+	../include/vlc_vector.h \
 	../include/vlc_viewpoint.h \
 	../include/vlc_vlm.h \
 	../include/vlc_video_splitter.h \
@@ -532,7 +533,8 @@ check_PROGRAMS = \
 	test_xmlent \
 	test_headers \
 	test_mrl_helpers \
-	test_arrays
+	test_arrays \
+	test_vector
 
 TESTS = $(check_PROGRAMS) check_symbols
 
@@ -555,6 +557,7 @@ test_xmlent_SOURCES = test/xmlent.c
 test_headers_SOURCES = test/headers.c
 test_mrl_helpers_SOURCES = test/mrl_helpers.c
 test_arrays_SOURCES = test/arrays.c
+test_vector_SOURCES = test/vector.c
 
 AM_LDFLAGS = -no-install
 LDADD = libvlccore.la \
