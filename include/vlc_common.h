@@ -937,8 +937,6 @@ static inline bool mul_overflow(unsigned long long a, unsigned long long b,
 
 VLC_API char const * vlc_error( int ) VLC_USED;
 
-#include <vlc_arrays.h>
-
 /* MSB (big endian)/LSB (little endian) conversions - network order is always
  * MSB, and should be used for both network communications and files. */
 
@@ -1118,6 +1116,12 @@ static inline void *vlc_alloc(size_t count, size_t size)
     return mul_overflow(count, size, &size) ? NULL : malloc(size);
 }
 
+VLC_USED VLC_MALLOC
+static inline void *vlc_reallocarray(void *ptr, size_t count, size_t size)
+{
+    return mul_overflow(count, size, &size) ? NULL : realloc(ptr, size);
+}
+
 /*****************************************************************************
  * I18n stuff
  *****************************************************************************/
@@ -1172,6 +1176,7 @@ VLC_API const char * VLC_Compiler( void ) VLC_USED;
 /*****************************************************************************
  * Additional vlc stuff
  *****************************************************************************/
+#include "vlc_arrays.h"
 #include "vlc_messages.h"
 #include "vlc_objects.h"
 #include "vlc_variables.h"
