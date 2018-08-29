@@ -81,7 +81,7 @@ vlc_vector_growsize_(size_t value)
     return value + (value >> 1);
 }
 
-/* SIZE_MAX/2 to guarantee that multiplication by 1.5 does not overflow. */
+/* SIZE_MAX/2 to fit in ssize_t, and so that cap*1.5 does not overflow. */
 #define vlc_vector_maxcap_(pv) (SIZE_MAX / 2 / sizeof(*(pv)->data))
 
 #define vlc_vector_reserve(pv, mincap) \
