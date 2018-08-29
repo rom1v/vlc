@@ -89,13 +89,13 @@ vlc_vector_growsize_(size_t value)
     vlc_vector_reserve_internal(pv, vlc_vector_max(mincap, VLC_VECTOR_MINCAP))
 
 #define vlc_vector_reserve_internal(pv, mincap) \
-    (mincap <= (pv)->cap ? true /* nothing to do */ : \
-    (mincap > vlc_vector_maxcap_(pv) ? false /* too big */ : \
+    ((mincap <= (pv)->cap) /* nothing to do */ || \
+    ((mincap <= vlc_vector_maxcap_(pv) /* not too big */ && \
     vlc_vector_realloc_(pv, \
                         /* multiply by 1.5, force between [mincap, maxcap] */ \
                         vlc_vector_between(vlc_vector_growsize_((pv)->cap), \
                                            mincap, \
-                                           vlc_vector_maxcap_(pv)))))
+                                           vlc_vector_maxcap_(pv))))))
 
 #define vlc_vector_append(pv, item) \
     (vlc_vector_reserve(pv, (pv)->size + 1) && \
@@ -103,7 +103,7 @@ vlc_vector_growsize_(size_t value)
 
 #define vlc_vector_insert(pv, index, item) \
     (vlc_vector_reserve(pv, (pv)->size + 1) && \
-    ((index == (pv)->size) ? true : \
+    ((index == (pv)->size) || \
         (memmove(&(pv)->data[(index)+1], &(pv)->data[index], \
                 ((pv)->size - (index)) * sizeof(*(pv)->data)), true)) && \
     ((pv)->data[index] = (item), true) && \
