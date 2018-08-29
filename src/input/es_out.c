@@ -91,6 +91,7 @@ struct es_out_id_t
     es_format_t fmt;
     char        *psz_language;
     char        *psz_language_code;
+    bool         b_selected;
 
     decoder_t   *p_dec;
     decoder_t   *p_dec_record;
@@ -194,7 +195,6 @@ static void         EsOutSelect( es_out_t *, es_out_id_t *es, bool b_force );
 static void         EsOutUpdateInfo( es_out_t *, es_out_id_t *es, const es_format_t *, const vlc_meta_t * );
 static int          EsOutSetRecord(  es_out_t *, bool b_record );
 
-static bool EsIsSelected( es_out_id_t *es );
 static void EsOutSelectEs( es_out_t *out, es_out_id_t *es );
 static void EsOutDeleteInfoEs( es_out_t *, es_out_id_t *es );
 static void EsOutUnselectEs( es_out_t *out, es_out_id_t *es, bool b_update );
@@ -336,6 +336,11 @@ es_out_t *input_EsOutNew( input_thread_t *p_input, int i_rate )
 /*****************************************************************************
  *
  *****************************************************************************/
+static void EsMarkSelected(es_out_id_t *es, bool b_selected)
+{
+    es->b_selected = b_selected;
+}
+
 static void EsOutDelete( es_out_t *out )
 {
     es_out_sys_t *p_sys = container_of(out, es_out_sys_t, out);
@@ -437,7 +442,7 @@ static es_out_id_t *EsOutGetSelectedCat( es_out_t *out,
     es_out_id_t *es;
 
     foreach_es_then_es_slaves( es )
-        if( es->fmt.i_cat == cat && EsIsSelected( es ) )
+        if( es->fmt.i_cat == cat && es->b_selected )
             return es;
     return NULL;
 }
@@ -1002,7 +1007,7 @@ static void EsOutProgramSelect( es_out_t *out, es_out_pgrm_t *p_pgrm )
 
         foreach_es_then_es_slaves(es)
         {
-            if (es->p_pgrm == old && EsIsSelected(es)
+            if (es->p_pgrm == old && es->b_selected
              && p_sys->i_mode != ES_OUT_MODE_ALL)
                 EsOutUnselectEs(out, es, true);
             if (es->p_pgrm == old)
@@ -1549,6 +1554,7 @@ static es_out_id_t *EsOutAddSlaveLocked( es_out_t *out, const es_format_t *fmt,
     es->i_meta_id = p_sys->i_id++; /* always incremented */
     es->b_scrambled = false;
     es->b_forced = false;
+    es->b_selected = false;
 
     switch( es->fmt.i_cat )
     {
@@ -1642,24 +1648,6 @@ static es_out_id_t *EsOutAdd( es_out_t *out, const es_format_t *fmt )
     return es;
 }
 
-static bool EsIsSelected( es_out_id_t *es )
-{
-    if( es->p_master )
-    {
-        bool b_decode = false;
-        if( es->p_master->p_dec )
-        {
-            int i_channel = EsOutGetClosedCaptionsChannel( &es->fmt );
-            input_DecoderGetCcState( es->p_master->p_dec, es->fmt.i_codec,
-                                     i_channel, &b_decode );
-        }
-        return b_decode;
-    }
-    else
-    {
-        return es->p_dec != NULL;
-    }
-}
 static void EsOutCreateDecoder( es_out_t *out, es_out_id_t *p_es )
 {
     es_out_sys_t *p_sys = container_of(out, es_out_sys_t, out);
@@ -1714,7 +1702,7 @@ static void EsOutSelectEs( es_out_t *out, es_out_id_t *es )
     es_out_sys_t *p_sys = container_of(out, es_out_sys_t, out);
     input_thread_t *p_input = p_sys->p_input;
 
-    if( EsIsSelected( es ) )
+    if( es->b_selected )
     {
         msg_Warn( p_input, "ES 0x%x is already selected", es->i_id );
         return;
@@ -1776,6 +1764,7 @@ static void EsOutSelectEs( es_out_t *out, es_out_id_t *es )
     }
 
     /* Mark it as selected */
+    EsMarkSelected(es, true);
     input_SendEventEsSelect( p_input, &es->fmt );
 }
 
@@ -1799,6 +1788,7 @@ static void EsDeleteCCChannels( es_out_t *out, es_out_id_t *parent )
         if( i_spu_id == parent->cc.pp_es[i]->i_id )
         {
             /* Force unselection of the CC */
+            EsMarkSelected(parent->cc.pp_es[i], false);
             input_SendEventEsUnselect( p_input, &parent->cc.pp_es[i]->fmt );
         }
         EsOutDelLocked( out, parent->cc.pp_es[i] );
@@ -1813,7 +1803,7 @@ static void EsOutUnselectEs( es_out_t *out, es_out_id_t *es, bool b_update )
     es_out_sys_t *p_sys = container_of(out, es_out_sys_t, out);
     input_thread_t *p_input = p_sys->p_input;
 
-    if( !EsIsSelected( es ) )
+    if( !es->b_selected )
     {
         msg_Warn( p_input, "ES 0x%x is already unselected", es->i_id );
         return;
@@ -1834,6 +1824,8 @@ static void EsOutUnselectEs( es_out_t *out, es_out_id_t *es, bool b_update )
         EsDeleteCCChannels( out, es );
         EsOutDestroyDecoder( out, es );
     }
+
+    EsMarkSelected(es, false);
 
     if( !b_update )
         return;
@@ -1868,7 +1860,7 @@ static void EsOutSelect( es_out_t *out, es_out_id_t *es, bool b_force )
 
     if( p_sys->i_mode == ES_OUT_MODE_ALL || b_force )
     {
-        if( !EsIsSelected( es ) )
+        if( !es->b_selected )
         {
             if( b_auto_unselect )
                 EsOutUnselectEs( out, p_esprops->p_main_es, false );
@@ -1889,7 +1881,7 @@ static void EsOutSelect( es_out_t *out, es_out_id_t *es, bool b_force )
             {
                 if( atoi( prgm ) == es->p_pgrm->i_id || b_force )
                 {
-                    if( !EsIsSelected( es ) )
+                    if( !es->b_selected )
                         EsOutSelectEs( out, es );
                     break;
                 }
@@ -1974,7 +1966,7 @@ static void EsOutSelect( es_out_t *out, es_out_id_t *es, bool b_force )
                 wanted_es = es;
         }
 
-        if( wanted_es == es && !EsIsSelected( es ) )
+        if( wanted_es == es && !es->b_selected )
         {
             if( b_auto_unselect )
                 EsOutUnselectEs( out, p_esprops->p_main_es, false );
@@ -1984,7 +1976,7 @@ static void EsOutSelect( es_out_t *out, es_out_id_t *es, bool b_force )
     }
 
     /* FIXME TODO handle priority here */
-    if( p_esprops && p_sys->i_mode == ES_OUT_MODE_AUTO && EsIsSelected( es ) )
+    if( p_esprops && p_sys->i_mode == ES_OUT_MODE_AUTO && es->b_selected )
         p_esprops->p_main_es = es;
 }
 
@@ -2205,7 +2197,7 @@ static void EsOutDelLocked( es_out_t *out, es_out_id_t *es )
         foreach_es_then_es_slaves(other)
             if( es->fmt.i_cat == other->fmt.i_cat )
             {
-                if (EsIsSelected(other))
+                if (other->b_selected)
                 {
                     input_SendEventEsSelect(p_sys->p_input, &es->fmt);
                     if( p_esprops->p_main_es == NULL )
@@ -2261,12 +2253,12 @@ static int EsOutVaControlLocked( es_out_t *out, int i_query, va_list args )
     {
         es_out_id_t *es = va_arg( args, es_out_id_t * );
         bool b = va_arg( args, int );
-        if( b && !EsIsSelected( es ) )
+        if( b && !es->b_selected )
         {
             EsOutSelectEs( out, es );
-            return EsIsSelected( es ) ? VLC_SUCCESS : VLC_EGENERIC;
+            return es->b_selected ? VLC_SUCCESS : VLC_EGENERIC;
         }
-        else if( !b && EsIsSelected( es ) )
+        else if( !b && es->b_selected )
         {
             EsOutUnselectEs( out, es, es->p_pgrm == p_sys->p_pgrm );
             return VLC_SUCCESS;
@@ -2279,7 +2271,7 @@ static int EsOutVaControlLocked( es_out_t *out, int i_query, va_list args )
         es_out_id_t *es = va_arg( args, es_out_id_t * );
         bool *pb = va_arg( args, bool * );
 
-        *pb = EsIsSelected( es );
+        *pb = es->b_selected;
         return VLC_SUCCESS;
     }
 
@@ -2334,7 +2326,7 @@ static int EsOutVaControlLocked( es_out_t *out, int i_query, va_list args )
 
         foreach_es_then_es_slaves(es)
         {
-            if (EsIsSelected(es))
+            if (es->b_selected)
                 EsOutUnselectEs(out, es, es->p_pgrm == p_sys->p_pgrm);
         }
         foreach_es_then_es_slaves(es)
@@ -2385,7 +2377,7 @@ static int EsOutVaControlLocked( es_out_t *out, int i_query, va_list args )
             }
             else if (i_cat == UNKNOWN_ES || other->fmt.i_cat == i_cat)
             {
-                if (EsIsSelected(other))
+                if (other->b_selected)
                 {
                     if (i_query == ES_OUT_RESTART_ES)
                     {
@@ -2410,7 +2402,7 @@ static int EsOutVaControlLocked( es_out_t *out, int i_query, va_list args )
         {
             if (es == other)
             {
-                if (EsIsSelected(other))
+                if (other->b_selected)
                 {
                     EsOutUnselectEs(out, other, other->p_pgrm == p_sys->p_pgrm);
                     return VLC_SUCCESS;
@@ -2437,7 +2429,7 @@ static int EsOutVaControlLocked( es_out_t *out, int i_query, va_list args )
 
         foreach_es_then_es_slaves(es)
         {
-            if (EsIsSelected(es))
+            if (es->b_selected)
             {
                 EsOutDestroyDecoder(out, es);
                 *++selected_es = es->i_id;
