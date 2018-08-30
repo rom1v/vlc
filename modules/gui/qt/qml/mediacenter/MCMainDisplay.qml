@@ -1,9 +1,7 @@
 /*****************************************************************************
- * MainInterface.qml : Main QML component displaying the mediacenter, the
- *     playlist and the sources selection
+ * MCMainDisplay.qml: Main media center display
  ****************************************************************************
  * Copyright (C) 2006-2011 VideoLAN and AUTHORS
- * $Id$
  *
  * Authors: Maël Kervella <dev@maelkervella.eu>
  *
@@ -24,22 +22,35 @@
 
 import QtQuick 2.0
 import QtQuick.Layouts 1.3
-import QtQuick.Controls 1.4 as QC14
-import QtQuick.Controls 2.2
 
 import "qrc:///style/"
+import "qrc:///qml/"
 
-import "qrc:///mediacenter/" as MC
+ColumnLayout {
+    id: column
+    anchors.fill: parent
 
-Rectangle {
-    color: VLCStyle.bgColor
+    Layout.minimumWidth: VLCStyle.minWidthMediacenter
+    spacing: 0
 
-    MC.MCMainDisplay {
+    /* Source selection*/
+    BannerSources {
+        id: sourcesBanner
+
+        height: VLCStyle.heightBar_normal
+        Layout.preferredHeight: height
+        Layout.minimumHeight: height
+        Layout.maximumHeight: height
+        Layout.fillWidth: true
+
+        need_toggleView_button: true
     }
 
-    MC.ScanProgressBar {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
+    /* MediaCenter */
+    MCMusicDisplay {
+        id: mcDisplay
+
+        Layout.fillHeight: true
+        Layout.fillWidth: true
     }
 }
