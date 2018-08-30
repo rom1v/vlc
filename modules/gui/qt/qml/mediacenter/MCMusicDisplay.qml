@@ -1,8 +1,7 @@
 /*****************************************************************************
- * MCDisplay.qml : The main component to display the mediacenter
+ * MCMusicDisplay.qml : The music component of the mediacenter
  ****************************************************************************
  * Copyright (C) 2006-2011 VideoLAN and AUTHORS
- * $Id$
  *
  * Authors: Maël Kervella <dev@maelkervella.eu>
  *

@@ -55,7 +55,7 @@ Rectangle {
         }
 
         /* MediaCenter */
-        MC.MCDisplay {
+        MC.MCMusicDisplay {
             id: mcDisplay
 
             Layout.fillHeight: true
