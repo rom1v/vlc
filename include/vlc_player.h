@@ -46,9 +46,10 @@ struct vlc_player_program
 
 struct vlc_player_es
 {
-    es_format_t fmt;
-    bool        selected;
-    char *      title;
+    vlc_es_id_t *          id;
+    const char *        title;
+    const es_format_t * fmt;
+    bool                selected;
 };
 
 struct vlc_player_cbs
@@ -137,91 +138,60 @@ vlc_player_IsRecordable(vlc_player_t *player)
     return vlc_player_GetCapabilities(player) & VLC_INPUT_CAPABILITIES_RECORDABLE;
 }
 
-VLC_API void
-vlc_player_es_FreeArray(struct vlc_player_es *eses, size_t count);
+VLC_API size_t
+vlc_player_GetEsCount(vlc_player_t *player, enum es_format_category_e i_cat);
 
-static inline void
-vlc_player_es_Free(struct vlc_player_es *es)
-{
-    vlc_player_es_FreeArray(es, 1);
-}
+VLC_API const struct vlc_player_es *
+vlc_player_GetEsAt(vlc_player_t *player, enum es_format_category_e i_cat,
+                   size_t index);
 
-VLC_API ssize_t
-vlc_player_GetEsesArray(vlc_player_t *player, enum es_format_category_e cat,
-                        int id, bool selected_only,
-                        struct vlc_player_es **eses);
+VLC_API const struct vlc_player_es *
+vlc_player_GetEs(vlc_player_t *player, vlc_es_id_t *id);
 
-static inline ssize_t
-vlc_player_GetVideoEsesArray(vlc_player_t *player, struct vlc_player_es **eses)
+static inline size_t
+vlc_player_GetVideoEsCount(vlc_player_t *player)
 {
-    return vlc_player_GetEsesArray(player, VIDEO_ES, -1, false, eses);
-}
-static inline ssize_t
-vlc_player_GetSelectedVideoEsesArray(vlc_player_t *player,
-                                     struct vlc_player_es **eses)
-{
-    return vlc_player_GetEsesArray(player, VIDEO_ES, -1, true, eses);
-}
-static inline struct vlc_player_es *
-vlc_player_GetVideoEs(vlc_player_t *player, int id)
-{
-    assert(id != -1);
-    struct vlc_player_es *es;
-    ssize_t ret = vlc_player_GetEsesArray(player, VIDEO_ES, id, false, &es);
-    if (ret < 0)
-        return NULL;
-    assert(ret == 1);
-    return es;
+    return vlc_player_GetEsCount(player, VIDEO_ES);
 }
 
-static inline ssize_t
-vlc_player_GetAudioEsesArray(vlc_player_t *player, struct vlc_player_es **eses)
+static inline const struct vlc_player_es *
+vlc_player_GetVideoEsAt(vlc_player_t *player, size_t index)
 {
-    return vlc_player_GetEsesArray(player, AUDIO_ES, -1, false, eses);
-}
-static inline ssize_t
-vlc_player_GetSelectedAudioEsesArray(vlc_player_t *player,
-                                     struct vlc_player_es **eses)
-{
-    return vlc_player_GetEsesArray(player, AUDIO_ES, -1, true, eses);
-}
-static inline struct vlc_player_es *
-vlc_player_GetAudioEs(vlc_player_t *player, int id)
-{
-    assert(id != -1);
-    struct vlc_player_es *es;
-    ssize_t ret = vlc_player_GetEsesArray(player, AUDIO_ES, id, false, &es);
-    if (ret < 0)
-        return NULL;
-    assert(ret == 1);
-    return es;
+    return vlc_player_GetEsAt(player, VIDEO_ES, index);
 }
 
-static inline ssize_t
-vlc_player_GetSpuEsesArray(vlc_player_t *player, struct vlc_player_es **eses)
+static inline size_t
+vlc_player_GetAudioEsCount(vlc_player_t *player)
 {
-    return vlc_player_GetEsesArray(player, SPU_ES, -1, false, eses);
+    return vlc_player_GetEsCount(player, AUDIO_ES);
 }
-static inline ssize_t
-vlc_player_GetSelectedSpuEsesArray(vlc_player_t *player,
-                                   struct vlc_player_es **eses)
+
+static inline const struct vlc_player_es *
+vlc_player_GetAudioEsAt(vlc_player_t *player, size_t index)
 {
-    return vlc_player_GetEsesArray(player, SPU_ES, -1, true, eses);
+    return vlc_player_GetEsAt(player, AUDIO_ES, index);
 }
-static inline struct vlc_player_es *
-vlc_player_GetSpuEs(vlc_player_t *player, int id)
+
+static inline size_t
+vlc_player_GetSpuEsCount(vlc_player_t *player)
 {
-    assert(id >= 0);
-    struct vlc_player_es *es;
-    ssize_t ret = vlc_player_GetEsesArray(player, SPU_ES, id, false, &es);
-    if (ret <= 0)
-        return NULL;
-    assert(ret == 1);
-    return es;
+    return vlc_player_GetEsCount(player, SPU_ES);
+}
+
+static inline const struct vlc_player_es *
+vlc_player_GetSpuEsAt(vlc_player_t *player, size_t index)
+{
+    return vlc_player_GetEsAt(player, SPU_ES, index);
 }
 
 VLC_API void
-vlc_player_SetEs(vlc_player_t *player, enum es_format_category_e cat, int id);
+vlc_player_SelectEs(vlc_player_t *player, const struct vlc_player_es *es);
+
+VLC_API void
+vlc_player_UnselectEs(vlc_player_t *player, const struct vlc_player_es *es);
+
+VLC_API void
+vlc_player_RestartEs(vlc_player_t *player, const struct vlc_player_es *es);
 
 void
 vlc_player_program_FreeArray(struct vlc_player_program *prgms, size_t count);

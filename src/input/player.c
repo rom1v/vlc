@@ -28,6 +28,7 @@
 #include <vlc_aout.h>
 #include <vlc_renderer_discovery.h>
 #include <vlc_list.h>
+#include <vlc_vector.h>
 
 #include "libvlc.h"
 #include "input_internal.h"
@@ -49,9 +50,17 @@ struct vlc_player_program_owner
 struct vlc_player_es_owner
 {
     struct vlc_player_es    p;
-    struct vlc_list         node;
-    char                    title[];
+    es_format_t             fmt;
+    char *                  title;
 };
+
+static inline const struct vlc_player_es_owner *
+vlc_player_es_get_owner(const struct vlc_player_es *es)
+{
+    return container_of(es, struct vlc_player_es_owner, p);
+}
+
+typedef struct VLC_VECTOR(struct vlc_player_es_owner *) vlc_player_es_vector;
 
 struct vlc_player_input
 {
@@ -69,7 +78,9 @@ struct vlc_player_input
     vlc_tick_t          position_date;
 
     struct vlc_list     programs;
-    struct vlc_list     eses;
+    vlc_player_es_vector video_es_vector;
+    vlc_player_es_vector audio_es_vector;
+    vlc_player_es_vector spu_es_vector;
 
     struct vlc_list     node;
 };
@@ -121,29 +132,47 @@ vlc_player_priv_locked(vlc_player_t *player)
     return priv;
 }
 
-static void *
-garbage_collector(void *data)
+static struct vlc_player_input *
+vlc_player_input_Create(vlc_player_t *player, input_item_t *item)
 {
-    vlc_player_t *player = data;
     struct vlc_player_private *priv = vlc_player_priv(player);
-    struct vlc_player_input *input;
+    struct vlc_player_input *input = malloc(sizeof(*input));
+    if (!input)
+        return NULL;
 
-    vlc_mutex_lock(&priv->lock);
-    while (priv->garbage.running || priv->garbage.wait_count > 0)
+    input->player = player;
+    input->started = false;
+
+    input->state = INIT_S;
+    input->rate = 1.f;
+    input->capabilities = 0;
+    input->length = input->position_ms =
+    input->position_date = VLC_TICK_INVALID;
+    input->position_percent = 0.f;
+
+    vlc_vector_init(&input->video_es_vector);
+    vlc_vector_init(&input->audio_es_vector);
+    vlc_vector_init(&input->spu_es_vector);
+
+    input->thread = input_Create(player, input_thread_events, input, item,
+                                 NULL, priv->resource, priv->renderer);
+    if (!input->thread)
     {
-        while (priv->garbage.running
-            && vlc_list_is_empty(&priv->garbage.inputs))
-            vlc_cond_wait(&priv->garbage.cond, &priv->lock);
-
-        vlc_list_foreach(input, &priv->garbage.inputs, node)
-        {
-            input_Close(input->thread);
-            free(input);
-            priv->garbage.wait_count--;
-        }
+        free(input);
+        return NULL;
     }
-    vlc_mutex_unlock(&priv->lock);
-    return NULL;
+    return input;
+}
+
+static void
+vlc_player_input_Destroy(struct vlc_player_input *input)
+{
+    vlc_vector_clear(&input->video_es_vector);
+    vlc_vector_clear(&input->audio_es_vector);
+    vlc_vector_clear(&input->spu_es_vector);
+
+    input_Close(input->thread);
+    free(input);
 }
 
 static int
@@ -169,38 +198,31 @@ vlc_player_input_StopAndClose(struct vlc_player_input *input)
         priv->garbage.wait_count++;
     }
     else
-    {
-        input_Close(input->thread);
-        free(input);
-    }
+        vlc_player_input_Destroy(input);
 }
 
-static struct vlc_player_input *
-vlc_player_input_Create(vlc_player_t *player, input_item_t *item)
+static void *
+garbage_collector(void *data)
 {
+    vlc_player_t *player = data;
     struct vlc_player_private *priv = vlc_player_priv(player);
-    struct vlc_player_input *input = malloc(sizeof(*input));
-    if (!input)
-        return NULL;
+    struct vlc_player_input *input;
 
-    input->player = player;
-    input->started = false;
-
-    input->state = INIT_S;
-    input->rate = 1.f;
-    input->capabilities = 0;
-    input->length = input->position_ms =
-    input->position_date = VLC_TICK_INVALID;
-    input->position_percent = 0.f;
-
-    input->thread = input_Create(player, input_thread_events, input, item,
-                                 NULL, priv->resource, priv->renderer);
-    if (!input->thread)
+    vlc_mutex_lock(&priv->lock);
+    while (priv->garbage.running || priv->garbage.wait_count > 0)
     {
-        free(input);
-        return NULL;
+        while (priv->garbage.running
+            && vlc_list_is_empty(&priv->garbage.inputs))
+            vlc_cond_wait(&priv->garbage.cond, &priv->lock);
+
+        vlc_list_foreach(input, &priv->garbage.inputs, node)
+        {
+            vlc_player_input_Destroy(input);
+            priv->garbage.wait_count--;
+        }
     }
-    return input;
+    vlc_mutex_unlock(&priv->lock);
+    return NULL;
 }
 
 static void
@@ -381,165 +403,216 @@ vlc_player_input_handle_program_event(struct vlc_player_input *input,
     }
 }
 
-static void
-vlc_player_es_clean(struct vlc_player_es *es)
+static inline vlc_player_es_vector *
+vlc_player_input_get_es_vector(struct vlc_player_input *input,
+                               enum es_format_category_e i_cat)
 {
-    es_format_Clean(&es->fmt);
-    free(es->title);
-}
-
-static int
-vlc_player_es_copy(struct vlc_player_es *dst, const struct vlc_player_es *src)
-{
-    int ret = es_format_Copy(&dst->fmt, &src->fmt);
-    if (ret != VLC_SUCCESS)
-        return ret;
-
-    dst->title = strdup(src->title);
-    if (!dst->title)
+    switch (i_cat)
     {
-        es_format_Clean(&dst->fmt);
-        return VLC_ENOMEM;
+        case VIDEO_ES:
+            return &input->video_es_vector;
+        case AUDIO_ES:
+            return &input->audio_es_vector;
+        case SPU_ES:
+            return &input->spu_es_vector;
+        default:
+            return NULL;
     }
-    return VLC_SUCCESS;
 }
 
-void
-vlc_player_es_FreeArray(struct vlc_player_es *eses, size_t count)
+static struct vlc_player_es_owner *
+vlc_player_es_vector_find_by_id(vlc_player_es_vector *vec, vlc_es_id_t *id)
 {
-    for (size_t i = 0; i < count; ++i)
-        vlc_player_es_clean(&eses[i]);
-    free(eses);
+     struct vlc_player_es_owner *es;
+
+     vlc_vector_foreach(es, vec)
+        if (es->p.id == id)
+            return es;
+    return NULL;
 }
 
-ssize_t
-vlc_player_GetEsesArray(vlc_player_t *player, enum es_format_category_e cat,
-                        int id, bool selected_only,
-                        struct vlc_player_es **eses_out)
+size_t
+vlc_player_GetEsCount(vlc_player_t *player, enum es_format_category_e cat)
 {
-#define ES_DROP(es, cat, id, selected_only) \
-    (selected_only && !es->p.selected) || \
-    (cat != UNKNOWN_ES && cat != es->p.fmt.i_cat) || \
-    (id >= 0 && id != es->p.fmt.i_id)
-
     struct vlc_player_private *priv = vlc_player_priv_locked(player);
     struct vlc_player_input *input = priv->input;
-    size_t count = 0, i = 0;
-    struct vlc_player_es_owner *it;
+    assert(input);
 
-    vlc_list_foreach(it, &input->eses, node)
-    {
-        if (ES_DROP(it, cat, id, selected_only))
-            continue;
-        count++;
-    }
-
-    if (count == 0)
+    vlc_player_es_vector *vec = vlc_player_input_get_es_vector(input, cat);
+    if (vec)
         return 0;
+    return vec->size;
+}
 
-    struct vlc_player_es *eses = vlc_alloc(count, sizeof(*eses));
-    if (!eses)
-        return -1;
+const struct vlc_player_es *
+vlc_player_GetEsAt(vlc_player_t *player, enum es_format_category_e cat,
+                   size_t index)
+{
+    struct vlc_player_private *priv = vlc_player_priv_locked(player);
+    struct vlc_player_input *input = priv->input;
+    assert(input);
 
-    vlc_list_foreach(it, &input->eses, node)
-    {
-        if (ES_DROP(it, cat, id, selected_only))
-            continue;
-        if (vlc_player_es_copy(&eses[i], &it->p) != VLC_SUCCESS)
-        {
-            vlc_player_es_FreeArray(eses, i);
-            return -1;
-        }
-        i++;
-    }
-    assert(count == i);
-    *eses_out = eses;
-    return count;
-#undef ES_DROP
+    vlc_player_es_vector *vec = vlc_player_input_get_es_vector(input, cat);
+    if (!vec)
+        return NULL;
+    assert(index < vec->size);
+    return &vec->data[index]->p;
+}
+
+const struct vlc_player_es *
+vlc_player_GetEs(vlc_player_t *player, vlc_es_id_t *id)
+{
+    struct vlc_player_private *priv = vlc_player_priv_locked(player);
+    struct vlc_player_input *input = priv->input;
+    assert(input);
+
+    vlc_player_es_vector *vec =
+        vlc_player_input_get_es_vector(input, vlc_es_id_GetCat(id));
+    if (!vec)
+        return NULL;
+    struct vlc_player_es_owner *es = vlc_player_es_vector_find_by_id(vec, id);
+    return es ? &es->p : NULL;
 }
 
 void
-vlc_player_SetEs(vlc_player_t *player, enum es_format_category_e cat, int id)
+vlc_player_SelectEs(vlc_player_t *player, const struct vlc_player_es *es)
 {
     struct vlc_player_private *priv = vlc_player_priv_locked(player);
     assert(priv->input != NULL);
 
-    if (id < 0)
-        id = -cat;
-    input_ControlPushHelper(priv->input->thread, INPUT_CONTROL_SET_ES,
-                            &(vlc_value_t) { .i_int = id });
+    input_ControlPushEsHelper(priv->input->thread, INPUT_CONTROL_SET_ES,
+                              es->id);
+}
+
+void
+vlc_player_UnselectEs(vlc_player_t *player, const struct vlc_player_es *es)
+{
+    struct vlc_player_private *priv = vlc_player_priv_locked(player);
+    assert(priv->input != NULL);
+
+    input_ControlPushEsHelper(priv->input->thread, INPUT_CONTROL_UNSET_ES,
+                              es->id);
+}
+
+void
+vlc_player_RestartEs(vlc_player_t *player, const struct vlc_player_es *es)
+{
+    struct vlc_player_private *priv = vlc_player_priv_locked(player);
+    assert(priv->input != NULL);
+
+    input_ControlPushEsHelper(priv->input->thread, INPUT_CONTROL_RESTART_ES,
+                              es->id);
+}
+
+static struct vlc_player_es_owner *
+vlc_player_es_create(vlc_es_id_t *id, const char *title, const es_format_t *fmt)
+{
+    struct vlc_player_es_owner *es = malloc(sizeof(*es));
+    if (!es)
+        return NULL;
+    es->title = strdup(title);
+    if (!es->title)
+    {
+        free(es);
+        return NULL;
+    }
+
+    int ret = es_format_Copy(&es->fmt, fmt);
+    if (ret != VLC_SUCCESS)
+    {
+        free(es->title);
+        free(es);
+        return NULL;
+    }
+    es->p.id = vlc_es_id_Hold(id);
+    es->p.fmt = &es->fmt;
+    es->p.title = es->title;
+    es->p.selected = false;
+
+    return es;
+}
+
+static void
+vlc_player_es_destroy(struct vlc_player_es_owner *es)
+{
+    es_format_Clean(&es->fmt);
+    vlc_es_id_Release(es->p.id);
+    free(es->title);
+    free(es);
+}
+
+static int
+vlc_player_es_update(struct vlc_player_es_owner *es, const char *title,
+                     const es_format_t *fmt)
+{
+    if (strcmp(title, es->title) != 0)
+    {
+        char *dup = strdup(title);
+        if (!dup)
+            return VLC_ENOMEM;
+        free(es->title);
+        es->title = dup;
+    }
+
+    es_format_t fmtdup;
+    int ret = es_format_Copy(&fmtdup, fmt);
+    if (ret != VLC_SUCCESS)
+        return ret;
+
+    es_format_Clean(&es->fmt);
+    es->fmt = fmtdup;
+    return VLC_SUCCESS;
 }
 
 static int
 vlc_player_input_handle_es_event(struct vlc_player_input *input,
-                                 const struct vlc_input_event *event)
+                                 const struct vlc_input_event_es *ev)
 {
-    assert(event->type == INPUT_EVENT_ES);
-    struct vlc_player_es_owner *es;
+    assert(ev->id && ev->title && ev->fmt);
 
-    switch (event->es.action)
+    struct vlc_player_es_owner *es;
+    vlc_player_es_vector *vec =
+        vlc_player_input_get_es_vector(input, ev->fmt->i_cat);
+
+    if (!vec)
+        return VLC_EGENERIC; /* UNKNOWN_ES or DATA_ES not handled */
+
+    switch (ev->action)
     {
         case VLC_INPUT_ES_ADDED:
-        {
-            size_t title_len = strlen(event->es.title);
-            es = malloc(sizeof(*es) + title_len + 1);
+            es = vlc_player_es_create(ev->id, ev->title, ev->fmt);
             if (!es)
                 return VLC_ENOMEM;
 
-            int ret = es_format_Copy(&es->p.fmt, event->es.fmt);
-            if (ret != VLC_SUCCESS)
+            if (!vlc_vector_push(vec, es))
             {
-                free(es);
-                return ret;
+                vlc_player_es_destroy(es);
+                return VLC_ENOMEM;
             }
-            strcpy(es->title, event->es.title);
-            es->title[title_len] = 0;
-            es->p.title = es->title;
-            es->p.selected = false;
-            vlc_list_append(&es->node, &input->eses);
             return VLC_SUCCESS;
-        }
         case VLC_INPUT_ES_DELETED:
-            vlc_list_foreach(es, &input->eses, node)
-                if (event->es.fmt->i_id == es->p.fmt.i_id)
-                {
-                    vlc_list_remove(&es->node);
-                    es_format_Clean(&es->p.fmt);
-                    free(es);
-                    return VLC_SUCCESS;
-                }
-            return VLC_EGENERIC;
-#if 0
-        case VLC_INPUT_ES_UPDATED:
-            vlc_list_foreach(es, &input->eses, node)
-                if (event->es.updated.fmt->i_id == es->p.fmt.i_id)
-                {
-                    es_format_Clean(&es->p.fmt);
-                    return es_format_Copy(&es->p.fmt, event->es.updated.fmt);
-                }
-            return VLC_EGENERIC;
-#endif
-        case VLC_INPUT_ES_SELECTED:
-            if (event->es.fmt->i_id < 0)
+            es = vlc_player_es_vector_find_by_id(vec, ev->id);
+            if (es)
             {
-                vlc_list_foreach(es, &input->eses, node)
-                    if (event->es.fmt->i_cat == es->p.fmt.i_cat)
-                        es->p.selected = false;
+                vlc_vector_remove(vec, es);
+                vlc_player_es_destroy(es);
                 return VLC_SUCCESS;
             }
-            else
+            return VLC_EGENERIC;
+        case VLC_INPUT_ES_UPDATED:
+            es = vlc_player_es_vector_find_by_id(vec, ev->id);
+            if (es)
+                return vlc_player_es_update(es, ev->title, ev->fmt);
+            return VLC_EGENERIC;
+        case VLC_INPUT_ES_SELECTED:
+        case VLC_INPUT_ES_UNSELECTED:
+            es = vlc_player_es_vector_find_by_id(vec, ev->id);
+            if (es)
             {
-                int ret = VLC_EGENERIC;
-                vlc_list_foreach(es, &input->eses, node)
-                    if (event->es.fmt->i_id == es->p.fmt.i_id)
-                    {
-                        es->p.selected = true;
-                        ret = VLC_SUCCESS;
-                    }
-                    else
-                        es->p.selected = false;
-                return ret;
+                es->p.selected = ev->action == VLC_INPUT_ES_SELECTED;
+                return VLC_SUCCESS;
             }
+            return VLC_EGENERIC;
         default:
             vlc_assert_unreachable();
     }
@@ -604,7 +677,7 @@ input_thread_events(input_thread_t *input_thread, void *user_data,
                 skip_event = true;
             break;
         case INPUT_EVENT_ES:
-            if (vlc_player_input_handle_es_event(input, event))
+            if (vlc_player_input_handle_es_event(input, &event->es))
                 skip_event = true;
             break;
         case INPUT_EVENT_DEAD:
