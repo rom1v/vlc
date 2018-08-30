@@ -70,28 +70,32 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
 
     /* Initiailisation of the MediaCenter view */
 
-    mediacenterView = new QQuickWidget(this);
 
     /* Create a Container for the Art Label
        in order to have a beautiful resizing for the selector above it */
-    QQmlContext *rootCtx = mediacenterView->rootContext();
-    MCMediaLib *medialib = new MCMediaLib(_p_i, mediacenterView, mediacenterView);
+    if ( vlc_ml_instance_get( p_intf ) != nullptr )
+    {
+        mediacenterView = new QQuickWidget(this);
+        QQmlContext *rootCtx = mediacenterView->rootContext();
 
-    rootCtx->setContextProperty( "medialib", medialib );
+        MCMediaLib *medialib = new MCMediaLib(_p_i, mediacenterView, mediacenterView);
+        rootCtx->setContextProperty( "medialib", medialib );
+        qRegisterMetaType<MLParentId>();
+        qmlRegisterType<MLAlbumModel>( "org.videolan.medialib", 0, 1, "MLAlbumModel" );
+        qmlRegisterType<MLArtistModel>( "org.videolan.medialib", 0, 1, "MLArtistModel" );
+        qmlRegisterType<MLAlbumTrackModel>( "org.videolan.medialib", 0, 1, "MLAlbumTrackModel" );
+        qmlRegisterType<MLGenreModel>( "org.videolan.medialib", 0, 1, "MLGenreModel" );
+        //expose base object, they aren't instanciable from QML side
+        qmlRegisterType<MLAlbum>();
+        qmlRegisterType<MLArtist>();
+        qmlRegisterType<MLAlbumTrack>();
+        qmlRegisterType<MLGenre>();
 
-    qRegisterMetaType<MLParentId>();
-    qmlRegisterType<MLAlbumModel>( "org.videolan.medialib", 0, 1, "MLAlbumModel" );
-    qmlRegisterType<MLArtistModel>( "org.videolan.medialib", 0, 1, "MLArtistModel" );
-    qmlRegisterType<MLAlbumTrackModel>( "org.videolan.medialib", 0, 1, "MLAlbumTrackModel" );
-    qmlRegisterType<MLGenreModel>( "org.videolan.medialib", 0, 1, "MLGenreModel" );
-    //expose base object, they aren't instanciable from QML side
-    qmlRegisterType<MLAlbum>();
-    qmlRegisterType<MLArtist>();
-    qmlRegisterType<MLAlbumTrack>();
-    qmlRegisterType<MLGenre>();
-
-    mediacenterView->setSource( QUrl ( QStringLiteral("qrc:/qml/MainInterface.qml") ) );
-    mediacenterView->setResizeMode( QQuickWidget::SizeRootObjectToView );
+        mediacenterView->setSource( QUrl ( QStringLiteral("qrc:/qml/MainInterface.qml") ) );
+        mediacenterView->setResizeMode( QQuickWidget::SizeRootObjectToView );
+    }
+    else
+        mediacenterView = nullptr;
 
     /*******************
      * Right           *
@@ -153,27 +157,42 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
     playlistLayout->addWidget( mainView );
 
     /* */
+
     split = new QSplitter( this );
 
-    /* Add the two sides of the QSplitter */
-    split->addWidget( mediacenterView );
-    split->addWidget( playlistWidget );
+    QTreeView *view = new QTreeView(this);
+    vlc_playlist_t *raw_playlist = vlc_intf_GetMainPlaylist(p_intf);
+    Q_ASSERT(raw_playlist);
+    auto *playlist = new vlc::playlist::Playlist(raw_playlist, this);
+    auto *newModel = new vlc::playlist::PlaylistModel(playlist, this);
+    view->setModel(newModel);
 
-    QList<int> sizeList;
-    sizeList << 420 << 180;
-    split->setSizes( sizeList );
-    split->setStretchFactor( 0, 0 );
-    split->setStretchFactor( 1, 3 );
-    split->setCollapsible( 1, false );
+    if ( mediacenterView )
+    {
+        split = new QSplitter( this );
 
-    mainLayout->addWidget( split );
+        /* Add the two sides of the QSplitter */
+        split->addWidget( mediacenterView );
+        split->addWidget( playlistWidget );
 
-    /* In case we want to keep the splitter information */
-    // components shall never write there setting to a fixed location, may infer
-    // with other uses of the same component...
-    getSettings()->beginGroup("Playlist");
-    split->restoreState( getSettings()->value("splitterSizes").toByteArray());
-    getSettings()->endGroup();
+        QList<int> sizeList;
+        sizeList << 420 << 180;
+        split->setSizes( sizeList );
+        split->setStretchFactor( 0, 0 );
+        split->setStretchFactor( 1, 3 );
+        split->setCollapsible( 1, false );
+
+        mainLayout->addWidget( split );
+
+        /* In case we want to keep the splitter information */
+        // components shall never write there setting to a fixed location, may infer
+        // with other uses of the same component...
+        getSettings()->beginGroup("Playlist");
+        split->restoreState( getSettings()->value("splitterSizes").toByteArray());
+        getSettings()->endGroup();
+    }
+    else
+        mainLayout->addWidget( playlistWidget );
 
     setAcceptDrops( true );
     setWindowTitle( qtr( "Playlist" ) );
@@ -185,9 +204,12 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
 
 PlaylistWidget::~PlaylistWidget()
 {
-    getSettings()->beginGroup("Playlist");
-    getSettings()->setValue( "splitterSizes", split->saveState() );
-    getSettings()->endGroup();
+    if ( split )
+    {
+        getSettings()->beginGroup("Playlist");
+        getSettings()->setValue( "splitterSizes", split->saveState() );
+        getSettings()->endGroup();
+    }
     msg_Dbg( p_intf, "Playlist Destroyed" );
 }
 
