@@ -29,6 +29,7 @@ Rectangle {
     id: pLBannerSources
 
     property bool need_toggleView_button: false
+    property int selectedIndex: 0
 
     // Triggered when the toogleView button is selected
     function toggleView () {
@@ -58,16 +59,19 @@ Rectangle {
                 displayText: "Music"
                 pic: "qrc:///sidebar/music.svg"
                 name: "music"
+                index: 0
             }
             ListElement {
                 displayText: "Video"
                 pic: "qrc:///sidebar/movie.svg"
                 name: "video"
+                index: 1
             }
             ListElement {
                 displayText: "Network"
                 pic: "qrc:///sidebar/screen.svg"
                 name: "network"
+                index: 2
             }
         }
 
@@ -81,8 +85,10 @@ Rectangle {
                 checkable: true
                 padding: 0
                 onClicked: {
-                    checked =  !control.checked
-                    //FIXME
+                    checked =  !control.checked;
+                    pLBannerSources.selectedIndex = Qt.binding(function() {
+                        return model.index
+                    });
                 }
 
                 background: Rectangle {

@@ -1,5 +1,5 @@
 /*****************************************************************************
- * MCMainDisplay.qml: Main media center display
+ * MCVideoDisplay.qml : The video component of the mediacenter
  ****************************************************************************
  * Copyright (C) 2006-2011 VideoLAN and AUTHORS
  *
@@ -21,43 +21,8 @@
  *****************************************************************************/
 
 import QtQuick 2.0
-import QtQuick.Layouts 1.3
 
-import "qrc:///style/"
-import "qrc:///qml/"
-
-ColumnLayout {
-    id: column
+Rectangle {
+    color: "red"
     anchors.fill: parent
-
-    Layout.minimumWidth: VLCStyle.minWidthMediacenter
-    spacing: 0
-
-    /* Source selection*/
-    BannerSources {
-        id: sourcesBanner
-
-        height: VLCStyle.heightBar_normal
-        Layout.preferredHeight: height
-        Layout.minimumHeight: height
-        Layout.maximumHeight: height
-        Layout.fillWidth: true
-
-        need_toggleView_button: true
-    }
-
-    StackLayout {
-        currentIndex: sourcesBanner.selectedIndex
-        /* MediaCenter */
-        MCMusicDisplay {
-            id: mcDisplay
-
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-        }
-        MCVideoDisplay {
-        }
-        MCNetworkDisplay {
-        }
-    }
 }
