@@ -34,7 +34,7 @@ import "qrc:///style/"
 Rectangle {
     id: root
     property var model: []
-    color: VLCStyle.bgColorAlt
+    color: VLCStyle.bgColor
 
     RowLayout {
         spacing: VLCStyle.margin_xsmall

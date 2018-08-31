@@ -42,10 +42,6 @@ Item {
 
     property int currentArtistIndex: -1
 
-    MLAlbumModel {
-        id: albumModel
-        ml: medialib
-    }
 
     Utils.SelectableDelegateModel {
         id: artistModel
@@ -70,7 +66,8 @@ Item {
 
                 onItemClicked: {
                     currentArtistIndex = index
-                    albumModel.parentId = model.id
+                    albumDisplay.parentId = model.id
+
                     artistModel.updateSelection( modifier , artistList.currentIndex, index)
                     artistList.currentIndex = index
                 }
@@ -166,19 +163,18 @@ Item {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
 
-                model: albumModel
-
-                topBanner: ArtistTopBanner{
-                    width: parent.width
+                //placehoder header
+                header: Item {
                     height: VLCStyle.heightBar_xlarge
-                    artist: artistModel.items.get(currentArtistIndex).model
                 }
 
+                model: albumModel
+
                 ArtistTopBanner {
-                    z: 2
-                    width: parent.width
-                    height: VLCStyle.heightBar_large
-                    visible: albumDisplay.contentY >= -height
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: (albumDisplay.contentY <= VLCStyle.heightBar_large) ? VLCStyle.heightBar_xlarge : VLCStyle.heightBar_large
+                    y: (albumDisplay.contentY <= VLCStyle.heightBar_large) ? (-albumDisplay.contentY) : 0
                     artist: artistModel.items.get(currentArtistIndex).model
                 }
             }

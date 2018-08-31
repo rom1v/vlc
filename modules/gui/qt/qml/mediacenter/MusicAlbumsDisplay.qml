@@ -32,9 +32,8 @@ import "qrc:///utils/" as Utils
 import "qrc:///style/"
 
 Item {
-    id: viewLoader
+    id: root
 
-    property alias model: delegateModel.model
     property var sortModel: ListModel {
         ListElement { text: qsTr("Alphabetic asc");  criteria: "title"; desc: Qt.AscendingOrder}
         ListElement { text: qsTr("Alphabetic desc"); criteria: "title"; desc: Qt.DescendingOrder }
@@ -46,32 +45,65 @@ Item {
         ListElement { text: qsTr("Artist desc");     criteria: "main_artist"; desc: Qt.DescendingOrder }
     }
 
-    function switchExpandItem(index) {
-        if ( index === footer_overlay.currentId && footer_overlay.state !== "HIDDEN" )
-            footer_overlay.state = "HIDDEN"
-        else {
-            footer_overlay.state = "VISIBLE"
-            footer_overlay.model = delegateModel.items.get(index).model
-        }
-        footer_overlay.currentId = index
+    property alias model: delegateModel.model
+    property alias parentId: delegateModel.parentId
+    onParentIdChanged: {
+        gridView_id.expandIndex = -1
+    }
+
+    function _switchExpandItem(index) {
+        if (gridView_id.expandIndex === index)
+            gridView_id.expandIndex = -1
+        else
+            gridView_id.expandIndex = index
+    }
+
+    function _gridItemClicked( keys, modifier, index ) {
+        _switchExpandItem( index )
+        delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
+        gridView_id.currentIndex = index
     }
 
     property int contentY: 0
-
-    property Component topBanner: Item {}
+    property alias header: gridView_id.header
 
     Utils.SelectableDelegateModel {
         id: delegateModel
+        property alias parentId: albumModelId.parentId
 
         model: MLAlbumModel {
+            id: albumModelId
             ml: medialib
         }
 
         delegate: Package {
             id: element
 
+
             Utils.GridItem {
-                Package.name: "grid"
+                Package.name: "gridTop"
+
+                width: VLCStyle.cover_normal
+                height: VLCStyle.cover_normal + VLCStyle.fontHeight_normal + VLCStyle.margin_xsmall
+                anchors.leftMargin: 20
+
+                color: element.DelegateModel.inSelected ? VLCStyle.hoverBgColor : "transparent"
+
+                cover : Image {
+                    source: model.cover || VLCStyle.noArtCover
+                }
+
+                name : model.title || "Unknown title"
+                date : model.release_year !== 0 ? model.release_year : ""
+                infos : model.duration + " - " + model.nb_tracks + " tracks"
+
+                onItemClicked : root._gridItemClicked(keys, modifier, model.index)
+                onPlayClicked: medialib.addAndPlay( model.id )
+                onAddToPlaylistClicked : medialib.addToPlaylist( model.id );
+            }
+
+            Utils.GridItem {
+                Package.name: "gridBottom"
 
                 width: VLCStyle.cover_normal
                 height: VLCStyle.cover_normal + VLCStyle.fontHeight_normal + VLCStyle.margin_xsmall
@@ -83,29 +115,17 @@ Item {
                 }
 
                 name : model.title || "Unknown title"
-                date : model.release_year !== "0" ? model.release_year : ""
+                date : model.release_year !== 0 ? model.release_year : ""
                 infos : model.duration + " - " + model.nb_tracks + " tracks"
 
-                onItemClicked : function(keys, modifier){
-                    console.log('Clicked on details : '+model.title)
-                    switchExpandItem(index)
-                    delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
-                    gridView_id.currentIndex = index
-                }
-                onPlayClicked: {
-                    console.log('Clicked on play : '+model.title);
-                    medialib.addAndPlay( model.id )
-
-                }
-                onAddToPlaylistClicked : {
-                    console.log('Clicked on addToPlaylist : '+model.title);
-                    medialib.addToPlaylist( model.id );
-                }
+                onItemClicked : root._gridItemClicked(keys, modifier, model.index)
+                onPlayClicked: medialib.addAndPlay( model.id )
+                onAddToPlaylistClicked : medialib.addToPlaylist( model.id );
             }
 
             Utils.ListItem {
                 Package.name: "list"
-                width: parent.width
+                width: root.width
                 height: VLCStyle.icon_normal
 
                 color: element.DelegateModel.inSelected ? VLCStyle.hoverBgColor : "transparent"
@@ -120,7 +140,7 @@ Item {
 
                 onItemClicked : {
                     console.log('Clicked on details : '+model.title)
-                    switchExpandItem(index)
+                    //switchExpandItem(index)
                     delegateModel.updateSelection( modifier, listView_id.currentIndex, index )
                     listView_id.currentIndex = index
                 }
@@ -136,7 +156,7 @@ Item {
         }
     }
 
-    Utils.KeyNavigableGridView {
+    Utils.ExpandGridView {
         id: gridView_id
 
         anchors.fill: parent
@@ -148,23 +168,56 @@ Item {
         cellWidth: VLCStyle.cover_normal + VLCStyle.margin_small
         cellHeight: VLCStyle.cover_normal + VLCStyle.fontHeight_normal + VLCStyle.margin_small
 
-        header: topBanner
-        model: delegateModel.parts.grid
+        header: root.header
+
+        expandDelegate:  Rectangle {
+            id: expandDelegateId
+            height: VLCStyle.heightBar_xxlarge
+            width: root.width
+            property int currentId: -1
+            property alias model : albumDetail.model
+
+            //this mouse area intecepts mouse events
+            MouseArea {
+                anchors.fill    : parent
+                propagateComposedEvents: false
+                onClicked: {}
+                onDoubleClicked: {}
+
+
+                MusicAlbumsGridExpandDelegate {
+                    id: albumDetail
+                    anchors.fill: parent
+                    visible: true
+                    model: delegateModel.items.get(gridView_id.expandIndex).model
+                }
+            }
+            Connections {
+                target: gridView_id
+                onExpandIndexChanged: {
+                    if (gridView_id.expandIndex !== -1)
+                        expandDelegateId.model = delegateModel.items.get(gridView_id.expandIndex).model
+                }
+            }
+        }
+
+        modelTop: delegateModel.parts.gridTop
+        modelBottom: delegateModel.parts.gridBottom
         modelCount: delegateModel.items.count
 
         onContentYChanged:{
-            viewLoader.contentY = contentY
+            root.contentY = contentY
         }
 
         Keys.onReturnPressed: {
-            switchExpandItem(currentIndex)
+            _switchExpandItem(currentIndex)
         }
 
         onSelectAll: delegateModel.selectAll()
         onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
     }
 
-/* ListView */
+    /* ListView */
     Utils.KeyNavigableListView {
         id: listView_id
 
@@ -172,77 +225,23 @@ Item {
         focus: !medialib.gridView
         enabled: !medialib.gridView
 
+        header: root.header
+
         spacing: VLCStyle.margin_xxxsmall
         anchors.fill: parent
 
-        header: topBanner
         model: delegateModel.parts.list
         modelCount: delegateModel.items.count
 
         onContentYChanged:{
-            viewLoader.contentY = contentY
+            root.contentY = contentY
         }
 
-        Keys.onReturnPressed: {
-            switchExpandItem(currentIndex)
-        }
+        //Keys.onReturnPressed: {
+        //    _switchExpandItem(currentIndex)
+        //}
 
         onSelectAll: delegateModel.selectAll()
         onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
-    }
-
-    Rectangle {
-        id: footer_overlay
-        height: VLCStyle.heightBar_xlarge
-        width: parent.width
-        anchors.bottom: parent.bottom
-        z: 0
-        property alias model: albumview.model
-        property int currentId: -1
-
-        //this mouse area intecepts mouse events
-        MouseArea {
-            anchors.fill    : parent
-            propagateComposedEvents: false
-            onClicked: {}
-            onDoubleClicked: {}
-
-            MusicAlbumsGridExpandDelegate {
-                id: albumview
-                anchors.fill: parent
-                visible: true
-            }
-        }
-
-        states: [
-            State {
-                name: "HIDDEN"
-                PropertyChanges { target: footer_overlay; height: 0; visible: false }
-            },
-            State {
-                name: "VISIBLE"
-                PropertyChanges { target: footer_overlay; height: VLCStyle.heightBar_xxlarge; visible: true}
-            }
-        ]
-        state: "HIDDEN"
-
-        transitions: [
-            Transition {
-                from: "HIDDEN"
-                to: "VISIBLE"
-                SequentialAnimation {
-                    PropertyAnimation { properties: "visible" }
-                    NumberAnimation { properties: "height"; easing.type: Easing.InOutQuad }
-                }
-            },
-            Transition {
-                from: "VISIBLE"
-                to: "HIDDEN"
-                SequentialAnimation {
-                    NumberAnimation { properties: "height"; easing.type: Easing.InOutQuad }
-                    PropertyAnimation { properties: "visible" }
-                }
-            }
-        ]
     }
 }
