@@ -47,10 +47,16 @@ Flickable {
     property alias delegateTop: top.delegate
     property alias delegateBottom: bottom.delegate
 
+    property Component header: undefined
+    //property bool _headerActive: header !== undefined
+    property int _headerBottomY: header ? headerLoader.height : 0
+    property bool _headerVisible:  header && contentY < headerLoader.height
+
     property int modelCount: 0
 
     // number of elements per row, for internal computation
     property int _colCount: Math.floor(width / cellWidth)
+    property int topContentY: contentY
     property int bottomContentY: contentY + height
 
     /// the id of the item to be expanded
@@ -62,7 +68,7 @@ Flickable {
     property Component expandDelegate: Item{}
 
     function _rowOfIndex( index ) {
-        return Math.floor(index / _colCount)
+        return Math.ceil( (index + 1) / _colCount) - 1
     }
 
     onExpandIndexChanged: _updateExpandPosition()
@@ -70,7 +76,7 @@ Flickable {
     function _updateExpandPosition() {
         if (_oldExpandIndex === -1 || _rowOfIndex(_oldExpandIndex) < _rowOfIndex(expandIndex))
             root.contentY = Math.max(0, root.contentY - expandItem.height)
-        expandItem.y = cellHeight * (Math.floor(expandIndex / _colCount) + 1)
+        expandItem.y = cellHeight * (Math.floor(expandIndex / _colCount) + 1) + _headerBottomY
         if ( expandItem.bottomY > root.bottomContentY )
             root.contentY = Math.min(expandItem.bottomY - root.height + _marginBottom, contentHeight - height)
         _oldExpandIndex = expandIndex
@@ -79,22 +85,50 @@ Flickable {
 
     states: [
         State {
-            name: "-expand"
-            when: !_expandActive
+            name: "-header-expand"
+            when: !header && !_expandActive
             PropertyChanges {
                 target: root
+                topContentY: contentY
                 contentHeight: cellHeight * Math.ceil(modelCount / _colCount)
             }
         },
         State {
-            name: "+expand"
-            when: _expandActive
+            name: "-header+expand"
+            when: !header &&_expandActive
             PropertyChanges {
                 target: root
+                topContentY: contentY
                 contentHeight: cellHeight * Math.ceil(modelCount / _colCount) + expandItem.height
+            }
+        },
+        State {
+            name: "+header-expand"
+            when: header && !_expandActive
+            PropertyChanges {
+                target: root
+                topContentY: contentY - headerLoader.height
+                contentHeight: cellHeight * Math.ceil(modelCount / _colCount) + headerLoader.height
+            }
+        },
+        State {
+            name: "+header+expand"
+            when: header && _expandActive
+            PropertyChanges {
+                target: root
+                topContentY: contentY - headerLoader.height
+                contentHeight: cellHeight * Math.ceil(modelCount / _colCount) + expandItem.height + headerLoader.height
             }
         }
     ]
+
+    Loader {
+        id: headerLoader
+        sourceComponent: root.header
+        y: 0
+        anchors.left: parent.left
+        anchors.right: parent.right
+    }
 
     //Gridview visible above the expanded item
     GridView {
@@ -115,11 +149,12 @@ Flickable {
                 when: !_expandActive || expandItem.y >= root.bottomContentY
                 PropertyChanges {
                     target: top
-                    y: root.contentY
-                    height: root.height
+                    y: (!_headerVisible) ? root.contentY : _headerBottomY
+
+                    height: (!_headerVisible) ? root.height : (root.height - (_headerBottomY - root.contentY) )
                     //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts
                     //OriginY, seems to change randomly on grid resize
-                    contentY: root.contentY
+                    contentY: (!_headerVisible) ? root.topContentY  : 0
                     visible: true
                     enabled: true
                 }
@@ -130,11 +165,11 @@ Flickable {
                 when: _expandActive && (expandItem.y >= root.contentY) && (expandItem.y < root.bottomContentY)
                 PropertyChanges {
                     target: top
-                    y: root.contentY
-                    height: expandItem.y - root.contentY
+                    y: (!_headerVisible) ? root.contentY : _headerBottomY
+                    height: expandItem.y - root.topContentY
                     //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts
                     //OriginY, seems to change randomly on grid resize
-                    contentY: root.contentY
+                    contentY: (!_headerVisible) ? root.topContentY : 0
                     visible: true
                     enabled: true
                 }
@@ -180,7 +215,7 @@ Flickable {
 
         property bool hidden: !_expandActive
                               || (expandItem.bottomY >= root.bottomContentY)
-                              || _rowOfIndex(expandIndex) === _rowOfIndex(modelCount)
+                              || _rowOfIndex(expandIndex) === _rowOfIndex(modelCount - 1)
         states: [
             //expand is visible and above the view
             State {
@@ -194,7 +229,7 @@ Flickable {
                     y: root.contentY
                     //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts.
                     //OriginY, seems to change randomly on grid resize
-                    contentY: expandItem.y + root.contentY - expandItem.bottomY
+                    contentY: expandItem.y + root.contentY - expandItem.bottomY - _headerBottomY
                 }
             },
             //expand is visible and within the view
@@ -205,11 +240,11 @@ Flickable {
                     target: bottom
                     enabled: true
                     visible: true
-                    height: Math.min(root.bottomContentY - expandItem.bottomY, cellHeight * ( _rowOfIndex(modelCount) - _rowOfIndex(expandIndex)))
+                    height: Math.min(root.bottomContentY - expandItem.bottomY, cellHeight * ( _rowOfIndex(modelCount - 1) - _rowOfIndex(expandIndex)))
                     y: expandItem.bottomY
                     //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts.
                     //OriginY, seems to change randomly on grid resize
-                    contentY: expandItem.y
+                    contentY: expandItem.y - _headerBottomY
                 }
             },
             //expand is inactive or below the view
@@ -231,17 +266,17 @@ Flickable {
     //from KeyNavigableGridView
     function _yOfIndex( index ) {
         if (index > (_rowOfIndex( expandIndex ) + 1) * _colCount)
-            return _rowOfIndex(currentIndex) * cellHeight + expandItem.height
+            return _rowOfIndex(currentIndex) * cellHeight + expandItem.height + _headerBottomY
         else
-            return _rowOfIndex(currentIndex) * cellHeight
+            return _rowOfIndex(currentIndex) * cellHeight + _headerBottomY
     }
 
     //index of the item currently selected on keyboard
     property int currentIndex: 0
     onCurrentIndexChanged: {
-        if ( _yOfIndex(currentIndex) + cellHeight > root.bottomContentY )
+        if ( _yOfIndex(currentIndex) + cellHeight > root.bottomContentY)
             root.contentY = Math.min(_yOfIndex(currentIndex) + cellHeight - root.height + _marginBottom, contentHeight - height)
-        else if (_yOfIndex(currentIndex) < root.contentY)
+        else if (_yOfIndex(currentIndex)  < root.contentY)
             root.contentY = Math.max(_yOfIndex(currentIndex) - _marginTop, 0)
     }
     //signals emitted when selected items is updated from keyboard
