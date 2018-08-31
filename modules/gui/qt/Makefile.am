@@ -501,6 +501,7 @@ libqt_plugin_la_RES = \
 	gui/qt/qml/MainInterface.qml \
 	gui/qt/qml/BannerSources.qml \
 	gui/qt/qml/utils/ToolTipArea.qml \
+	gui/qt/qml/utils/ExpandGridView.qml \
 	gui/qt/qml/utils/GridItem.qml \
 	gui/qt/qml/utils/ListItem.qml \
 	gui/qt/qml/utils/MultiCoverPreview.qml \
