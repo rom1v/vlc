@@ -74,20 +74,23 @@
 /**
  * Initialize an empty vector.
  */
-#define vlc_vector_init(pv) \
+#define vlc_vector_init(pv) (void) \
+( \
     /* cannot be implemened as do-while(0), called from vlc_vector_clear() */ \
-    (void) \
-    ((pv)->cap = 0, \
-     (pv)->size = 0, \
-     (pv)->data = NULL)
+    (pv)->cap = 0, \
+    (pv)->size = 0, \
+    (pv)->data = NULL \
+)
 
 /**
  * Clear a vector, and release any associated resources.
  */
 #define vlc_vector_clear(pv) \
+( \
     /* cannot be implemened as do-while(0), called from vlc_vector_resize() */ \
-    (free((pv)->data), \
-     vlc_vector_init(pv))
+    free((pv)->data), \
+    vlc_vector_init(pv) \
+)
 
 /**
  * The minimal allocation size, in number of items.
@@ -151,10 +154,15 @@ vlc_vector_enforce_size_t_(size_t value)
  * \retval false on allocation failure (the vector is left untouched)
  */
 #define vlc_vector_realloc_(pv, newsize) \
-    (vlc_vector_reallocarray_((void **) &(pv)->data, newsize, \
-                              sizeof(*(pv)->data)) && \
-    ((pv)->cap = (newsize), \
-     (pv)->size = vlc_vector_min_((pv)->size, newsize), true))
+( \
+    vlc_vector_reallocarray_((void **) &(pv)->data, newsize, \
+                             sizeof(*(pv)->data)) && \
+    ( \
+        (pv)->cap = (newsize), \
+        (pv)->size = vlc_vector_min_((pv)->size, newsize), \
+        true \
+    ) \
+)
 
 /**
  * Resize the vector to `newsize` exactly.
@@ -167,9 +175,13 @@ vlc_vector_enforce_size_t_(size_t value)
  * \retval false on allocation failure (the vector is left untouched)
  */
 #define vlc_vector_resize(pv, newsize) \
-    (((pv)->cap == (newsize)) /* nothing to do */ || \
-    ((newsize) > 0 ? vlc_vector_realloc_(pv, newsize) \
-                   : (vlc_vector_clear(pv), true)))
+( \
+    (pv)->cap == (newsize) /* nothing to do */ || \
+    ( \
+        (newsize) > 0 ? vlc_vector_realloc_(pv, newsize) \
+                      : (vlc_vector_clear(pv), true) \
+    ) \
+)
 
 static inline size_t
 vlc_vector_growsize_(size_t value)
@@ -195,13 +207,17 @@ vlc_vector_growsize_(size_t value)
                                  vlc_vector_max_(mincap, VLC_VECTOR_MINCAP_))
 
 #define vlc_vector_reserve_internal_(pv, mincap) \
-    ((mincap) <= (pv)->cap /* nothing to do */ || \
-    ((mincap) <= vlc_vector_max_cap_(pv) /* not too big */ && \
-    vlc_vector_realloc_(pv, \
+( \
+    (mincap) <= (pv)->cap /* nothing to do */ || \
+    ( \
+        (mincap) <= vlc_vector_max_cap_(pv) /* not too big */ && \
+        vlc_vector_realloc_(pv, \
                         /* multiply by 1.5, force between [mincap, maxcap] */ \
                         vlc_vector_between_(vlc_vector_growsize_((pv)->cap), \
                                             mincap, \
-                                            vlc_vector_max_cap_(pv)))))
+                                            vlc_vector_max_cap_(pv))) \
+    ) \
+)
 
 /**
  * Resize the vector so that its capacity equals its actual size.
@@ -219,10 +235,12 @@ vlc_vector_growsize_(size_t value)
  *
  * \param pv a pointer to the vector
  */
-#define vlc_vector_autoshrink(pv) \
-    ((pv)->cap <= VLC_VECTOR_MINCAP_ /* do not shrink to tiny length */ || \
-     (pv)->cap < vlc_vector_growsize_((pv)->size+5) /* no need to shrink */ || \
-     (vlc_vector_resize(pv, vlc_vector_max_((pv)->size+5, VLC_VECTOR_MINCAP_))))
+#define vlc_vector_autoshrink(pv) (void) \
+( \
+    (pv)->cap <= VLC_VECTOR_MINCAP_ /* do not shrink to tiny length */ || \
+    (pv)->cap < vlc_vector_growsize_((pv)->size+5) /* no need to shrink */ || \
+    vlc_vector_resize(pv, vlc_vector_max_((pv)->size+5, VLC_VECTOR_MINCAP_)) \
+)
 
 /**
  * Push an item at the end of the vector.
@@ -235,8 +253,13 @@ vlc_vector_growsize_(size_t value)
  * \retval false on allocation failure (the vector is left untouched)
  */
 #define vlc_vector_push(pv, item) \
-    (vlc_vector_reserve(pv, (pv)->size + 1) && \
-    ((pv)->data[(pv)->size++] = (item), true))
+( \
+    vlc_vector_reserve(pv, (pv)->size + 1) && \
+    ( \
+        (pv)->data[(pv)->size++] = (item), \
+        true \
+    ) \
+)
 
 /**
  * Insert an item at the given index.
@@ -253,13 +276,23 @@ vlc_vector_growsize_(size_t value)
     vlc_vector_insert_internal_(pv, vlc_vector_enforce_size_t_(index), item)
 
 #define vlc_vector_insert_internal_(pv, index, item) \
-    (vlc_vector_reserve(pv, (pv)->size + 1) && \
-    (((index) == (pv)->size) || \
-        (memmove(&(pv)->data[(index) + 1], \
-                 &(pv)->data[index], \
-                 ((pv)->size - (index)) * sizeof(*(pv)->data)), true)) && \
-    ((pv)->data[index] = (item), \
-     (pv)->size++, true))
+( \
+    vlc_vector_reserve(pv, (pv)->size + 1) && \
+    ( \
+        (index) == (pv)->size || \
+        ( \
+            memmove(&(pv)->data[(index) + 1], \
+                    &(pv)->data[index], \
+                    ((pv)->size - (index)) * sizeof(*(pv)->data)), \
+            true \
+        ) \
+    ) && \
+    ( \
+        (pv)->data[index] = (item), \
+        (pv)->size++, \
+        true \
+    ) \
+)
 
 /**
  * Insert `count` items at the given index.
@@ -281,14 +314,24 @@ vlc_vector_growsize_(size_t value)
     (void) ((a) == (b)) /* warn on type mismatch */
 
 #define vlc_vector_insert_all_internal_(pv, index, items, count) \
-    (vlc_vector_check_same_ptr_type_((pv)->data, items), \
-    (vlc_vector_reserve(pv, (pv)->size + (count)) && \
-    (((index) == (pv)->size) || \
-        (memmove(&(pv)->data[(index) + (count)], \
-                 &(pv)->data[index], \
-                 ((pv)->size - (index)) * sizeof(*(pv)->data)), true)) && \
-    (memcpy(&(pv)->data[index], items, (count) * sizeof(*(pv)->data)), \
-     (pv)->size += (count), true)))
+( \
+    vlc_vector_check_same_ptr_type_((pv)->data, items), \
+    vlc_vector_reserve(pv, (pv)->size + (count)) && \
+    ( \
+        (index) == (pv)->size || \
+        ( \
+            memmove(&(pv)->data[(index) + (count)], \
+                    &(pv)->data[index], \
+                    ((pv)->size - (index)) * sizeof(*(pv)->data)), \
+            true \
+        ) \
+    ) && \
+    ( \
+        memcpy(&(pv)->data[index], items, (count) * sizeof(*(pv)->data)), \
+        (pv)->size += (count), \
+        true \
+    ) \
+)
 
 /**
  * Remove a slice of items, without shrinking the array.
