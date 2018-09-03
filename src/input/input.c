@@ -237,6 +237,7 @@ void input_SetTime( input_thread_t *p_input, vlc_tick_t i_time, bool b_fast )
 
     param.time.i_val = i_time;
     param.time.b_fast_seek = b_fast;
+    param.time.b_absolute = true;
     input_ControlPush( p_input, INPUT_CONTROL_SET_TIME, &param );
 }
 
@@ -246,6 +247,7 @@ void input_SetPosition( input_thread_t *p_input, float f_position, bool b_fast )
 
     param.pos.f_val = f_position;
     param.pos.b_fast_seek = b_fast;
+    param.pos.b_absolute = true;
     input_ControlPush( p_input, INPUT_CONTROL_SET_POSITION, &param );
 }
 
@@ -1835,9 +1837,20 @@ static void ControlInsertDemuxFilter( input_thread_t* p_input, const char* psz_d
         msg_Dbg(p_input, "Failed to create demux filter %s", psz_demux_chain);
 }
 
-static int DemuxSetPosition(input_thread_t *p_input, double pos, bool fast)
+static int DemuxSetPosition(input_thread_t *p_input, double pos, bool fast,
+                            bool absolute)
 {
     input_thread_private_t *priv = input_priv(p_input);
+
+    if (!absolute)
+    {
+        double current_pos;
+        int ret = demux_Control(priv->master->p_demux, DEMUX_GET_POSITION,
+                                &current_pos);
+        if (ret != VLC_SUCCESS)
+            return ret;
+        pos += current_pos;
+    }
 
     if (pos < 0.f )
         pos = 0.f;
@@ -1847,9 +1860,20 @@ static int DemuxSetPosition(input_thread_t *p_input, double pos, bool fast)
                          pos, !fast);
 }
 
-static int DemuxSetTime(input_thread_t *p_input, vlc_tick_t time, bool fast)
+static int DemuxSetTime(input_thread_t *p_input, vlc_tick_t time, bool fast,
+                        bool absolute)
 {
     input_thread_private_t *priv = input_priv(p_input);
+
+    if (!absolute)
+    {
+        vlc_tick_t current_time;
+        int ret = demux_Control(priv->master->p_demux, DEMUX_GET_TIME,
+                                &current_time);
+        if (ret != VLC_SUCCESS)
+            return ret;
+        time += current_time;
+    }
 
     if (time < 0)
         time = 0;
@@ -1877,10 +1901,12 @@ static bool Control( input_thread_t *p_input,
             /* Reset the decoders states and clock sync (before calling the demuxer */
             es_out_Control( priv->p_es_out, ES_OUT_RESET_PCR );
             if (DemuxSetPosition(p_input, (double) param.pos.f_val,
-                                param.pos.b_fast_seek))
+                                 param.pos.b_fast_seek, param.pos.b_absolute))
             {
                 msg_Err( p_input, "INPUT_CONTROL_SET_POSITION "
-                         "%2.1f%% failed", (double)(param.pos.f_val * 100.f) );
+                         "%s%2.1f%% failed",
+                         param.pos.b_absolute ? "@" : param.pos.f_val >= 0 ? "+" : "",
+                         (double)(param.pos.f_val * 100.f) );
             }
             else
             {
@@ -1905,8 +1931,8 @@ static bool Control( input_thread_t *p_input,
             /* Reset the decoders states and clock sync (before calling the demuxer */
             es_out_Control( priv->p_es_out, ES_OUT_RESET_PCR );
 
-            i_ret = DemuxSetTime(p_input, param.time.i_val, 
-                                 param.time.b_fast_seek);
+            i_ret = DemuxSetTime(p_input, param.time.i_val,
+                                 param.time.b_fast_seek, param.time.b_absolute);
             if( i_ret )
             {
                 int64_t i_length;
@@ -1916,13 +1942,16 @@ static bool Control( input_thread_t *p_input,
                                     DEMUX_GET_LENGTH, &i_length ) && i_length > 0 )
                 {
                     double f_pos = (double)param.time.i_val / (double)i_length;
-                    i_ret = DemuxSetPosition(p_input, f_pos, param.time.b_fast_seek);
+                    i_ret = DemuxSetPosition(p_input, f_pos, param.time.b_fast_seek,
+                                             param.time.b_absolute);
                 }
             }
             if( i_ret )
             {
-                msg_Warn( p_input, "INPUT_CONTROL_SET_TIME %"PRId64
-                         " failed or not possible", param.time.i_val );
+                msg_Warn( p_input, "INPUT_CONTROL_SET_TIME %s%"PRId64
+                         " failed or not possible",
+                         param.time.b_absolute ? "@" : param.time.i_val >= 0 ? "+" : "",
+                         param.time.i_val );
             }
             else
             {
