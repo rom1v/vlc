@@ -185,6 +185,7 @@
         <file alias="ArtistTopBanner.qml">qml/mediacenter/ArtistTopBanner.qml</file>
         <file alias="ScanProgressBar.qml">qml/mediacenter/ScanProgressBar.qml</file>
         <file alias="MCMainDisplay.qml">qml/mediacenter/MCMainDisplay.qml</file>
+        <file alias="MusicAlbumsDisplayGridItem.qml">qml/mediacenter/MusicAlbumsDisplayGridItem.qml</file>
     </qresource>
     <qresource prefix="/style">
         <file alias="qmldir">qml/style/qmldir</file>

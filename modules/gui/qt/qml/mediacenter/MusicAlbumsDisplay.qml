@@ -79,58 +79,12 @@ Item {
         delegate: Package {
             id: element
 
-            Item {
+            MusicAlbumsDisplayGridItem {
                 Package.name: "gridTop"
-                width: VLCStyle.cover_normal
-                height: VLCStyle.cover_normal + VLCStyle.fontHeight_normal + VLCStyle.margin_xsmall
-                Utils.GridItem {
-
-                    //justify elements in the grid by parenting them to a placehoder item and moving the afterwards
-                    x: ((model.index % gridView_id._colCount) + 1) * (gridView_id.rightSpace / (gridView_id._colCount + 1))
-                    width: parent.width
-                    height: parent.height
-
-                    color: element.DelegateModel.inSelected ? VLCStyle.hoverBgColor : "transparent"
-
-                    cover : Image {
-                        source: model.cover || VLCStyle.noArtCover
-                    }
-
-                    name : model.title || "Unknown title"
-                    date : model.release_year !== 0 ? model.release_year : ""
-                    infos : model.duration + " - " + model.nb_tracks + " tracks"
-
-                    onItemClicked : root._gridItemClicked(keys, modifier, model.index)
-                    onPlayClicked: medialib.addAndPlay( model.id )
-                    onAddToPlaylistClicked : medialib.addToPlaylist( model.id );
-                }
             }
 
-            Item {
+            MusicAlbumsDisplayGridItem {
                 Package.name: "gridBottom"
-                height: VLCStyle.cover_normal + VLCStyle.fontHeight_normal + VLCStyle.margin_xsmall
-                width: VLCStyle.cover_normal
-
-                Utils.GridItem {
-                    //justify elements in the grid by parenting them to a placehoder item and moving the afterwards
-                    x: ((model.index % gridView_id._colCount) + 1) * (gridView_id.rightSpace / (gridView_id._colCount + 1))
-                    width: parent.width
-                    height: parent.height
-
-                    color: element.DelegateModel.inSelected ? VLCStyle.hoverBgColor : "transparent"
-
-                    cover : Image {
-                        source: model.cover || VLCStyle.noArtCover
-                    }
-
-                    name : model.title || "Unknown title"
-                    date : model.release_year !== 0 ? model.release_year : ""
-                    infos : model.duration + " - " + model.nb_tracks + " tracks"
-
-                    onItemClicked : root._gridItemClicked(keys, modifier, model.index)
-                    onPlayClicked: medialib.addAndPlay( model.id )
-                    onAddToPlaylistClicked : medialib.addToPlaylist( model.id );
-                }
             }
 
             Utils.ListItem {
