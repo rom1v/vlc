@@ -3,7 +3,9 @@ import QtQuick 2.7
 
 Item {
     id: vlc_style
-    SystemPalette { id: myPalette; colorGroup: SystemPalette.Active }
+    SystemPalette { id: activePalette; colorGroup: SystemPalette.Active }
+    SystemPalette { id: inactivePalette; colorGroup: SystemPalette.Inactive }
+
 
     TextMetrics { id: fontMetrics_xxsmall; font.pixelSize: 6;  text: "lq"}
     TextMetrics { id: fontMetrics_xsmall;  font.pixelSize: 8;  text: "lq"}
@@ -31,6 +33,24 @@ Item {
                         a.g * blend + b.g * (1. - blend),
                         a.b * blend + b.b * (1. - blend),
                         a.a * blend + b.a * (1. - blend))
+    }
+
+    function getBgColor(selected, hovered, focus)
+    {
+        if ( selected )
+        {
+            if (focus) return hoverBgColor
+            return hoverBgColorInactive
+        }
+        else if (hovered)
+        {
+            return hoverBgColorInactive
+        }
+        else
+        {
+            if (focus) return bgColor
+            return bgColorInactive
+        }
     }
 
     state: "system"
@@ -82,21 +102,25 @@ Item {
             PropertyChanges {
                 target: vlc_style
 
-                bgColor: myPalette.base;
-                bgColorAlt: myPalette.alternateBase;
-                textColor: myPalette.text;
+                bgColor: activePalette.base;
+                bgColorInactive: inactivePalette.base;
+                bgColorAlt: activePalette.alternateBase;
+                bgColorAltInactive: inactivePalette.alternateBase;
+                textColor: activePalette.text;
 
-                buttonColor: myPalette.button;
-                buttonTextColor: myPalette.buttonText;
+                buttonColor: activePalette.button;
+                buttonTextColor: activePalette.buttonText;
                 buttonBorderColor: blendColors(buttonColor, buttonTextColor, 0.8)
 
                 bgColor_removeFromPlaylist: "#CC0000";
                 textColor_removeFromPlaylist: "#FFFFFF";
 
-                hoverBgColor: myPalette.highlight;
+                hoverBgColor: activePalette.highlight;
+                hoverBgColorInactive: inactivePalette.highlight;
+
                 textColor_activeSource: vlc_orange;
-                bannerColor: myPalette.window;
-                hoverBannerColor: myPalette.highlight;
+                bannerColor: activePalette.window;
+                hoverBannerColor: activePalette.highlight;
             }
         }
     ]
@@ -161,22 +185,25 @@ Item {
     property int widthSortBox: 150;
 
     //colors
-    property color bgColor: myPalette.base;
-    property color textColor: myPalette.text;
-    property color bgColorAlt: myPalette.alternateBase;
+    property color bgColor: activePalette.base;
+    property color textColor: activePalette.text;
+    property color bgColorInactive: inactivePalette.base;
+    property color bgColorAlt: activePalette.alternateBase;
+    property color bgColorAltInactive: inactivePalette.alternateBase;
 
-    property color buttonColor: myPalette.button;
-    property color buttonTextColor: myPalette.buttonText;
-    property color buttonBorderColor: blendColors(myPalette.button, myPalette.buttonText, 0.8);
+    property color buttonColor: activePalette.button;
+    property color buttonTextColor: activePalette.buttonText;
+    property color buttonBorderColor: blendColors(activePalette.button, activePalette.buttonText, 0.8);
 
     property color bgColor_removeFromPlaylist: "#CC0000";
     property color textColor_removeFromPlaylist: "white";
 
-    property color hoverBgColor: myPalette.highlight;
+    property color hoverBgColor: activePalette.highlight;
+    property color hoverBgColorInactive: inactivePalette.highlight;
     property color textColor_activeSource: "#FF0000";
 
-    property color bannerColor: myPalette.window;
-    property color hoverBannerColor: myPalette.highlight;
+    property color bannerColor: activePalette.window;
+    property color hoverBannerColor: activePalette.highlight;
 
     property color vlc_orange: "#FFFF950D";
 
