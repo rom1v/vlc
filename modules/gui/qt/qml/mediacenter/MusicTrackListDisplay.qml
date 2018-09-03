@@ -13,6 +13,7 @@ QC14.TableView
     selectionMode: QC14.SelectionMode.ExtendedSelection
 
     focus: true
+    frameVisible: false
 
     model: MLAlbumTrackModel {
         id: albumModel
@@ -111,10 +112,58 @@ QC14.TableView
         color: VLCStyle.textColor
     }
 
+    rowDelegate: Rectangle {
+        color:  VLCStyle.getBgColor(styleData.selected, hoverArea.containsMouse, root.activeFocus)
+        height: VLCStyle.fontHeight_normal + VLCStyle.margin_xxsmall
+
+        Rectangle {
+            color: VLCStyle.buttonBorderColor
+            visible: styleData.row < (root.rowCount - 1)
+            antialiasing: true
+            anchors{
+                right: parent.right
+                bottom: parent.bottom
+                left: parent.left
+            }
+            height: 1
+        }
+        //when you style TableView you loose functionnality :-(
+        //reimplement hoover and mouse selection
+        MouseArea {
+            id: hoverArea
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton
+            onClicked: {
+                if (mouse.modifiers & Qt.ShiftModifier)
+                {
+                    root.selection.select(root.currentRow, styleData.row)
+                }
+                else if (mouse.modifiers & Qt.ControlModifier)
+                {
+                    if (root.selection.contains(styleData.row))
+                        root.selection.deselect(styleData.row)
+                    else
+                        root.selection.select(styleData.row)
+                }
+                else
+                {
+                    root.selection.clear()
+                    root.selection.select(styleData.row)
+                }
+                root.currentRow = styleData.row
+                root.forceActiveFocus()
+            }
+            onDoubleClicked: {
+                medialib.addAndPlay( albumModel.get(styleData.row).id )
+            }
+        }
+    }
+
 
     headerDelegate: Rectangle {
         height: textItem.implicitHeight * 1.2
-        color: VLCStyle.buttonColor
+        color: VLCStyle.bgColor
 
         MouseArea {
             anchors.fill: parent
@@ -165,6 +214,8 @@ QC14.TableView
             width: 1
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
+            //rightmost column is numbered as -1
+            visible: styleData.column >= 0 && styleData.column < root.columnCount
         }
         //line below
         Rectangle {
@@ -191,14 +242,15 @@ QC14.TableView
         color: VLCStyle.textColor
     }
 
-    onDoubleClicked: {
-        medialib.addAndPlay( albumModel.get(row).id )
-    }
-
-    Keys.onEnterPressed: {
+    Keys.onReturnPressed: {
         selection.forEach(function(rowIndex) {
             medialib.addAndPlay( albumModel.get(rowIndex).id )
         })
+    }
+    Keys.onPressed: {
+        console.log("Keys.onPressed")
+        if (event.key === Qt.Key_A & event.modifiers === Qt.ControlModifier)
+            selection.selectAll()
     }
 }
 
