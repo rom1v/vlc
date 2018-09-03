@@ -64,6 +64,39 @@ struct vlc_player_track
     bool selected;
 };
 
+struct vlc_player_seek_arg
+{
+    enum {
+        VLC_PLAYER_SEEK_BY_POS,
+        VLC_PLAYER_SEEK_BY_TIME,
+    } type;
+    union {
+        float position;
+        vlc_tick_t time;
+    };
+    bool fast;
+    bool absolute;
+};
+
+/** Menu (VCD/DVD/BD) Navigation */
+enum vlc_player_nav
+{
+    /** Activate the navigation item selected. */
+    VLC_PLAYER_NAV_ACTIVATE,
+    /** Use the up arrow to select a navigation item above. */
+    VLC_PLAYER_NAV_UP,
+    /** Use the down arrow to select a navigation item under. */
+    VLC_PLAYER_NAV_DOWN,
+    /** Use the left arrow to select a navigation item on the left */
+    VLC_PLAYER_NAV_LEFT,
+    /** Use the right arrow to select a navigation item on the right. */
+    VLC_PLAYER_NAV_RIGHT,
+    /** Activate the popup Menu (for BD). */
+    VLC_PLAYER_NAV_POPUP,
+    /** Activate disc Root Menu. */
+    VLC_PLAYER_NAV_MENU,
+};
+
 /**
  * Callbacks for the owner of the player.
  *
@@ -344,6 +377,70 @@ vlc_player_IsRecordable(vlc_player_t *player)
     return vlc_player_GetCapabilities(player) & VLC_INPUT_CAPABILITIES_RECORDABLE;
 }
 
+VLC_API vlc_tick_t
+vlc_player_GetLength(vlc_player_t *player);
+
+VLC_API vlc_tick_t
+vlc_player_GetTime(vlc_player_t *player);
+
+VLC_API float
+vlc_player_GetPosition(vlc_player_t *player);
+
+VLC_API void
+vlc_player_Seek(vlc_player_t *player, const struct vlc_player_seek_arg *arg);
+
+static inline void
+vlc_player_SetPosition(vlc_player_t *player, float position)
+{
+    vlc_player_Seek(player, &(struct vlc_player_seek_arg) {
+        VLC_PLAYER_SEEK_BY_POS, { position }, false, true,
+    });
+}
+
+static inline void
+vlc_player_SetPositionFast(vlc_player_t *player, float position)
+{
+    vlc_player_Seek(player, &(struct vlc_player_seek_arg) {
+        VLC_PLAYER_SEEK_BY_POS, { position }, true, true,
+    });
+}
+
+static inline void
+vlc_player_JumpPos(vlc_player_t *player, vlc_tick_t jumppos)
+{
+    /* No fask seek for jumps. Indeed, jumps can seek to the current position
+     * if not precise enough or if the jump value is too small. */
+    vlc_player_Seek(player, &(struct vlc_player_seek_arg) {
+        VLC_PLAYER_SEEK_BY_POS, { jumppos }, false, false,
+    });
+}
+
+static inline void
+vlc_player_SetTime(vlc_player_t *player, vlc_tick_t time)
+{
+    vlc_player_Seek(player, &(struct vlc_player_seek_arg) {
+        VLC_PLAYER_SEEK_BY_TIME, { time }, false, true,
+    });
+}
+
+static inline void
+vlc_player_SetTimeFast(vlc_player_t *player, vlc_tick_t time)
+{
+    vlc_player_Seek(player, &(struct vlc_player_seek_arg) {
+        VLC_PLAYER_SEEK_BY_TIME, { time }, true, true,
+    });
+}
+
+static inline void
+vlc_player_JumpTime(vlc_player_t *player, vlc_tick_t jumptime)
+{
+    /* No fask seek for jumps. Indeed, jumps can seek to the current position
+     * if not precise enough or if the jump value is too small. */
+    vlc_player_Seek(player, &(struct vlc_player_seek_arg) {
+        VLC_PLAYER_SEEK_BY_TIME, { jumptime }, false, false,
+    });
+}
+
 /**
  * Get the number of tracks for an ES category.
  *
@@ -583,6 +680,9 @@ vlc_player_SelectProgram(vlc_player_t *player, int id);
  */
 VLC_API void
 vlc_player_SetRenderer(vlc_player_t *player, vlc_renderer_item_t *renderer);
+
+VLC_API void
+vlc_player_Navigate(vlc_player_t *player, enum vlc_player_nav nav);
 
 /** @} */
 #endif

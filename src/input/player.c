@@ -119,6 +119,7 @@ input_thread_events(input_thread_t *, const struct vlc_input_event *, void *);
 static inline void
 vlc_player_assert_locked(vlc_player_t *player)
 {
+    assert(player);
     vlc_assert_locked(&player->lock);
 }
 
@@ -1018,6 +1019,67 @@ vlc_player_GetCapabilities(vlc_player_t *player)
     return player->input->capabilities;
 }
 
+vlc_tick_t
+vlc_player_GetLength(vlc_player_t *player)
+{
+    vlc_player_assert_locked(player);
+    assert(player->input);
+    return player->input->length;
+}
+
+vlc_tick_t
+vlc_player_GetTime(vlc_player_t *player)
+{
+    vlc_player_assert_locked(player);
+    struct vlc_player_input *input = player->input;
+    assert(input);
+
+    vlc_tick_t time = input->position_ms;
+    return time != VLC_TICK_INVALID ?
+        (time + (vlc_tick_now() - input->position_date) * input->rate) :
+        VLC_TICK_INVALID;
+}
+
+float
+vlc_player_GetPosition(vlc_player_t *player)
+{
+    vlc_player_assert_locked(player);
+    assert(player->input);
+
+    return player->input->position_percent;
+}
+
+void
+vlc_player_Seek(vlc_player_t *player, const struct vlc_player_seek_arg *arg)
+{
+    vlc_player_assert_locked(player);
+    struct vlc_player_input *input = player->input;
+    assert(input);
+    assert(arg);
+
+    switch (arg->type)
+    {
+        case VLC_PLAYER_SEEK_BY_POS:
+            input_ControlPush(input->thread, INPUT_CONTROL_SET_POSITION,
+                &(input_control_param_t) {
+                    .pos.f_val = arg->position,
+                    .pos.b_fast_seek = arg->fast,
+                    .pos.b_absolute = arg->absolute
+            });
+            break;
+        case VLC_PLAYER_SEEK_BY_TIME:
+            input_ControlPush(input->thread, INPUT_CONTROL_SET_TIME,
+                &(input_control_param_t) {
+                    .time.i_val = arg->time,
+                    .time.b_fast_seek = arg->fast,
+                    .time.b_absolute = arg->absolute,
+            });
+            break;
+        default:
+            vlc_assert_unreachable();
+    }
+}
+
 void
 vlc_player_SetRenderer(vlc_player_t *player, vlc_renderer_item_t *renderer)
 {
@@ -1035,4 +1097,41 @@ vlc_player_SetRenderer(vlc_player_t *player, vlc_renderer_item_t *renderer)
         input_Control(player->next_input->thread, INPUT_SET_RENDERER,
                       player->renderer);
 #endif
+}
+
+void
+vlc_player_Navigate(vlc_player_t *player, enum vlc_player_nav nav)
+{
+    vlc_player_assert_locked(player);
+    struct vlc_player_input *input = player->input;
+    assert(input);
+
+    enum input_control_e control;
+    switch (nav)
+    {
+        case VLC_PLAYER_NAV_ACTIVATE:
+            control = INPUT_CONTROL_NAV_ACTIVATE;
+            break;
+        case VLC_PLAYER_NAV_UP:
+            control = INPUT_CONTROL_NAV_UP;
+            break;
+        case VLC_PLAYER_NAV_DOWN:
+            control = INPUT_CONTROL_NAV_DOWN;
+            break;
+        case VLC_PLAYER_NAV_LEFT:
+            control = INPUT_CONTROL_NAV_LEFT;
+            break;
+        case VLC_PLAYER_NAV_RIGHT:
+            control = INPUT_CONTROL_NAV_RIGHT;
+            break;
+        case VLC_PLAYER_NAV_POPUP:
+            control = INPUT_CONTROL_NAV_POPUP;
+            break;
+        case VLC_PLAYER_NAV_MENU:
+            control = INPUT_CONTROL_NAV_MENU;
+            break;
+        default:
+            vlc_assert_unreachable();
+    }
+    input_ControlPushHelper(input->thread, control, NULL);
 }
