@@ -14,6 +14,8 @@ Rectangle {
     property var artist: null
     color: VLCStyle.bgColor
 
+    property int contentY: 0
+
     Image {
         id: artistImage
         source: artist.cover || VLCStyle.noArtCover
@@ -49,6 +51,11 @@ Rectangle {
         State {
             name: "full"
             PropertyChanges {
+                target: root
+                y: -contentY
+                height: VLCStyle.heightBar_xlarge
+            }
+            PropertyChanges {
                 target: artistImage
                 width: VLCStyle.cover_small
                 height: VLCStyle.cover_small
@@ -57,10 +64,15 @@ Rectangle {
                 target: main_artist
                 font.pixelSize: VLCStyle.fontSize_xxxlarge
             }
-            when: root.height >= VLCStyle.heightBar_xlarge
+            when: contentY < VLCStyle.heightBar_large
         },
         State {
             name: "small"
+            PropertyChanges {
+                target: root
+                y: 0
+                height: VLCStyle.heightBar_large
+            }
             PropertyChanges {
                 target: artistImage
                 width: VLCStyle.icon_normal
@@ -71,7 +83,7 @@ Rectangle {
                 font.pixelSize: VLCStyle.fontSize_large
                 anchors.leftMargin: VLCStyle.margin_small
             }
-            when: root.height < VLCStyle.heightBar_xlarge
+            when: contentY >= VLCStyle.heightBar_large
         }
     ]
 

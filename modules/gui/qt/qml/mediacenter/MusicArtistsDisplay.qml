@@ -173,8 +173,7 @@ Item {
                 ArtistTopBanner {
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    height: (albumDisplay.contentY <= VLCStyle.heightBar_large) ? VLCStyle.heightBar_xlarge : VLCStyle.heightBar_large
-                    y: (albumDisplay.contentY <= VLCStyle.heightBar_large) ? (-albumDisplay.contentY) : 0
+                    contentY: albumDisplay.contentY
                     artist: artistModel.items.get(currentArtistIndex).model
                 }
             }
