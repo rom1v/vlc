@@ -71,6 +71,8 @@ private:
     static void onMediaLibraryEvent( void* data, const vlc_ml_event_t* event );
 
 private:
+    void openMRLFromMedia(const vlc_ml_media_t& media, bool start );
+
     intf_thread_t* m_intf;
     QQuickWidget *m_qmlItem;
 

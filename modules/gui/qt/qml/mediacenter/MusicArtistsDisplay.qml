@@ -170,6 +170,7 @@ Item {
 
                 model: albumModel
 
+                //banner will stay above the display MusicAlbumsDisplay
                 ArtistTopBanner {
                     anchors.left: parent.left
                     anchors.right: parent.right

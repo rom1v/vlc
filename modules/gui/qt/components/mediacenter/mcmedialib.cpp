@@ -58,20 +58,37 @@ void MCMediaLib::setGridView(bool state)
 }
 
 
+void MCMediaLib::openMRLFromMedia(const vlc_ml_media_t& media, bool start )
+{
+    if (!media.p_files)
+        return;
+    for ( const vlc_ml_file_t& mediafile: ml_range_iterate<vlc_ml_file_t>(media.p_files) )
+    {
+        if (mediafile.psz_mrl)
+            Open::openMRL(m_intf, mediafile.psz_mrl, start);
+        start = false;
+    }
+}
+
 // A specific item has been asked to be added to the playlist
 void MCMediaLib::addToPlaylist(const MLParentId & itemId)
 {
-    vlc_ml_query_params_t query;
-    memset(&query, 0, sizeof(vlc_ml_query_params_t));
-
-    ml_unique_ptr<vlc_ml_media_list_t> media_list(vlc_ml_list_media_of( m_ml, &query, itemId.type, itemId.id));
-    for( const vlc_ml_media_t& media: ml_range_iterate<vlc_ml_media_t>( media_list ) )
+    //invalid item
+    if (itemId.id == 0)
+        return;
+    if (itemId.type == VLC_ML_PARENT_UNKNOWN)
     {
-        if (!media.p_files)
-            continue;
-        for ( const vlc_ml_file_t& mediafile: ml_range_iterate<vlc_ml_file_t>(media.p_files) )
-            if (mediafile.psz_mrl)
-                Open::openMRL(m_intf, mediafile.psz_mrl, false);
+        ml_unique_ptr<vlc_ml_media_t> media(vlc_ml_get_media( m_ml, itemId.id ));
+        if ( media )
+            openMRLFromMedia(*media, false);
+    }
+    else
+    {
+        vlc_ml_query_params_t query;
+        memset(&query, 0, sizeof(vlc_ml_query_params_t));
+        ml_unique_ptr<vlc_ml_media_list_t> media_list(vlc_ml_list_media_of( m_ml, &query, itemId.type, itemId.id));
+        for( const vlc_ml_media_t& media: ml_range_iterate<vlc_ml_media_t>( media_list ) )
+            openMRLFromMedia(media, false);
     }
 }
 
@@ -79,22 +96,26 @@ void MCMediaLib::addToPlaylist(const MLParentId & itemId)
 // so it's added to the playlist and played
 void MCMediaLib::addAndPlay(const MLParentId & itemId )
 {
-    bool b_start = true;
-
-    vlc_ml_query_params_t query;
-    memset(&query, 0, sizeof(vlc_ml_query_params_t));
-
-    ml_unique_ptr<vlc_ml_media_list_t> media_list(vlc_ml_list_media_of( m_ml, &query, itemId.type, itemId.id));
-    for( const vlc_ml_media_t& media: ml_range_iterate<vlc_ml_media_t>( media_list ) )
+    if (itemId.id == 0)
+        return;
+    if (itemId.type == VLC_ML_PARENT_UNKNOWN)
     {
-        if (!media.p_files)
-            continue;
-        for ( const vlc_ml_file_t& mediafile: ml_range_iterate<vlc_ml_file_t>( media.p_files ) )
-            if (mediafile.psz_mrl)
-            {
-                Open::openMRL(m_intf, mediafile.psz_mrl, b_start);
-                b_start = false;
-            }
+        ml_unique_ptr<vlc_ml_media_t> media(vlc_ml_get_media( m_ml, itemId.id ));
+        if ( media )
+            openMRLFromMedia(*media, true);
+    }
+    else
+    {
+        bool b_start = true;
+        vlc_ml_query_params_t query;
+        memset(&query, 0, sizeof(vlc_ml_query_params_t));
+
+        ml_unique_ptr<vlc_ml_media_list_t> media_list(vlc_ml_list_media_of( m_ml, &query, itemId.type, itemId.id));
+        for( const vlc_ml_media_t& media: ml_range_iterate<vlc_ml_media_t>( media_list ) )
+        {
+            openMRLFromMedia(media, b_start);
+            b_start = false;
+        }
     }
 }
 
