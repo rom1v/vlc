@@ -1835,6 +1835,27 @@ static void ControlInsertDemuxFilter( input_thread_t* p_input, const char* psz_d
         msg_Dbg(p_input, "Failed to create demux filter %s", psz_demux_chain);
 }
 
+static int DemuxSetPosition(input_thread_t *p_input, double pos, bool fast)
+{
+    input_thread_private_t *priv = input_priv(p_input);
+
+    if (pos < 0.f )
+        pos = 0.f;
+    else if (pos > 1.f)
+        pos = 1.f;
+    return demux_Control(priv->master->p_demux, DEMUX_SET_POSITION,
+                         pos, !fast);
+}
+
+static int DemuxSetTime(input_thread_t *p_input, vlc_tick_t time, bool fast)
+{
+    input_thread_private_t *priv = input_priv(p_input);
+
+    if (time < 0)
+        time = 0;
+    return demux_Control(priv->master->p_demux, DEMUX_SET_TIME, time, !fast);
+}
+
 static bool Control( input_thread_t *p_input,
                      int i_type, input_control_param_t param )
 {
@@ -1847,25 +1868,19 @@ static bool Control( input_thread_t *p_input,
     switch( i_type )
     {
         case INPUT_CONTROL_SET_POSITION:
-        {
             if( priv->b_recording )
             {
                 msg_Err( p_input, "INPUT_CONTROL_SET_POSITION ignored while recording" );
                 break;
             }
 
-            float f_pos = param.pos.f_val;
-            if( f_pos < 0.f )
-                f_pos = 0.f;
-            else if( f_pos > 1.f )
-                f_pos = 1.f;
             /* Reset the decoders states and clock sync (before calling the demuxer */
             es_out_Control( priv->p_es_out, ES_OUT_RESET_PCR );
-            if( demux_Control( priv->master->p_demux, DEMUX_SET_POSITION,
-                               (double) f_pos, !param.pos.b_fast_seek ) )
+            if (DemuxSetPosition(p_input, (double) param.pos.f_val,
+                                param.pos.b_fast_seek))
             {
                 msg_Err( p_input, "INPUT_CONTROL_SET_POSITION "
-                         "%2.1f%% failed", (double)(f_pos * 100.f) );
+                         "%2.1f%% failed", (double)(param.pos.f_val * 100.f) );
             }
             else
             {
@@ -1876,11 +1891,9 @@ static bool Control( input_thread_t *p_input,
                 b_force_update = true;
             }
             break;
-        }
 
         case INPUT_CONTROL_SET_TIME:
         {
-            int64_t i_time;
             int i_ret;
 
             if( priv->b_recording )
@@ -1889,16 +1902,11 @@ static bool Control( input_thread_t *p_input,
                 break;
             }
 
-            i_time = param.time.i_val;
-            if( i_time < 0 )
-                i_time = 0;
-
             /* Reset the decoders states and clock sync (before calling the demuxer */
             es_out_Control( priv->p_es_out, ES_OUT_RESET_PCR );
 
-            i_ret = demux_Control( priv->master->p_demux,
-                                   DEMUX_SET_TIME, i_time,
-                                   !param.time.b_fast_seek );
+            i_ret = DemuxSetTime(p_input, param.time.i_val, 
+                                 param.time.b_fast_seek);
             if( i_ret )
             {
                 int64_t i_length;
@@ -1907,16 +1915,14 @@ static bool Control( input_thread_t *p_input,
                 if( !demux_Control( priv->master->p_demux,
                                     DEMUX_GET_LENGTH, &i_length ) && i_length > 0 )
                 {
-                    double f_pos = (double)i_time / (double)i_length;
-                    i_ret = demux_Control( priv->master->p_demux,
-                                           DEMUX_SET_POSITION, f_pos,
-                                           !param.time.b_fast_seek );
+                    double f_pos = (double)param.time.i_val / (double)i_length;
+                    i_ret = DemuxSetPosition(p_input, f_pos, param.time.b_fast_seek);
                 }
             }
             if( i_ret )
             {
                 msg_Warn( p_input, "INPUT_CONTROL_SET_TIME %"PRId64
-                         " failed or not possible", i_time );
+                         " failed or not possible", param.time.i_val );
             }
             else
             {
