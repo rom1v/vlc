@@ -22,6 +22,8 @@ QC14.TableView
         }
     }
     property var sortModel: ListModel {
+        //user should rather sort model using table header
+        /*
         ListElement { text: qsTr("Alphabetic asc");  criteria: "title"; desc: Qt.AscendingOrder}
         ListElement { text: qsTr("Alphabetic desc"); criteria: "title"; desc: Qt.DescendingOrder }
         ListElement { text: qsTr("Album asc");      criteria: "album_title"; desc: Qt.AscendingOrder }
@@ -34,13 +36,14 @@ QC14.TableView
         ListElement { text: qsTr("Duration desc");   criteria: "duration"; desc: Qt.DescendingOrder }
         ListElement { text: qsTr("Track number asc");  criteria: "track_number"; desc: Qt.AscendingOrder}
         ListElement { text: qsTr("Track number desc"); criteria: "track_number"; desc: Qt.DescendingOrder }
+        */
     }
 
     property alias parentId: albumModel.parentId
 
     property var columnModel: ListModel {
         ListElement{ role: "track_number"; visible: true;  title: qsTr("TRACK NB"); showSection: "" }
-        ListElement{ role: "disc_number";  visible: false;  title:qsTr("DISC NB");  showSection: "" }
+        ListElement{ role: "disc_number";  visible: false; title: qsTr("DISC NB");  showSection: "" }
         ListElement{ role: "title";        visible: true;  title: qsTr("TITLE");    showSection: "title" }
         ListElement{ role: "main_artist";  visible: true;  title: qsTr("ARTIST");   showSection: "main_artist" }
         ListElement{ role: "album_title";  visible: false; title: qsTr("ALBUM");    showSection: "album_title" }
@@ -49,6 +52,7 @@ QC14.TableView
     Component {
         id: tablecolumn_model
         QC14.TableViewColumn {
+            property string showSection: ""
         }
     }
 
@@ -59,6 +63,7 @@ QC14.TableView
                 var col = addColumn(tablecolumn_model)
                 col.role = columnModel.get(i).role
                 col.title = columnModel.get(i).title
+                col.showSection = columnModel.get(i).showSection
             }
         }
     }
@@ -84,6 +89,7 @@ QC14.TableView
                         var col = addColumn(tablecolumn_model)
                         col.role = model.role
                         col.title = model.title
+                        col.showSection = model.showSection
                     } else {
                         for (var i= 0; i <  columnCount; i++ ) {
                             if ( getColumn(i).role === model.role ) {
@@ -176,12 +182,12 @@ QC14.TableView
         model.sortByColumn(getColumn(sortIndicatorColumn).role, sortIndicatorOrder)
     }
 
-    section.property : columnModel.get(sortIndicatorColumn).showSection
+    section.property : getColumn(sortIndicatorColumn).showSection
     section.criteria: ViewSection.FirstCharacter
     section.delegate: Text {
         text: section
         elide: Text.ElideRight
-        font.pixelSize: VLCStyle.fontSize_xlarge
+        font.pixelSize: VLCStyle.fontSize_xxlarge
         color: VLCStyle.textColor
     }
 
