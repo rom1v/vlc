@@ -58,6 +58,8 @@ Flickable {
     property int _colCount: Math.floor(width / cellWidth)
     property int topContentY: contentY
     property int bottomContentY: contentY + height
+    //available space on the right
+    property int rightSpace: width - (_colCount * cellWidth)
 
     /// the id of the item to be expanded
     property int expandIndex: -1
