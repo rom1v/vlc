@@ -120,6 +120,14 @@ libqt_plugin_la_SOURCES = \
 	gui/qt/components/playlist/selector.cpp \
 	gui/qt/components/playlist/selector.hpp \
 	gui/qt/components/playlist/sorting.h \
+	gui/qt/components/playlist_new/media.hpp \
+	gui/qt/components/playlist_new/playlist.cpp \
+	gui/qt/components/playlist_new/playlist.hpp \
+	gui/qt/components/playlist_new/playlist.moc.cpp \
+	gui/qt/components/playlist_new/playlist_item.hpp \
+	gui/qt/components/playlist_new/playlist_model.cpp \
+	gui/qt/components/playlist_new/playlist_model.hpp \
+	gui/qt/components/playlist_new/playlist_model.moc.cpp \
 	gui/qt/components/sout/profile_selector.cpp \
 	gui/qt/components/sout/profile_selector.hpp \
 	gui/qt/components/sout/sout_widgets.cpp \
