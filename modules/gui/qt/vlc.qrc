@@ -190,5 +190,6 @@
     <qresource prefix="/style">
         <file alias="qmldir">qml/style/qmldir</file>
         <file alias="VLCStyle.qml">qml/style/VLCStyle.qml</file>
+        <file alias="VLCColors.qml">qml/style/VLCColors.qml</file>
     </qresource>
 </RCC>

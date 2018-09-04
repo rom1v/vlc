@@ -81,9 +81,9 @@ Item {
 
         text: "..."
         font.pixelSize: 30
-        color: VLCStyle.textColor
+        color: VLCStyle.colors.text
         style: Text.Outline
-        styleColor: VLCStyle.bgColor
+        styleColor: VLCStyle.colors.bg
 
         visible: albums.rowCount() >= 4
     }

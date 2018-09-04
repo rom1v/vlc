@@ -28,7 +28,7 @@ import "qrc:///style/"
 import org.videolan.medialib 0.1
 
 Rectangle {
-    color: VLCStyle.bgColor
+    color: VLCStyle.colors.bg
 
     property var tabModel: ListModel {
         ListElement {
@@ -62,7 +62,7 @@ Rectangle {
         Rectangle {
             Layout.fillWidth:  true
 
-            color: VLCStyle.bannerColor
+            color: VLCStyle.colors.banner
             height: bar.height
 
             RowLayout {
@@ -74,7 +74,7 @@ Rectangle {
 
                     Layout.preferredHeight: parent.height
                     background: Rectangle {
-                        color: VLCStyle.bannerColor
+                        color: VLCStyle.colors.banner
                     }
 
                     /* List of sub-sources for Music */
@@ -88,14 +88,14 @@ Rectangle {
                             id: control
                             text: model.displayText
                             background: Rectangle {
-                                color: control.hovered ? VLCStyle.hoverBannerColor : VLCStyle.bannerColor
+                                color: control.hovered ? VLCStyle.colors.bannerHover : VLCStyle.colors.banner
                             }
                             contentItem: Label {
                                 text: control.text
                                 font: control.font
-                                color:  control.checked ?
-                                            VLCStyle.textColor_activeSource :
-                                            (control.hovered ?  VLCStyle.textColor_activeSource : VLCStyle.textColor)
+                                color:  (control.checked || control.hovered) ?
+                                            VLCStyle.colors.textActiveSource :
+                                            VLCStyle.colors.text
                                 verticalAlignment: Text.AlignVCenter
                                 horizontalAlignment: Text.AlignHCenter
                             }
@@ -117,15 +117,15 @@ Rectangle {
                     Layout.preferredHeight: parent.height
                     id: searchBox
 
-                    color: VLCStyle.buttonTextColor
+                    color: VLCStyle.colors.buttonText
                     placeholderText: qsTr("filter")
 
                     background: Rectangle {
                         radius: 5 //fixme
-                        color: VLCStyle.buttonColor
+                        color: VLCStyle.colors.button
                         border.color: searchBox.text.length < 3 && searchBox.text.length !== 0
-                                      ? VLCStyle.alertColor
-                                      : VLCStyle.buttonBorderColor
+                                      ? VLCStyle.colors.alert
+                                      : VLCStyle.colors.buttonBorder
                     }
 
                     onTextChanged: {

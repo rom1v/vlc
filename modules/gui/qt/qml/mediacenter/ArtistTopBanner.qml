@@ -12,7 +12,7 @@ import "qrc:///style/"
 Rectangle {
     id: root
     property var artist: null
-    color: VLCStyle.bgColor
+    color: VLCStyle.colors.bg
 
     property int contentY: 0
 
@@ -44,7 +44,7 @@ Rectangle {
         anchors.left: artistImage.right
         font.pixelSize: VLCStyle.fontSize_xxxlarge
         font.bold: true
-        color: VLCStyle.textColor
+        color: VLCStyle.colors.text
     }
 
     states: [

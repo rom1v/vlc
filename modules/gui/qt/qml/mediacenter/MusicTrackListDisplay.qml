@@ -109,15 +109,15 @@ QC14.TableView
         text: styleData.value
         elide: Text.ElideRight
         font.pixelSize: VLCStyle.fontSize_normal
-        color: VLCStyle.textColor
+        color: VLCStyle.colors.text
     }
 
     rowDelegate: Rectangle {
-        color:  VLCStyle.getBgColor(styleData.selected, hoverArea.containsMouse, root.activeFocus)
+        color:  VLCStyle.colors.getBgColor(styleData.selected, hoverArea.containsMouse, root.activeFocus)
         height: VLCStyle.fontHeight_normal + VLCStyle.margin_xxsmall
 
         Rectangle {
-            color: VLCStyle.buttonBorderColor
+            color: VLCStyle.colors.buttonBorder
             visible: styleData.row < (root.rowCount - 1)
             antialiasing: true
             anchors{
@@ -163,7 +163,7 @@ QC14.TableView
 
     headerDelegate: Rectangle {
         height: textItem.implicitHeight * 1.2
-        color: VLCStyle.bgColor
+        color: VLCStyle.colors.bg
 
         MouseArea {
             anchors.fill: parent
@@ -194,7 +194,7 @@ QC14.TableView
             verticalAlignment: Text.AlignVCenter
             horizontalAlignment: Text.AlignLeft
 
-            color: VLCStyle.buttonTextColor
+            color: VLCStyle.colors.buttonText
         }
 
         Text {
@@ -205,11 +205,11 @@ QC14.TableView
             }
             visible: styleData.column === sortIndicatorColumn
             text: sortIndicatorOrder === Qt.AscendingOrder ? "⯆" : "⯅"
-            color: VLCStyle.vlc_orange
+            color: VLCStyle.colors.accent
         }
         //right handle
         Rectangle {
-            color: VLCStyle.buttonBorderColor
+            color: VLCStyle.colors.buttonBorder
             height: parent.height * 0.8
             width: 1
             anchors.right: parent.right
@@ -219,7 +219,7 @@ QC14.TableView
         }
         //line below
         Rectangle {
-            color: VLCStyle.buttonBorderColor
+            color: VLCStyle.colors.buttonBorder
             height: 1
             width: parent.width
             anchors.bottom: parent.bottom
@@ -239,7 +239,7 @@ QC14.TableView
         text: section
         elide: Text.ElideRight
         font.pixelSize: VLCStyle.fontSize_xxlarge
-        color: VLCStyle.textColor
+        color: VLCStyle.colors.text
     }
 
     Keys.onReturnPressed: {

@@ -36,7 +36,7 @@ Rectangle {
         medialib.gridView = !medialib.gridView
     }
 
-    color: VLCStyle.bannerColor
+    color: VLCStyle.colors.banner
 
     Row {
         anchors.fill: parent
@@ -94,7 +94,7 @@ Rectangle {
                 background: Rectangle {
                     implicitHeight: parent.height
                     //width: btn_txt.implicitWidth+VLCStyle.margin_small*2
-                    color: control.hovered ? VLCStyle.hoverBannerColor : VLCStyle.bannerColor
+                    color: control.hovered ? VLCStyle.colors.bannerHover : VLCStyle.colors.banner
                 }
 
                 contentItem: Row {
@@ -114,8 +114,7 @@ Rectangle {
                     Label {
                         text: control.text
                         font: control.font
-                        //color: control.checked ? "blue" : (control.hovered ? VLCStyle.textColor_activeSource : VLCStyle.textColor)
-                        color: control.hovered ?  VLCStyle.textColor_activeSource : VLCStyle.textColor
+                        color: control.hovered ?  VLCStyle.colors.textActiveSource : VLCStyle.colors.text
                         verticalAlignment: Text.AlignVCenter
                         horizontalAlignment: Text.AlignHCenter
                         anchors {
@@ -168,7 +167,7 @@ Rectangle {
             anchors.fill: parent
 
             enabled: need_toggleView_button
-            onClicked: VLCStyle.toggleNightMode()
+            onClicked: VLCStyle.colors.changeColorTheme()
         }
     }
 }

@@ -31,7 +31,7 @@ ProgressBar {
     value: progressPercent
     Text {
         id: progressText_id
-        color: VLCStyle.textColor
+        color: VLCStyle.colors.text
         anchors.horizontalCenter: parent.horizontalCenter
     }
 }

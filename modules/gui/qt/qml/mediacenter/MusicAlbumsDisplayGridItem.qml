@@ -19,7 +19,7 @@ Item {
         width: parent.width
         height: parent.height
 
-        color: element.DelegateModel.inSelected ? VLCStyle.hoverBgColor : "transparent"
+        color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, root.activeFocus)
 
         cover : Image {
             source: model.cover || VLCStyle.noArtCover

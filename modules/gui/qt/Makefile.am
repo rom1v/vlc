@@ -524,7 +524,9 @@ libqt_plugin_la_RES = \
 	gui/qt/qml/mediacenter/Presentation.qml \
 	gui/qt/qml/mediacenter/ScanProgressBar.qml \
 	gui/qt/qml/style/qmldir \
-	gui/qt/qml/style/VLCStyle.qml
+	gui/qt/qml/style/VLCStyle.qml \
+	gui/qt/qml/style/VLCColors.qml
+
 EXTRA_DIST += gui/qt/vlc.qrc $(libqt_plugin_la_RES)
 
 nodist_libqt_plugin_la_SOURCES += gui/qt/resources.cpp

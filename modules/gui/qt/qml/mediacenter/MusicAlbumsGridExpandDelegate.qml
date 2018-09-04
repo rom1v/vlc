@@ -34,7 +34,7 @@ import "qrc:///style/"
 Rectangle {
     id: root
     property var model: []
-    color: VLCStyle.bgColor
+    color: VLCStyle.colors.bg
 
     RowLayout {
         spacing: VLCStyle.margin_xsmall
@@ -67,7 +67,7 @@ Rectangle {
                 Text {
                     id: expand_infos_title_id
                     text: "<b>"+(model.title || "Unknown title")+"</b>"
-                    color: VLCStyle.textColor
+                    color: VLCStyle.colors.text
                 }
             }
 

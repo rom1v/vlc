@@ -55,7 +55,7 @@ Item {
                 height: VLCStyle.icon_normal
                 width: parent.width
 
-                color: element.DelegateModel.inSelected ? VLCStyle.hoverBgColor : "transparent"
+                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, artistViewLoader.activeFocus)
 
                 cover: Image {
                     id: cover_obj
@@ -88,7 +88,7 @@ Item {
                 width: VLCStyle.cover_normal
                 height: VLCStyle.cover_normal + VLCStyle.fontHeight_normal
 
-                color: element.DelegateModel.inSelected ? VLCStyle.hoverBgColor : "transparent"
+                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, artistViewLoader.activeFocus)
 
                 cover: Utils.MultiCoverPreview {
                     albums: MLAlbumModel {

@@ -33,7 +33,7 @@ Rectangle {
     property string date: ""
     property string infos: ""
 
-    property bool hovered: mouseArea.containsMouse
+    property alias hovered: mouseArea.containsMouse
 
     signal playClicked
     signal addToPlaylistClicked
@@ -76,7 +76,7 @@ Rectangle {
                 height: dur_disp.implicitHeight + VLCStyle.margin_xsmall
                 width: infos === "" ? 0 : dur_disp.implicitWidth + VLCStyle.margin_xsmall
 
-                color: VLCStyle.bgColor
+                color: VLCStyle.colors.bg
 
                 Text {
                     id: dur_disp
@@ -85,7 +85,7 @@ Rectangle {
 
                     text: infos
                     font.pixelSize: VLCStyle.fontSize_small
-                    color: VLCStyle.textColor
+                    color: VLCStyle.colors.text
                 }
             }
 
@@ -96,8 +96,8 @@ Rectangle {
 
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: "transparent" }
-                    GradientStop { position: 0.5; color: Qt.rgba(VLCStyle.vlc_orange.r,VLCStyle.vlc_orange.g,VLCStyle.vlc_orange.b, 0.6) }
-                    GradientStop { position: 1.0; color: VLCStyle.vlc_orange }
+                    GradientStop { position: 0.5; color: VLCStyle.colors.setColorAlpha(VLCStyle.colors.accent, 0.6) }
+                    GradientStop { position: 1.0; color: VLCStyle.colors.accent }
                 }
 
                 Row {
@@ -158,7 +158,7 @@ Rectangle {
 
                 text: date
                 font.pixelSize: VLCStyle.fontSize_normal
-                color: VLCStyle.textColor
+                color: VLCStyle.colors.text
             }
 
             /* The title of the album elided */
@@ -172,7 +172,7 @@ Rectangle {
                 font.bold: true
                 text: name
                 font.pixelSize: VLCStyle.fontSize_normal
-                color: VLCStyle.textColor
+                color: VLCStyle.colors.text
 
                 ToolTipArea {
                     id: name_tooltip

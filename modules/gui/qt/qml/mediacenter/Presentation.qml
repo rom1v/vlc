@@ -30,7 +30,7 @@ Rectangle {
 
     property var obj: undefined
 
-    color : VLCStyle.bgColor
+    color : VLCStyle.colors.bg
 
     RowLayout {
         id: row_id
@@ -90,7 +90,7 @@ Rectangle {
 
                 text: "<b>"+( obj.getPresName() || "Unknwon artist" )+"</b>"
                 elide: Text.ElideRight
-                color: VLCStyle.textColor
+                color: VLCStyle.colors.text
             }
 
             /* A description for the item */
@@ -103,7 +103,7 @@ Rectangle {
                 text: obj.getPresInfo()
                 wrapMode: Text.WordWrap
                 elide: Text.ElideRight
-                color: VLCStyle.textColor
+                color: VLCStyle.colors.text
             }
         }
     }

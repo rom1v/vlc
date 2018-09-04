@@ -31,7 +31,7 @@ Rectangle {
     signal addToPlaylistClicked
     signal itemClicked(int keys, int modifier)
 
-    property bool hovered: false
+    property alias hovered: mouse.containsMouse
 
     property Component cover: Item {}
     property alias line1: line1_text.text
@@ -59,7 +59,7 @@ Rectangle {
                 id: line1_text
                 font.bold: true
                 elide: Text.ElideRight
-                color: VLCStyle.textColor
+                color: VLCStyle.colors.text
                 font.pixelSize: VLCStyle.fontSize_normal
                 enabled: text !== ""
             }
@@ -67,7 +67,7 @@ Rectangle {
                 id: line2_text
                 text: ""
                 elide: Text.ElideRight
-                color: VLCStyle.textColor
+                color: VLCStyle.colors.text
                 font.pixelSize: VLCStyle.fontSize_xsmall
                 enabled: text !== ""
             }

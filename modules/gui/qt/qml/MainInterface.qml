@@ -32,7 +32,7 @@ import "qrc:///style/"
 import "qrc:///mediacenter/" as MC
 
 Rectangle {
-    color: VLCStyle.bgColor
+    color: VLCStyle.colors.bg
 
     MC.MCMainDisplay {
     }
