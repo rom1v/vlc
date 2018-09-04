@@ -60,6 +60,9 @@ extern "C" char **environ;
 #include "util/qvlcapp.hpp"     /* QVLCApplication definition */
 #include "components/playlist/playlist_model.hpp" /* for ~PLModel() */
 
+#include <QVector>
+#include "components/playlist_new/playlist_item.hpp"
+
 #include <vlc_plugin.h>
 #include <vlc_vout_window.h>
 #ifndef X_DISPLAY_MISSING
@@ -488,6 +491,17 @@ static void Close( vlc_object_t *p_this )
     busy = false;
 }
 
+static inline void qRegisterMetaTypes()
+{
+    // register all types used by signal/slots
+    qRegisterMetaType<size_t>("size_t");
+    qRegisterMetaType<ssize_t>("ssize_t");
+    qRegisterMetaType<vlc::playlist::PlaylistItem>("PlaylistItem");
+    qRegisterMetaType<QVector<vlc::playlist::PlaylistItem>>("QVector<PlaylistItem>");
+    qRegisterMetaType<enum vlc_playlist_playback_order>("vlc_playlist_playback_order");
+    qRegisterMetaType<enum vlc_playlist_playback_repeat>("vlc_playlist_playback_repeat");
+}
+
 static void *Thread( void *obj )
 {
     intf_thread_t *p_intf = (intf_thread_t *)obj;
@@ -623,6 +637,8 @@ static void *Thread( void *obj )
     QString s_style = getSettings()->value( "MainWindow/QtStyle", "" ).toString();
     if( s_style.compare("") != 0 )
         QApplication::setStyle( s_style );
+
+    qRegisterMetaTypes();
 
     /* Launch */
     app.exec();
