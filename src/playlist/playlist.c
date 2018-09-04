@@ -146,6 +146,44 @@ NotifyItemsRemoved(vlc_playlist_t *playlist, size_t index,
 }
 
 static inline void
+NotifyItemUpdated(vlc_playlist_t *playlist, size_t index,
+                  vlc_playlist_item_t *item)
+{
+    PlaylistAssertLocked(playlist);
+    vlc_playlist_listener_id *listener;
+    vlc_playlist_listener_foreach(listener, playlist)
+        if (listener->cbs->on_item_updated)
+            listener->cbs->on_item_updated(playlist, index, item,
+                                           listener->userdata);
+}
+
+static inline bool
+PlaylistHasItemUpdatedListeners(vlc_playlist_t *playlist)
+{
+    vlc_playlist_listener_id *listener;
+    vlc_playlist_listener_foreach(listener, playlist)
+        if (listener->cbs->on_item_updated)
+            return true;
+    return false;
+}
+
+static inline void
+NotifyMediaUpdated(vlc_playlist_t *playlist, input_item_t *media)
+{
+    PlaylistAssertLocked(playlist);
+    if (!PlaylistHasItemUpdatedListeners(playlist))
+        /* no need to find the index if there are no listeners */
+        return;
+
+    /* TODO cache the last index, a media is often updated several times in a
+     * row */
+    ssize_t index = vlc_playlist_IndexOfMedia(playlist, media);
+    if (index == -1)
+        return;
+    NotifyItemUpdated(playlist, index, playlist->items.data[index]);
+}
+
+static inline void
 NotifyPlaybackRepeatChanged(vlc_playlist_t *playlist,
                             enum vlc_playlist_playback_repeat repeat)
 {
@@ -201,6 +239,40 @@ NotifyHasPrevChanged(vlc_playlist_t *playlist, bool has_prev)
         if (listener->cbs->on_has_prev_changed)
             listener->cbs->on_has_prev_changed(playlist, has_prev,
                                                listener->userdata);
+}
+
+static void on_media_updated(const vlc_event_t *event, void *userdata)
+{
+    vlc_playlist_t *playlist = userdata;
+    input_item_t *media = event->p_obj;
+
+    vlc_playlist_Lock(playlist);
+    NotifyMediaUpdated(playlist, media);
+    vlc_playlist_Unlock(playlist);
+}
+
+static void
+RegisterMediaEvents(vlc_playlist_t *playlist, input_item_t *media)
+{
+    PlaylistAssertLocked(playlist);
+    vlc_event_manager_t *em = &media->event_manager;
+    vlc_event_attach(em, vlc_InputItemDurationChanged, on_media_updated,
+                     playlist);
+    vlc_event_attach(em, vlc_InputItemMetaChanged, on_media_updated, playlist);
+    vlc_event_attach(em, vlc_InputItemNameChanged, on_media_updated, playlist);
+    vlc_event_attach(em, vlc_InputItemInfoChanged, on_media_updated, playlist);
+}
+
+static void
+DeregisterMediaEvents(vlc_playlist_t *playlist, input_item_t *media)
+{
+    PlaylistAssertLocked(playlist);
+    vlc_event_manager_t *em = &media->event_manager;
+    vlc_event_detach(em, vlc_InputItemDurationChanged, on_media_updated,
+                     playlist);
+    vlc_event_detach(em, vlc_InputItemMetaChanged, on_media_updated, playlist);
+    vlc_event_detach(em, vlc_InputItemNameChanged, on_media_updated, playlist);
+    vlc_event_detach(em, vlc_InputItemInfoChanged, on_media_updated, playlist);
 }
 
 static vlc_playlist_item_t *
@@ -555,6 +627,8 @@ vlc_playlist_Append(vlc_playlist_t *playlist, input_item_t *media)
         return NULL;
     }
 
+    RegisterMediaEvents(playlist, media);
+
     NotifyItemsAdded(playlist, playlist->items.size, &item, 1);
     PlaylistRefreshHasNext(playlist);
     vlc_player_InvalidateNextMedia(playlist->player);
@@ -579,6 +653,8 @@ vlc_playlist_Insert(vlc_playlist_t *playlist, size_t index,
         return NULL;
     }
 
+    RegisterMediaEvents(playlist, media);
+
     NotifyItemsAdded(playlist, index, &item, 1);
     PlaylistRefreshHasPrev(playlist);
     PlaylistRefreshHasNext(playlist);
@@ -596,6 +672,8 @@ vlc_playlist_RemoveAt(vlc_playlist_t *playlist, size_t index)
     vlc_playlist_item_t *item = playlist->items.data[index];
     vlc_vector_remove(&playlist->items, index);
     NotifyItemsRemoved(playlist, index, &item, 1);
+
+    DeregisterMediaEvents(playlist, item->media);
 
     vlc_playlist_item_Release(item);
 
