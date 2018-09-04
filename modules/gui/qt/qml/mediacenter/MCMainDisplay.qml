@@ -21,6 +21,7 @@
  *****************************************************************************/
 
 import QtQuick 2.0
+import QtQuick.Controls 2.2
 import QtQuick.Layouts 1.3
 
 import "qrc:///style/"
@@ -33,6 +34,27 @@ ColumnLayout {
     Layout.minimumWidth: VLCStyle.minWidthMediacenter
     spacing: 0
 
+    property var tabModel: ListModel {
+        ListElement {
+            displayText: qsTr("Music")
+            pic: "qrc:///sidebar/music.svg"
+            name: "music"
+            url: "qrc:///mediacenter/MCMusicDisplay.qml"
+        }
+        ListElement {
+            displayText: qsTr("Video")
+            pic: "qrc:///sidebar/movie.svg"
+            name: "video"
+            url: "qrc:///mediacenter/MCVideoDisplay.qml"
+        }
+        ListElement {
+            displayText: qsTr("Network")
+            pic: "qrc:///sidebar/screen.svg"
+            name: "network"
+            url: "qrc:///mediacenter/MCNetworkDisplay.qml"
+        }
+    }
+
     /* Source selection*/
     BannerSources {
         id: sourcesBanner
@@ -44,20 +66,38 @@ ColumnLayout {
         Layout.fillWidth: true
 
         need_toggleView_button: true
+
+        model: tabModel
+
+        onSelectedIndexChanged: {
+            stackView.replace(tabModel.get(selectedIndex).url)
+            stackView.focus = true
+        }
     }
 
-    StackLayout {
-        currentIndex: sourcesBanner.selectedIndex
-        /* MediaCenter */
-        MCMusicDisplay {
-            id: mcDisplay
+    StackView {
+        id: stackView
+        Layout.fillWidth: true
+        Layout.fillHeight: true
 
-            Layout.fillHeight: true
-            Layout.fillWidth: true
+        Component.onCompleted: push("qrc:///mediacenter/MCMusicDisplay.qml")
+
+        replaceEnter: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 0
+                to:1
+                duration: 200
+            }
         }
-        MCVideoDisplay {
-        }
-        MCNetworkDisplay {
+
+        replaceExit: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 1
+                to:0
+                duration: 200
+            }
         }
     }
 }

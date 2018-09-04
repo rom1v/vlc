@@ -37,6 +37,7 @@ Rectangle {
     }
 
     color: VLCStyle.colors.banner
+    property alias model: sourcesButtons.model
 
     Row {
         anchors.fill: parent
@@ -44,35 +45,7 @@ Rectangle {
         /* Repeater to display each button */
         Repeater {
             id: sourcesButtons
-
-            model: buttonModel
             delegate: buttonView
-        }
-
-        /* Model telling the text to display */
-        // The associated image and the name to send to medialib
-        // in order to notify to change the medialib model
-        ListModel {
-            id: buttonModel
-
-            ListElement {
-                displayText: "Music"
-                pic: "qrc:///sidebar/music.svg"
-                name: "music"
-                index: 0
-            }
-            ListElement {
-                displayText: "Video"
-                pic: "qrc:///sidebar/movie.svg"
-                name: "video"
-                index: 1
-            }
-            ListElement {
-                displayText: "Network"
-                pic: "qrc:///sidebar/screen.svg"
-                name: "network"
-                index: 2
-            }
         }
 
         /* Button for the sources */
@@ -86,9 +59,7 @@ Rectangle {
                 padding: 0
                 onClicked: {
                     checked =  !control.checked;
-                    pLBannerSources.selectedIndex = Qt.binding(function() {
-                        return model.index
-                    });
+                    pLBannerSources.selectedIndex = model.index
                 }
 
                 background: Rectangle {
