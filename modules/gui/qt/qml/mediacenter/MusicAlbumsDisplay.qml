@@ -198,7 +198,7 @@ Item {
         modelCount: delegateModel.items.count
 
         onContentYChanged:{
-            root.contentY = contentY
+            root.contentY = contentY - originY
         }
 
         //Keys.onReturnPressed: {
