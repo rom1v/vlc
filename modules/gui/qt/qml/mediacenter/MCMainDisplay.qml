@@ -20,19 +20,23 @@
  * 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 
-import QtQuick 2.0
+import QtQuick 2.7
 import QtQuick.Controls 2.2
 import QtQuick.Layouts 1.3
+import org.videolan.medialib 0.1
 
 import "qrc:///style/"
 import "qrc:///qml/"
 
 ColumnLayout {
     id: column
-    anchors.fill: parent
 
     Layout.minimumWidth: VLCStyle.minWidthMediacenter
     spacing: 0
+
+    //name and properties of the tab to be initially loaded
+    property string view: "music"
+    property var viewProperties: QtObject {}
 
     property var tabModel: ListModel {
         ListElement {
@@ -55,6 +59,38 @@ ColumnLayout {
         }
     }
 
+    Connections {
+        target: history
+        onCurrentChanged: {
+            if ( !current || !current.view ) {
+                console.warn("unable to load requested view, undefined")
+                return
+            }
+            loadView(current.view, current.viewProperties)
+        }
+    }
+
+    function loadView(name, viewProperties)
+    {
+        var found = false
+        for (var tab = 0; tab < tabModel.count; tab++ )
+            if (tabModel.get(tab).name === name) {
+                //we can't use push(url, properties) as Qt interprets viewProperties
+                //as a second component to load
+                var component = Qt.createComponent(tabModel.get(tab).url)
+                if (component.status === Component.Ready ) {
+                    var page = component.createObject(stackView, viewProperties)
+                    stackView.replace(page)
+                    view = name
+                    found = true
+                    break;
+                }
+            }
+        if (!found)
+            console.warn("unable to load view " + name)
+        return found
+    }
+
     /* Source selection*/
     BannerSources {
         id: sourcesBanner
@@ -71,6 +107,10 @@ ColumnLayout {
 
         onSelectedIndexChanged: {
             stackView.replace(tabModel.get(selectedIndex).url)
+            history.push({
+                view: tabModel.get(selectedIndex).name,
+                viewProperties: {}
+            }, History.Stay)
             stackView.focus = true
         }
     }
@@ -80,7 +120,11 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
 
-        Component.onCompleted: push("qrc:///mediacenter/MCMusicDisplay.qml")
+        Component.onCompleted: {
+            var found = loadView(view, viewProperties)
+            if (!found)
+                stackView.push(tabModel.get(0).url)
+        }
 
         replaceEnter: Transition {
             PropertyAnimation {

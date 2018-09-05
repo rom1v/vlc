@@ -28,32 +28,58 @@ import "qrc:///style/"
 import org.videolan.medialib 0.1
 
 Rectangle {
+    id: root
     color: VLCStyle.colors.bg
+
+    //name and properties of the tab to be initially loaded
+    property string view: "albums"
+    property var viewProperties: QtObject {}
 
     property var tabModel: ListModel {
         ListElement {
             displayText: qsTr("Albums")
-            name: "music-albums"
+            name: "albums"
             url: "qrc:///mediacenter/MusicAlbumsDisplay.qml"
         }
 
         ListElement {
             displayText: qsTr("Artists")
-            name: "music-artists"
+            name: "artists"
             url: "qrc:///mediacenter/MusicArtistsDisplay.qml"
         }
 
         ListElement {
             displayText: qsTr("Genres")
-            name: "music-genre"
+            name: "genres"
             url: "qrc:///mediacenter/MusicGenresDisplay.qml"
         }
 
         ListElement {
             displayText: qsTr("Tracks")
-            name: "music-tracks"
+            name: "tracks"
             url: "qrc:///mediacenter/MusicTrackListDisplay.qml"
         }
+    }
+
+    function loadView(name, viewProperties)
+    {
+        var found = false
+        for (var tab = 0; tab < tabModel.count; tab++ )
+            if (tabModel.get(tab).name === name) {
+                //we can't use push(url, properties) as Qt interprets viewProperties
+                //as a second component to load
+                var component = Qt.createComponent(tabModel.get(tab).url)
+                if (component.status === Component.Ready ) {
+                    var page = component.createObject(stackView, viewProperties)
+                    stackView.push(page)
+                    root.view = name
+                    found = true
+                    break;
+                }
+            }
+        if (!found)
+            console.warn("unable to load view " + name)
+        return found
     }
 
     ColumnLayout {
@@ -101,8 +127,17 @@ Rectangle {
                             }
                             onClicked: {
                                 stackView.replace(model.url)
+                                history.push({
+                                    view: "music",
+                                    viewProperties: {
+                                        view: model.name,
+                                        viewProperties: {}
+                                    },
+                                }, History.Stay)
                                 stackView.focus = true
                             }
+                            checked: (model.name === root.view)
+
                         }
                     }
                 }
@@ -159,7 +194,11 @@ Rectangle {
             Layout.fillHeight: true
             focus: true
 
-            Component.onCompleted: push("qrc:///mediacenter/MusicAlbumsDisplay.qml")
+            Component.onCompleted: {
+                var found = loadView(view, viewProperties)
+                if (!found)
+                    push(tabModel.get(0).url)
+            }
 
             replaceEnter: Transition {
                 PropertyAnimation {

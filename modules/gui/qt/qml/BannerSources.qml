@@ -23,6 +23,7 @@
 
 import QtQuick 2.9
 import QtQuick.Controls 2.2
+import org.videolan.medialib 0.1
 import "qrc:///style/"
 
 Rectangle {
@@ -125,6 +126,7 @@ Rectangle {
 
     /* button to toogle between night and day mode */
     Image {
+        id: colorTheme_selector
         anchors.right: view_selector.left
         anchors.rightMargin: VLCStyle.margin_small
         anchors.verticalCenter: parent.verticalCenter
@@ -141,4 +143,28 @@ Rectangle {
             onClicked: VLCStyle.colors.changeColorTheme()
         }
     }
+
+    Image {
+        id: history_back
+
+        anchors.right: colorTheme_selector.left
+        anchors.rightMargin: VLCStyle.margin_normal
+        anchors.verticalCenter: parent.verticalCenter
+        height: VLCStyle.icon_normal
+        width: VLCStyle.icon_normal
+
+        fillMode: Image.PreserveAspectFit
+        source: "qrc:///toolbar/dvd_prev.svg"
+
+        enabled: !history.empty
+        visible: !history.empty
+
+        MouseArea {
+            anchors.fill: parent
+
+            enabled: need_toggleView_button
+            onClicked: history.pop(History.Go)
+        }
+    }
+
 }

@@ -69,6 +69,17 @@ Item {
                     console.log('Clicked on play : '+model.name);
                     medialib.addAndPlay( model.id )
                 }
+                onItemDoubleClicked: {
+                    history.push({
+                        view: "music",
+                        viewProperties: {
+                             view: "albums",
+                             viewProperties: {
+                                 parentId: model.id
+                             }
+                         },
+                    }, History.Go)
+                }
                 onAddToPlaylistClicked: {
                     console.log('Clicked on addToPlaylist : '+model.name);
                     medialib.addToPlaylist( model.id );
@@ -99,6 +110,17 @@ Item {
                 onPlayClicked: {
                     console.log('Clicked on play : '+model.name);
                     medialib.addAndPlay( model.id )
+                }
+                onItemDoubleClicked: {
+                    history.push({
+                        view: "music",
+                        viewProperties: {
+                             view: "albums",
+                             viewProperties: {
+                                 parentId: model.id
+                             }
+                         },
+                    }, History.Go)
                 }
                 onAddToPlaylistClicked: {
                     console.log('Clicked on addToPlaylist : '+model.name);

@@ -38,6 +38,7 @@ Rectangle {
     signal playClicked
     signal addToPlaylistClicked
     signal itemClicked(int keys, int modifier)
+    signal itemDoubleClicked(int keys, int modifier)
 
     color: "transparent"
 
@@ -50,6 +51,10 @@ Rectangle {
         propagateComposedEvents: true
         onClicked: {
             root.itemClicked(mouse.buttons, mouse.modifiers);
+            mouse.accepted = false;
+        }
+        onDoubleClicked: {
+            root.itemDoubleClicked(mouse.buttons, mouse.modifiers);
             mouse.accepted = false;
         }
     }

@@ -43,6 +43,8 @@
 #include "components/mediacenter/mlalbumtrackmodel.hpp"
 #include "components/mediacenter/mlgenremodel.hpp"
 
+#include "components/mediacenter/navigation_history.hpp"
+
 #include "components/video_overlay.hpp"
 
 #include "util/searchlineedit.hpp"
@@ -90,6 +92,11 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
         qmlRegisterType<MLArtist>();
         qmlRegisterType<MLAlbumTrack>();
         qmlRegisterType<MLGenre>();
+
+
+        qmlRegisterUncreatableType<NavigationHistory>("org.videolan.medialib", 0, 1, "History", "Type of global variable history" );
+        NavigationHistory* navigation_history = new NavigationHistory(this);
+        rootCtx->setContextProperty( "history", navigation_history );
 
         mediacenterView->setSource( QUrl ( QStringLiteral("qrc:/qml/MainInterface.qml") ) );
         mediacenterView->setResizeMode( QQuickWidget::SizeRootObjectToView );

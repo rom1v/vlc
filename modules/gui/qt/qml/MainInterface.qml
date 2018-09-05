@@ -26,6 +26,7 @@ import QtQuick 2.0
 import QtQuick.Layouts 1.3
 import QtQuick.Controls 1.4 as QC14
 import QtQuick.Controls 2.2
+import org.videolan.medialib 0.1
 
 import "qrc:///style/"
 
@@ -35,11 +36,22 @@ Rectangle {
     color: VLCStyle.colors.bg
 
     MC.MCMainDisplay {
+        anchors.fill: parent
     }
 
     MC.ScanProgressBar {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
+    }
+
+    Component.onCompleted: {
+        history.push({
+            view : "music",
+            viewProperties : {
+                view : "albums",
+                viewProperties : {}
+            }
+        }, History.Go)
     }
 }

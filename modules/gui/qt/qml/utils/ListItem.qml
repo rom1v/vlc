@@ -30,6 +30,7 @@ Rectangle {
     signal playClicked
     signal addToPlaylistClicked
     signal itemClicked(int keys, int modifier)
+    signal itemDoubleClicked(int keys, int modifier)
 
     property alias hovered: mouse.containsMouse
 
@@ -44,6 +45,9 @@ Rectangle {
         hoverEnabled: true
         onClicked: {
             root.itemClicked(mouse.buttons, mouse.modifiers);
+        }
+        onDoubleClicked: {
+            root.itemDoubleClicked(mouse.buttons, mouse.modifiers);
         }
     }
 
