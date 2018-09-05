@@ -111,51 +111,14 @@ PlaylistAssertLocked(vlc_playlist_t *playlist)
     vlc_assert_locked(&playlist->lock);
 }
 
-static inline void
-NotifyCleared(vlc_playlist_t *playlist)
-{
-    PlaylistAssertLocked(playlist);
-    vlc_playlist_listener_id *listener;
-    vlc_playlist_listener_foreach(listener, playlist)
-        if (listener->cbs->on_cleared)
-            listener->cbs->on_cleared(playlist, listener->userdata);
-}
-
-static inline void
-NotifyItemsAdded(vlc_playlist_t *playlist, size_t index,
-                 vlc_playlist_item_t *items[], size_t len)
-{
-    PlaylistAssertLocked(playlist);
-    vlc_playlist_listener_id *listener;
-    vlc_playlist_listener_foreach(listener, playlist)
-        if (listener->cbs->on_items_added)
-            listener->cbs->on_items_added(playlist, index, items, len,
-                                          listener->userdata);
-}
-
-static inline void
-NotifyItemsRemoved(vlc_playlist_t *playlist, size_t index,
-                   vlc_playlist_item_t *items[], size_t len)
-{
-    PlaylistAssertLocked(playlist);
-    vlc_playlist_listener_id *listener;
-    vlc_playlist_listener_foreach(listener, playlist)
-        if (listener->cbs->on_items_removed)
-            listener->cbs->on_items_removed(playlist, index, items, len,
-                                            listener->userdata);
-}
-
-static inline void
-NotifyItemUpdated(vlc_playlist_t *playlist, size_t index,
-                  vlc_playlist_item_t *item)
-{
-    PlaylistAssertLocked(playlist);
-    vlc_playlist_listener_id *listener;
-    vlc_playlist_listener_foreach(listener, playlist)
-        if (listener->cbs->on_item_updated)
-            listener->cbs->on_item_updated(playlist, index, item,
-                                           listener->userdata);
-}
+#define PlaylistNotify(playlist, event, ...) \
+do { \
+    PlaylistAssertLocked(playlist); \
+    vlc_playlist_listener_id *listener; \
+    vlc_playlist_listener_foreach(listener, playlist) \
+        if (listener->cbs->event) \
+            listener->cbs->event(playlist, ##__VA_ARGS__, listener->userdata); \
+} while(0)
 
 static inline bool
 PlaylistHasItemUpdatedListeners(vlc_playlist_t *playlist)
@@ -180,65 +143,8 @@ NotifyMediaUpdated(vlc_playlist_t *playlist, input_item_t *media)
     ssize_t index = vlc_playlist_IndexOfMedia(playlist, media);
     if (index == -1)
         return;
-    NotifyItemUpdated(playlist, index, playlist->items.data[index]);
-}
-
-static inline void
-NotifyPlaybackRepeatChanged(vlc_playlist_t *playlist,
-                            enum vlc_playlist_playback_repeat repeat)
-{
-    PlaylistAssertLocked(playlist);
-    vlc_playlist_listener_id *listener;
-    vlc_playlist_listener_foreach(listener, playlist)
-        if (listener->cbs->on_playback_repeat_changed)
-            listener->cbs->on_playback_repeat_changed(playlist, repeat,
-                                                    listener->userdata);
-}
-
-static inline void
-NotifyPlaybackOrderChanged(vlc_playlist_t *playlist,
-                           enum vlc_playlist_playback_order order)
-{
-    PlaylistAssertLocked(playlist);
-    vlc_playlist_listener_id *listener;
-    vlc_playlist_listener_foreach(listener, playlist)
-        if (listener->cbs->on_playback_order_changed)
-            listener->cbs->on_playback_order_changed(playlist, order,
-                                                     listener->userdata);
-}
-
-static inline void
-NotifyCurrentItemChanged(vlc_playlist_t *playlist, size_t index,
-                         vlc_playlist_item_t *item)
-{
-    PlaylistAssertLocked(playlist);
-    vlc_playlist_listener_id *listener;
-    vlc_playlist_listener_foreach(listener, playlist)
-        if (listener->cbs->on_current_item_changed)
-            listener->cbs->on_current_item_changed(playlist, index, item,
-                                                   listener->userdata);
-}
-
-static inline void
-NotifyHasNextChanged(vlc_playlist_t *playlist, bool has_next)
-{
-    PlaylistAssertLocked(playlist);
-    vlc_playlist_listener_id *listener;
-    vlc_playlist_listener_foreach(listener, playlist)
-        if (listener->cbs->on_has_next_changed)
-            listener->cbs->on_has_next_changed(playlist, has_next,
-                                               listener->userdata);
-}
-
-static inline void
-NotifyHasPrevChanged(vlc_playlist_t *playlist, bool has_prev)
-{
-    PlaylistAssertLocked(playlist);
-    vlc_playlist_listener_id *listener;
-    vlc_playlist_listener_foreach(listener, playlist)
-        if (listener->cbs->on_has_prev_changed)
-            listener->cbs->on_has_prev_changed(playlist, has_prev,
-                                               listener->userdata);
+    PlaylistNotify(playlist, on_item_updated, index,
+                   playlist->items.data[index]);
 }
 
 static void on_media_updated(const vlc_event_t *event, void *userdata)
@@ -318,7 +224,7 @@ PlaylistLocalSetCurrent(vlc_playlist_t *playlist, ssize_t current)
 
     playlist->current = current;
     vlc_playlist_item_t *item = PlaylistGetItem(playlist, current);
-    NotifyCurrentItemChanged(playlist, current, item);
+    PlaylistNotify(playlist, on_current_item_changed, current, item);
 }
 
 static inline int
@@ -347,7 +253,7 @@ PlaylistSetHasNext(vlc_playlist_t *playlist, bool has_next)
         return;
 
     playlist->has_next = has_next;
-    NotifyHasNextChanged(playlist, has_next);
+    PlaylistNotify(playlist, on_has_next_changed, has_next);
 }
 
 static inline void
@@ -359,7 +265,7 @@ PlaylistSetHasPrev(vlc_playlist_t *playlist, bool has_prev)
         return;
 
     playlist->has_prev = has_prev;
-    NotifyHasPrevChanged(playlist, has_prev);
+    PlaylistNotify(playlist, on_has_prev_changed, has_prev);
 }
 
 static inline bool
@@ -606,7 +512,7 @@ vlc_playlist_Clear(vlc_playlist_t *playlist)
     PlaylistAssertLocked(playlist);
 
     PlaylistClear(playlist);
-    NotifyCleared(playlist);
+    PlaylistNotify(playlist, on_cleared);
 
     PlaylistSetHasPrev(playlist, false);
     PlaylistSetHasNext(playlist, false);
@@ -629,7 +535,7 @@ vlc_playlist_Append(vlc_playlist_t *playlist, input_item_t *media)
 
     RegisterMediaEvents(playlist, media);
 
-    NotifyItemsAdded(playlist, playlist->items.size, &item, 1);
+    PlaylistNotify(playlist, on_items_added, playlist->items.size, &item, 1);
     PlaylistRefreshHasNext(playlist);
     vlc_player_InvalidateNextMedia(playlist->player);
 
@@ -655,7 +561,7 @@ vlc_playlist_Insert(vlc_playlist_t *playlist, size_t index,
 
     RegisterMediaEvents(playlist, media);
 
-    NotifyItemsAdded(playlist, index, &item, 1);
+    PlaylistNotify(playlist, on_items_added, index, &item, 1);
     PlaylistRefreshHasPrev(playlist);
     PlaylistRefreshHasNext(playlist);
     vlc_player_InvalidateNextMedia(playlist->player);
@@ -671,7 +577,7 @@ vlc_playlist_RemoveAt(vlc_playlist_t *playlist, size_t index)
 
     vlc_playlist_item_t *item = playlist->items.data[index];
     vlc_vector_remove(&playlist->items, index);
-    NotifyItemsRemoved(playlist, index, &item, 1);
+    PlaylistNotify(playlist, on_items_removed, index, &item, 1);
 
     DeregisterMediaEvents(playlist, item->media);
 
@@ -742,7 +648,7 @@ vlc_playlist_SetPlaybackRepeat(vlc_playlist_t *playlist,
 
     playlist->repeat = repeat;
 
-    NotifyPlaybackRepeatChanged(playlist, repeat);
+    PlaylistNotify(playlist, on_playback_repeat_changed, repeat);
 }
 
 void
@@ -756,7 +662,7 @@ vlc_playlist_SetPlaybackOrder(vlc_playlist_t *playlist,
 
     playlist->order = order;
 
-    NotifyPlaybackOrderChanged(playlist, order);
+    PlaylistNotify(playlist, on_playback_order_changed, order);
 }
 
 ssize_t
@@ -884,8 +790,10 @@ ExpandItem(vlc_playlist_t *playlist, size_t index, input_item_node_t *node)
     playlist_item_vector_t flatten = VLC_VECTOR_INITIALIZER;
     ChildrenToPlaylistItems(&flatten, node);
 
-    if (vlc_vector_insert_all(&playlist->items, index, flatten.data, flatten.size))
-        NotifyItemsAdded(playlist, index, &playlist->items.data[index], flatten.size);
+    if (vlc_vector_insert_all(&playlist->items, index, flatten.data,
+                              flatten.size))
+        PlaylistNotify(playlist, on_items_added, index,
+                       &playlist->items.data[index], flatten.size);
 
     vlc_vector_clear(&flatten);
     return true;
