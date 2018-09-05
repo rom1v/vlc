@@ -154,13 +154,19 @@ Rectangle {
 
                     color: VLCStyle.colors.buttonText
                     placeholderText: qsTr("filter")
+                    hoverEnabled: true
 
                     background: Rectangle {
                         radius: 5 //fixme
                         color: VLCStyle.colors.button
-                        border.color: searchBox.text.length < 3 && searchBox.text.length !== 0
-                                      ? VLCStyle.colors.alert
-                                      : VLCStyle.colors.buttonBorder
+                        border.color: {
+                            if ( searchBox.text.length < 3 && searchBox.text.length !== 0 )
+                                return VLCStyle.colors.alert
+                            else if ( searchBox.hovered || searchBox.activeFocus )
+                                return VLCStyle.colors.bgHover
+                            else
+                                return VLCStyle.colors.buttonBorder
+                       }
                     }
 
                     onTextChanged: {
