@@ -23,7 +23,9 @@ PlaylistModel::PlaylistModel(Playlist *playlist, QObject *parent)
 void
 PlaylistModel::onPlaylistCleared()
 {
-
+    beginResetModel();
+    items.clear();
+    endResetModel();
 }
 
 void
