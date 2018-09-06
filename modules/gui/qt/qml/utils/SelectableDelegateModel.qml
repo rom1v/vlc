@@ -7,22 +7,16 @@ DelegateModel {
     property int shiftIndex: -1
 
     groups: [
-        DelegateModelGroup { id: selectedGroup; name: "selected"; includeByDefault: false
-            onChanged: {
-                console.log("select group changed")
-            }
-        }
+        DelegateModelGroup { id: selectedGroup; name: "selected"; includeByDefault: false }
     ]
 
     function _addRange(from, to) {
         for (var i = from; i <= to; i++) {
-            console.log("add[", i, "] ", delegateModel.items.get(i))
             delegateModel.items.get(i).inSelected = true
         }
     }
     function _delRange(from, to) {
         for (var i = from; i <= to; i++) {
-            console.log("del[", i, "] ", delegateModel.items.get(i))
             delegateModel.items.get(i).inSelected = false
         }
     }
@@ -58,13 +52,15 @@ DelegateModel {
             if (e.inSelected) {
                 if ((keymodifiers & Qt.ControlModifier) == Qt.ControlModifier)
                     e.inSelected = false
-                else
+                else {
                     selectedGroup.remove(0,selectedGroup.count) //clear
+                }
             } else {
                 if ((keymodifiers & Qt.ControlModifier) == Qt.ControlModifier) {
                     e.inSelected = true
                 } else {
-                    selectedGroup.remove(0,selectedGroup.count) //clear
+                    if (selectedGroup.count > 0)
+                        selectedGroup.remove(0,selectedGroup.count) //clear
                     e.inSelected = true
                 }
             }
