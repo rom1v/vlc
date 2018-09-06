@@ -59,6 +59,11 @@ public:
         return ptr;
     }
 
+    vlc_playlist_item_t *data() const
+    {
+        return ptr;
+    }
+
     input_item_t *getMedia() const
     {
         return vlc_playlist_item_GetMedia(ptr);
@@ -96,6 +101,10 @@ public:
     operator bool() const
     {
         return d;
+    }
+
+    vlc_playlist_item_t *data() const {
+        return d ? d->item.data() : nullptr;
     }
 
     QString getTitle() const
