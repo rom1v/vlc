@@ -48,7 +48,7 @@ public:
         return *this;
     }
 
-    PlaylistItem &operator=(PlaylistItem &&other)
+    PlaylistItem &operator=(PlaylistItem &&other) noexcept
     {
         ptr = std::exchange(other.ptr, nullptr);
         meta = std::move(other.meta);
