@@ -37,8 +37,9 @@ on_playlist_items_removed(vlc_playlist_t *playlist, size_t index,
                           void *userdata)
 {
     VLC_UNUSED(playlist);
+    VLC_UNUSED(items);
     Playlist *this_ = static_cast<Playlist *>(userdata);
-    emit this_->playlistItemsRemoved(index, toVec(items, len));
+    emit this_->playlistItemsRemoved(index, len);
 }
 
 static void
@@ -75,8 +76,9 @@ on_playlist_current_item_changed(vlc_playlist_t *playlist, ssize_t index,
                                  vlc_playlist_item_t *item, void *userdata)
 {
     VLC_UNUSED(playlist);
+    VLC_UNUSED(item);
     Playlist *this_ = static_cast<Playlist *>(userdata);
-    emit this_->playlistCurrentItemChanged(index, item);
+    emit this_->playlistCurrentItemChanged(index);
 }
 
 static void

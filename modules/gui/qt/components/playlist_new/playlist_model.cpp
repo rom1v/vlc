@@ -33,7 +33,7 @@ PlaylistModel::onPlaylistItemsAdded(size_t index, QVector<PlaylistItem> items)
 }
 
 void
-PlaylistModel::onPlaylistItemsRemoved(size_t index, QVector<PlaylistItem> items)
+PlaylistModel::onPlaylistItemsRemoved(size_t index, size_t count)
 {
 
 }
@@ -45,7 +45,7 @@ PlaylistModel::onPlaylistItemUpdated(size_t index, PlaylistItem item)
 }
 
 void
-PlaylistModel::onPlaylistCurrentItemChanged(ssize_t index, PlaylistItem)
+PlaylistModel::onPlaylistCurrentItemChanged(ssize_t index)
 {
 
 }

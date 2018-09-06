@@ -23,11 +23,11 @@ public:
 signals:
     void playlistCleared();
     void playlistItemsAdded(size_t index, QVector<PlaylistItem>);
-    void playlistItemsRemoved(size_t index, QVector<PlaylistItem>);
+    void playlistItemsRemoved(size_t index, size_t count);
     void playlistItemUpdated(size_t index, PlaylistItem);
     void playlistPlaybackRepeatChanged(enum vlc_playlist_playback_repeat);
     void playlistPlaybackOrderChanged(enum vlc_playlist_playback_order);
-    void playlistCurrentItemChanged(ssize_t index, PlaylistItem);
+    void playlistCurrentItemChanged(ssize_t index);
     void playlistHasNextChanged(bool hasNext);
     void playlistHasPrevChanged(bool hasPrev);
 

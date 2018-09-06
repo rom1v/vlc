@@ -30,9 +30,9 @@ public:
 private slots:
     void onPlaylistCleared();
     void onPlaylistItemsAdded(size_t index, QVector<PlaylistItem>);
-    void onPlaylistItemsRemoved(size_t index, QVector<PlaylistItem>);
+    void onPlaylistItemsRemoved(size_t index, size_t count);
     void onPlaylistItemUpdated(size_t index, PlaylistItem);
-    void onPlaylistCurrentItemChanged(ssize_t index, PlaylistItem);
+    void onPlaylistCurrentItemChanged(ssize_t index);
 
 private:
     Playlist *playlist;
