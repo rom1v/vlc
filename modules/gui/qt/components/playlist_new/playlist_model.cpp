@@ -71,7 +71,7 @@ PlaylistModel::data(const QModelIndex &index, int role) const
     switch (role)
     {
         case TitleRole:
-            return items[index.row()].getMedia()->psz_name;
+            return items[index.row()].getTitle();
         default:
             return {};
     }

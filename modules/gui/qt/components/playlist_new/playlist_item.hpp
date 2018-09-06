@@ -11,14 +11,23 @@ public:
         : ptr(ptr)
     {
         if (ptr)
+        {
             vlc_playlist_item_Hold(ptr);
+            sync();
+        }
     }
 
     PlaylistItem(const PlaylistItem &other)
-        : PlaylistItem(other.ptr) {}
+        : ptr(other.ptr)
+        , meta(other.meta)
+    {
+        if (ptr)
+            vlc_playlist_item_Hold(ptr);
+    }
 
     PlaylistItem(PlaylistItem &&other) noexcept
-        : ptr(std::exchange(other.ptr, nullptr)) {}
+        : ptr(std::exchange(other.ptr, nullptr))
+        , meta(std::move(other.meta)) {}
 
     ~PlaylistItem()
     {
@@ -34,12 +43,14 @@ public:
         if (ptr)
             vlc_playlist_item_Release(ptr);
         ptr = other.ptr;
+        meta = other.meta;
         return *this;
     }
 
     PlaylistItem &operator=(PlaylistItem &&other)
     {
         ptr = std::exchange(other.ptr, nullptr);
+        meta = std::move(other.meta);
         return *this;
     }
 
@@ -83,8 +94,28 @@ public:
         return vlc_playlist_item_GetMedia(ptr);
     }
 
+    QString getTitle() const
+    {
+        return meta.title;
+    }
+
+    void sync() {
+        input_item_t *media = getMedia();
+        vlc_mutex_lock(&media->lock);
+        meta.title = media->psz_name;
+        vlc_mutex_unlock(&media->lock);
+    }
+
 private:
+    struct Meta {
+        QString title;
+        /* TODO other fields */
+    };
+
     vlc_playlist_item_t *ptr = nullptr;
+
+    /* cached values, updated by sync() */
+    Meta meta;
 };
 
 #endif
