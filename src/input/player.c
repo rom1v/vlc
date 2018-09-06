@@ -58,6 +58,7 @@ struct vlc_player_input
     input_thread_t *thread;
     vlc_player_t *player;
     bool started;
+    bool stop_async;
 
     input_state_e state;
     float rate;
@@ -77,6 +78,9 @@ struct vlc_player_input
     struct input_stats_t stats;
 
     bool discontinuity;
+
+    vlc_tick_t audio_delay;
+    vlc_tick_t subtitle_delay;
 
     vlc_player_program_vector program_vector;
     vlc_player_track_vector video_track_vector;
@@ -146,6 +150,14 @@ vlc_player_assert_locked(vlc_player_t *player)
     vlc_assert_locked(&player->lock);
 }
 
+static inline struct vlc_player_input *
+vlc_player_get_input_locked(vlc_player_t *player)
+{
+    vlc_player_assert_locked(player);
+    assert(player->input);
+    return player->input;
+}
+
 static struct vlc_player_input *
 vlc_player_input_New(vlc_player_t *player, input_item_t *item)
 {
@@ -155,6 +167,7 @@ vlc_player_input_New(vlc_player_t *player, input_item_t *item)
 
     input->player = player;
     input->started = false;
+    input->stop_async = false;
 
     input->state = INIT_S;
     input->rate = 1.f;
@@ -171,6 +184,8 @@ vlc_player_input_New(vlc_player_t *player, input_item_t *item)
     memset(&input->stats, 0, sizeof(input->stats));
 
     input->discontinuity = false;
+
+    input->audio_delay = input->subtitle_delay = 0;
 
     vlc_vector_init(&input->program_vector);
     vlc_vector_init(&input->video_track_vector);
@@ -190,6 +205,8 @@ vlc_player_input_New(vlc_player_t *player, input_item_t *item)
 static void
 vlc_player_input_Delete(struct vlc_player_input *input)
 {
+    input_Close(input->thread);
+
     assert(input->program_vector.size == 0);
     assert(input->video_track_vector.size == 0);
     assert(input->audio_track_vector.size == 0);
@@ -200,7 +217,6 @@ vlc_player_input_Delete(struct vlc_player_input *input)
     vlc_vector_clear(&input->audio_track_vector);
     vlc_vector_clear(&input->spu_track_vector);
 
-    input_Close(input->thread);
     free(input);
 }
 
@@ -215,19 +231,22 @@ vlc_player_input_Start(struct vlc_player_input *input)
 }
 
 static void
-vlc_player_input_StopAndClose(struct vlc_player_input *input)
+vlc_player_input_StopAndClose(struct vlc_player_input *input, bool wait)
 {
     if (input->started)
     {
         input->started = false;
         input_Stop(input->thread);
-
-        input->player->destructor.wait_count++;
-        /* This input will be cleaned when we receive the INPUT_EVENT_DEAD
-         * event */
+        if (!wait)
+        {
+            input->stop_async = true;
+            input->player->destructor.wait_count++;
+            /* This input will be cleaned when we receive the INPUT_EVENT_DEAD
+             * event */
+            return;
+        }
     }
-    else
-        vlc_player_input_Delete(input);
+    vlc_player_input_Delete(input);
 }
 
 static void *
@@ -312,41 +331,36 @@ vlc_player_program_vector_FindById(vlc_player_program_vector *vec, int id,
 size_t
 vlc_player_GetProgramCount(vlc_player_t *player)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
-    return player->input->program_vector.size;
+    return input->program_vector.size;
 }
 
 const struct vlc_player_program *
 vlc_player_GetProgramAt(vlc_player_t *player, size_t index)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
-    assert(index < player->input->program_vector.size);
-    return &player->input->program_vector.data[index]->p;
+    assert(index < input->program_vector.size);
+    return &input->program_vector.data[index]->p;
 }
 
 const struct vlc_player_program *
 vlc_player_GetProgram(vlc_player_t *player, int id)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
     struct vlc_player_program_priv *prgm =
-        vlc_player_program_vector_FindById(&player->input->program_vector, id,
-                                           NULL);
+        vlc_player_program_vector_FindById(&input->program_vector, id, NULL);
     return prgm ? &prgm->p : NULL;
 }
 
 void
 vlc_player_SelectProgram(vlc_player_t *player, int id)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input != NULL);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
-    input_ControlPushHelper(player->input->thread, INPUT_CONTROL_SET_PROGRAM,
+    input_ControlPushHelper(input->thread, INPUT_CONTROL_SET_PROGRAM,
                             &(vlc_value_t) { .i_int = id });
 }
 
@@ -486,11 +500,9 @@ const struct vlc_player_track *
 vlc_player_GetTrackAt(vlc_player_t *player, enum es_format_category_e cat,
                       size_t index)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
-    vlc_player_track_vector *vec =
-        vlc_player_input_GetTrackVector(player->input, cat);
+    vlc_player_track_vector *vec = vlc_player_input_GetTrackVector(input, cat);
     if (!vec)
         return NULL;
     assert(index < vec->size);
@@ -500,9 +512,7 @@ vlc_player_GetTrackAt(vlc_player_t *player, enum es_format_category_e cat,
 const struct vlc_player_track *
 vlc_player_GetTrack(vlc_player_t *player, vlc_es_id_t *id)
 {
-    vlc_player_assert_locked(player);
-    struct vlc_player_input *input = player->input;
-    assert(input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
     vlc_player_track_vector *vec =
         vlc_player_input_GetTrackVector(input, vlc_es_id_GetCat(id));
@@ -514,30 +524,25 @@ vlc_player_GetTrack(vlc_player_t *player, vlc_es_id_t *id)
 void
 vlc_player_SelectTrack(vlc_player_t *player, vlc_es_id_t *id)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input != NULL);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
-    input_ControlPushEsHelper(player->input->thread, INPUT_CONTROL_SET_ES, id);
+    input_ControlPushEsHelper(input->thread, INPUT_CONTROL_SET_ES, id);
 }
 
 void
 vlc_player_UnselectTrack(vlc_player_t *player, vlc_es_id_t *id)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input != NULL);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
-    input_ControlPushEsHelper(player->input->thread, INPUT_CONTROL_UNSET_ES,
-                              id);
+    input_ControlPushEsHelper(input->thread, INPUT_CONTROL_UNSET_ES, id);
 }
 
 void
 vlc_player_RestartTrack(vlc_player_t *player, vlc_es_id_t *id)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input != NULL);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
-    input_ControlPushEsHelper(player->input->thread, INPUT_CONTROL_RESTART_ES,
-                              id);
+    input_ControlPushEsHelper(input->thread, INPUT_CONTROL_RESTART_ES, id);
 }
 
 void
@@ -731,10 +736,10 @@ input_thread_events(input_thread_t *input_thread,
 
     if (!input->started)
     {
-        if (event->type == INPUT_EVENT_DEAD)
+        if (input->stop_async && event->type == INPUT_EVENT_DEAD)
         {
             /* Don't increment wait_count: already done by
-             * vlc_player_input_StopAndClose() */
+             * vlc_player_input_StopAndClose(false) */
             vlc_list_append(&input->node, &player->destructor.inputs);
             vlc_cond_signal(&player->destructor.cond);
         }
@@ -801,7 +806,6 @@ input_thread_events(input_thread_t *input_thread,
             input->position_ms = event->position.ms;
             input->position_percent = event->position.percentage;
             input->position_date = vlc_tick_now();
-            /* INPUT_EVENT_POSITION */
             vlc_player_StopDiscontinuity(player,input->position_ms,
                                          input->position_percent, input->rate);
             break;
@@ -836,10 +840,14 @@ input_thread_events(input_thread_t *input_thread,
                                  input->signal_quality, input->signal_strength);
             break;
         case INPUT_EVENT_AUDIO_DELAY:
-            /* TODO */
+            input->audio_delay = event->audio_delay;
+            vlc_player_SendEvent(player, on_audio_delay_changed,
+                                 input->audio_delay);
             break;
         case INPUT_EVENT_SUBTITLE_DELAY:
-            /* TODO */
+            input->subtitle_delay = event->subtitle_delay;
+            vlc_player_SendEvent(player, on_subtitle_delay_changed,
+                                 input->subtitle_delay);
             break;
         case INPUT_EVENT_CACHE:
             input->cache = event->cache;
@@ -886,10 +894,10 @@ vlc_player_Delete(vlc_player_t *player)
     vlc_mutex_lock(&player->lock);
 
     if (player->input)
-        vlc_player_input_StopAndClose(player->input);
+        vlc_player_input_StopAndClose(player->input, true);
 #if GAPLESS
     if (player->next_input)
-        vlc_player_input_StopAndClose(player->next_input);
+        vlc_player_input_StopAndClose(player->next_input, true);
 #endif
 
     player->destructor.running = false;
@@ -1013,13 +1021,13 @@ vlc_player_SetCurrentMedia(vlc_player_t *player, input_item_t *media)
 
     if (player->input)
     {
-        vlc_player_input_StopAndClose(player->input);
+        vlc_player_input_StopAndClose(player->input, true);
         player->input = NULL;
     }
 #if GAPLESS
     if (player->next_input)
     {
-        vlc_player_input_StopAndClose(player->next_input);
+        vlc_player_input_StopAndClose(player->next_input, true);
         player->next_input = NULL;
     }
 #endif
@@ -1072,7 +1080,7 @@ vlc_player_InvalidateNextMedia(vlc_player_t *player)
     {
         /* Cause the get_next_media callback to be called when this input is
          * dead */
-        vlc_player_input_StopAndClose(player->input);
+        vlc_player_input_StopAndClose(player->next_input, false);
         player->next_input = NULL;
     }
 #endif
@@ -1098,44 +1106,56 @@ vlc_player_Start(vlc_player_t *player)
     return vlc_player_input_Start(player->input);
 }
 
-void
-vlc_player_Stop(vlc_player_t *player)
+static void
+vlc_player_CommonStop(vlc_player_t *player, bool wait)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input && player->input->started);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    assert(input->started);
 
-    vlc_player_input_StopAndClose(player->input);
+    vlc_player_input_StopAndClose(input, wait);
     player->input = NULL;
 
 #if GAPLESS
     if (player->next_input)
     {
-        vlc_player_input_StopAndClose(player->next_input);
+        vlc_player_input_StopAndClose(player->next_input, wait);
         player->next_input = NULL;
     }
 #endif
 }
 
 void
+vlc_player_Stop(vlc_player_t *player)
+{
+    vlc_player_CommonStop(player, true);
+}
+
+void
+vlc_player_RequestStop(vlc_player_t *player)
+{
+    vlc_player_CommonStop(player, false);
+}
+
+void
 vlc_player_Pause(vlc_player_t *player)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input && player->input->started);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    assert(input->started);
     assert(player->input->capabilities & VLC_INPUT_CAPABILITIES_PAUSEABLE);
 
-    input_ControlPushHelper(player->input->thread, INPUT_CONTROL_SET_STATE,
+    input_ControlPushHelper(input->thread, INPUT_CONTROL_SET_STATE,
                             &(vlc_value_t) {.i_int = PAUSE_S});
 }
 
 void
 vlc_player_Resume(vlc_player_t *player)
 {
-    vlc_player_assert_locked(player);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
-    assert(player->input && player->input->started);
+    assert(input->started);
     assert(player->input->capabilities & VLC_INPUT_CAPABILITIES_PAUSEABLE);
 
-    input_ControlPushHelper(player->input->thread, INPUT_CONTROL_SET_STATE,
+    input_ControlPushHelper(input->thread, INPUT_CONTROL_SET_STATE,
                             &(vlc_value_t) { .i_int = PLAYING_S });
 }
 
@@ -1156,25 +1176,21 @@ vlc_player_IsPaused(vlc_player_t *player)
 int
 vlc_player_GetCapabilities(vlc_player_t *player)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input);
-    return player->input->capabilities;
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    return input->capabilities;
 }
 
 vlc_tick_t
 vlc_player_GetLength(vlc_player_t *player)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input);
-    return player->input->length;
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    return input->length;
 }
 
 vlc_tick_t
 vlc_player_GetTime(vlc_player_t *player)
 {
-    vlc_player_assert_locked(player);
-    struct vlc_player_input *input = player->input;
-    assert(input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
     vlc_tick_t time = input->position_ms;
     return time != VLC_TICK_INVALID ?
@@ -1185,18 +1201,15 @@ vlc_player_GetTime(vlc_player_t *player)
 float
 vlc_player_GetPosition(vlc_player_t *player)
 {
-    vlc_player_assert_locked(player);
-    assert(player->input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
-    return player->input->position_percent;
+    return input->position_percent;
 }
 
 void
 vlc_player_Seek(vlc_player_t *player, const struct vlc_player_seek_arg *arg)
 {
-    vlc_player_assert_locked(player);
-    struct vlc_player_input *input = player->input;
-    assert(input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
     assert(arg);
 
     switch (arg->type)
@@ -1244,9 +1257,7 @@ vlc_player_SetRenderer(vlc_player_t *player, vlc_renderer_item_t *renderer)
 void
 vlc_player_Navigate(vlc_player_t *player, enum vlc_player_nav nav)
 {
-    vlc_player_assert_locked(player);
-    struct vlc_player_input *input = player->input;
-    assert(input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
     enum input_control_e control;
     switch (nav)
@@ -1281,18 +1292,57 @@ vlc_player_Navigate(vlc_player_t *player, enum vlc_player_nav nav)
 bool
 vlc_player_IsRecording(vlc_player_t *player)
 {
-    vlc_player_assert_locked(player);
-    struct vlc_player_input *input = player->input;
-    assert(input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+
     return input->recording;
+}
+
+void
+vlc_player_SetAudioDelay(vlc_player_t *player, vlc_tick_t delay,
+                         bool absolute)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    input_ControlPush(input->thread, INPUT_CONTROL_SET_AUDIO_DELAY,
+        &(input_control_param_t) {
+            .delay = {
+                .b_absolute = absolute,
+                .i_val = delay,
+            },
+    });
+}
+
+vlc_tick_t
+vlc_player_GetAudioDelay(vlc_player_t *player)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    return input->audio_delay;
+}
+
+void
+vlc_player_SetSubtitleDelay(vlc_player_t *player, vlc_tick_t delay,
+                            bool absolute)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    input_ControlPush(input->thread, INPUT_CONTROL_SET_SPU_DELAY,
+        &(input_control_param_t) {
+            .delay = {
+                .b_absolute = absolute,
+                .i_val = delay,
+            },
+    });
+}
+
+vlc_tick_t
+vlc_player_GetSubtitleDelay(vlc_player_t *player)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    return input->subtitle_delay;
 }
 
 int
 vlc_player_GetSignal(vlc_player_t *player, float *quality, float *strength)
 {
-    vlc_player_assert_locked(player);
-    struct vlc_player_input *input = player->input;
-    assert(input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
     if (input->signal_quality >= 0 && input->signal_strength >= 0)
     {
@@ -1306,9 +1356,7 @@ vlc_player_GetSignal(vlc_player_t *player, float *quality, float *strength)
 void
 vlc_player_GetStats(vlc_player_t *player, struct input_stats_t *stats)
 {
-    vlc_player_assert_locked(player);
-    struct vlc_player_input *input = player->input;
-    assert(input);
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
     *stats = input->stats;
 }

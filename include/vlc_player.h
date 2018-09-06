@@ -200,10 +200,6 @@ struct vlc_player_cbs
                                        vlc_es_id_t *unselected_id,
                                        vlc_es_id_t *selected_id, void *data);
 
-    void (*on_track_delay_changed)(vlc_player_t *player,
-                                   vlc_es_id_t *id, vlc_tick_t new_delay,
-                                   void *data);
-
     void (*on_program_list_changed)(vlc_player_t *player,
                                     enum vlc_player_list_action action,
                                     struct vlc_player_program *prgm,
@@ -220,6 +216,12 @@ struct vlc_player_cbs
     void (*on_title_list_changed)(vlc_player_t *player, void *data);
 
     void (*on_title_selection_changed)(vlc_player_t *player, /* XXX*/ void *data);
+
+    void (*on_audio_delay_changed)(vlc_player_t *player, vlc_tick_t new_delay,
+                                   void *data);
+
+    void (*on_subtitle_delay_changed)(vlc_player_t *player, vlc_tick_t new_delay,
+                                      void *data);
 
     void (*on_record_changed)(vlc_player_t *player, bool recording, void *data);
 
@@ -245,6 +247,11 @@ vlc_player_New(vlc_object_t *parent,
 
 /**
  * Delete the player.
+ *
+ * This function stop any playback previously started and wait for their
+ * termination.
+ *
+ * @warning Blocking function, don't call it from an UI thread
  *
  * @param player unlocked player instance created by vlc_player_New()
  */
@@ -345,7 +352,21 @@ VLC_API int
 vlc_player_Start(vlc_player_t *player);
 
 /**
- * Stop the playback of the current media.
+ * Stop the playback of the current media .
+ *
+ * This function will wait for the termination of the playback.
+ *
+ * @warning The behaviour is undefined if there is no current media.
+ * @warning Blocking function, don't call it from an UI thread
+ *
+ * @param player locked player instance
+ * @return VLC_SUCCESS or a VLC error code
+ */
+VLC_API void
+vlc_player_Stop(vlc_player_t *player);
+
+/**
+ * Stop the playback of the current media without waiting.
  *
  * @warning The behaviour is undefined if there is no current media.
  *
@@ -353,7 +374,7 @@ vlc_player_Start(vlc_player_t *player);
  * @return VLC_SUCCESS or a VLC error code
  */
 VLC_API void
-vlc_player_Stop(vlc_player_t *player);
+vlc_player_RequestStop(vlc_player_t *player);
 
 /**
  * Pause the playback.
@@ -768,6 +789,20 @@ vlc_player_Navigate(vlc_player_t *player, enum vlc_player_nav nav);
 
 VLC_API bool
 vlc_player_IsRecording(vlc_player_t *player);
+
+VLC_API void
+vlc_player_SetAudioDelay(vlc_player_t *player, vlc_tick_t delay,
+                         bool absolute);
+
+VLC_API vlc_tick_t
+vlc_player_GetAudioDelay(vlc_player_t *player);
+
+VLC_API void
+vlc_player_SetSubtitleDelay(vlc_player_t *player, vlc_tick_t delay,
+                            bool absolute);
+
+VLC_API vlc_tick_t
+vlc_player_GetSubtitleDelay(vlc_player_t *player);
 
 VLC_API int
 vlc_player_GetSignal(vlc_player_t *player, float *quality, float *strength);
