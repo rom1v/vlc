@@ -5,38 +5,29 @@
 #include <vlc_playlist_new.h>
 #include <QSharedData>
 
-class PlaylistItem
+class PlaylistItemPtr
 {
 public:
-    PlaylistItem(vlc_playlist_item_t *ptr = nullptr)
+    PlaylistItemPtr(vlc_playlist_item_t *ptr = nullptr)
         : ptr(ptr)
     {
         if (ptr)
-        {
-            vlc_playlist_item_Hold(ptr);
-            sync();
-        }
-    }
-
-    PlaylistItem(const PlaylistItem &other)
-        : ptr(other.ptr)
-        , meta(other.meta)
-    {
-        if (ptr)
             vlc_playlist_item_Hold(ptr);
     }
 
-    PlaylistItem(PlaylistItem &&other) noexcept
-        : ptr(std::exchange(other.ptr, nullptr))
-        , meta(std::move(other.meta)) {}
+    PlaylistItemPtr(const PlaylistItemPtr &other)
+        : PlaylistItemPtr(other.ptr) {}
 
-    ~PlaylistItem()
+    PlaylistItemPtr(PlaylistItemPtr &&other) noexcept
+        : ptr(std::exchange(other.ptr, nullptr)) {}
+
+    ~PlaylistItemPtr()
     {
         if (ptr)
             vlc_playlist_item_Release(ptr);
     }
 
-    PlaylistItem &operator=(const PlaylistItem &other)
+    PlaylistItemPtr &operator=(const PlaylistItemPtr &other)
     {
         if (other.ptr)
             /* hold before in case ptr == other.ptr */
@@ -44,23 +35,21 @@ public:
         if (ptr)
             vlc_playlist_item_Release(ptr);
         ptr = other.ptr;
-        meta = other.meta;
         return *this;
     }
 
-    PlaylistItem &operator=(PlaylistItem &&other) noexcept
+    PlaylistItemPtr &operator=(PlaylistItemPtr &&other) noexcept
     {
         ptr = std::exchange(other.ptr, nullptr);
-        meta = std::move(other.meta);
         return *this;
     }
 
-    bool operator==(const PlaylistItem &other)
+    bool operator==(const PlaylistItemPtr &other)
     {
         return ptr == other.ptr;
     }
 
-    bool operator!=(const PlaylistItem &other)
+    bool operator!=(const PlaylistItemPtr &other)
     {
         return !(*this == other);
     }
@@ -95,28 +84,63 @@ public:
         return vlc_playlist_item_GetMedia(ptr);
     }
 
+private:
+    vlc_playlist_item_t *ptr = nullptr;
+};
+
+/* PlaylistItemPtr + with cached data */
+class PlaylistItem
+{
+public:
+    PlaylistItem(vlc_playlist_item_t *item = nullptr)
+    {
+        if (item)
+        {
+            d = new Data();
+            d->item = item;
+            sync();
+        }
+    }
+
+    bool operator==(const PlaylistItem &other)
+    {
+        return d == other.d || (d && other.d && d->item == other.d->item);
+    }
+
+    bool operator!=(const PlaylistItem &other)
+    {
+        return !(*this == other);
+    }
+
+    operator bool() const
+    {
+        return d;
+    }
+
     QString getTitle() const
     {
-        return meta->title;
+        return d->title;
     }
 
     void sync() {
-        input_item_t *media = getMedia();
+        input_item_t *media = d->item.getMedia();
         vlc_mutex_lock(&media->lock);
-        meta->title = media->psz_name;
+        d->title = media->psz_name;
         vlc_mutex_unlock(&media->lock);
     }
 
 private:
-    struct Meta : public QSharedData {
+    struct Data : public QSharedData {
+        PlaylistItemPtr item;
+
+        /* cached values */
         QString title;
-        /* TODO other fields */
     };
 
-    vlc_playlist_item_t *ptr = nullptr;
-
-    /* cached values, updated by sync() */
-    QSharedDataPointer<Meta> meta;
+    QSharedDataPointer<Data> d;
 };
+
+/* PlaylistItem has the same size as a raw pointer */
+static_assert(sizeof(PlaylistItem) == sizeof(void *));
 
 #endif
