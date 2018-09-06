@@ -54,26 +54,6 @@ public:
         return !(*this == other);
     }
 
-    vlc_playlist_item_t &operator*()
-    {
-        return *ptr;
-    }
-
-    const vlc_playlist_item_t &operator*() const
-    {
-        return *ptr;
-    }
-
-    vlc_playlist_item_t *operator->()
-    {
-        return ptr;
-    }
-
-    const vlc_playlist_item_t *operator->() const
-    {
-        return ptr;
-    }
-
     operator bool() const
     {
         return ptr;
@@ -85,6 +65,7 @@ public:
     }
 
 private:
+    /* vlc_playlist_item_t is opaque, no need for * and -> */
     vlc_playlist_item_t *ptr = nullptr;
 };
 
