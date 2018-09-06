@@ -29,12 +29,13 @@ PlaylistModel::onPlaylistCleared()
 }
 
 void
-PlaylistModel::onPlaylistItemsAdded(size_t index, QVector<PlaylistItem *> added)
+PlaylistModel::onPlaylistItemsAdded(size_t index, QVector<PlaylistItem> added)
 {
     int len = added.size();
     beginInsertRows({}, index, index + len - 1);
     items.insert(index, len, nullptr);
-    std::move(added.cbegin(), added.cend(), items.begin() + index);
+    for (int i = 0; i < len; ++i)
+        items[index + i] = new PlaylistItem(std::move(added[i]));
     endInsertRows();
 }
 

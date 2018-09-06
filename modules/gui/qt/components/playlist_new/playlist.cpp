@@ -14,11 +14,11 @@ on_playlist_cleared(vlc_playlist_t *playlist, void *userdata)
     emit this_->playlistCleared();
 }
 
-static QVector<PlaylistItem *> toVec(vlc_playlist_item_t *items[], size_t len)
+static QVector<PlaylistItem> toVec(vlc_playlist_item_t *items[], size_t len)
 {
-    QVector<PlaylistItem *> vec;
+    QVector<PlaylistItem> vec;
     for (size_t i = 0; i < len; ++i)
-        vec.push_back(new PlaylistItem(items[i]));
+        vec.push_back(items[i]);
     return vec;
 }
 
