@@ -168,6 +168,26 @@ struct vlc_player_cbs
     void (*on_capabilities_changed)(vlc_player_t *player, int new_caps,
                                     void *data);
 
+    /**
+     * Signal a discontinuity
+     *
+     * This callback signals a discontinuity in the player position (because of
+     * a rate change, a pause, a seek, or a buffering).
+     *
+     * Example: When a discontinuity starts, the UI can show an indefinite
+     * progress. When it stops, the UI can set the progress bar to the time/pos
+     * value, and continue updating it according to the rate.
+     *
+     * @param player locked player instance
+     * @param started true to start a discontinuity, false to end it
+     * @param time the current time or VLC_TICK_INVALID if started is false
+     * @param pos the current pos or VLC_TICK_INVALID if started if false
+     * @param rate the current rate of VLC_TICK_INVALID if started if false
+     */
+    void (*on_discontinuity_changed)(vlc_player_t *player, bool started,
+                                     vlc_tick_t time, float pos, float rate,
+                                     void *data);
+
     void (*on_length_changed)(vlc_player_t *player, vlc_tick_t new_length,
                               void *data);
 
