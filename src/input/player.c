@@ -76,6 +76,8 @@ struct vlc_player_input
 
     struct input_stats_t stats;
 
+    bool discontinuity;
+
     vlc_player_program_vector program_vector;
     vlc_player_track_vector video_track_vector;
     vlc_player_track_vector audio_track_vector;
@@ -167,6 +169,8 @@ vlc_player_input_New(vlc_player_t *player, input_item_t *item)
     input->signal_quality = input->signal_strength = -1.f;
 
     memset(&input->stats, 0, sizeof(input->stats));
+
+    input->discontinuity = false;
 
     vlc_vector_init(&input->program_vector);
     vlc_vector_init(&input->video_track_vector);
@@ -615,6 +619,34 @@ vlc_player_track_Update(struct vlc_player_track *track,
 }
 
 static void
+vlc_player_StartDiscontinuity(vlc_player_t *player)
+{
+    struct vlc_player_input *input = player->input;
+    if (input->discontinuity)
+        return;
+
+    input->discontinuity = true;
+    vlc_player_SendEvent(player, on_discontinuity_changed,
+                         input->discontinuity, VLC_TICK_INVALID, 0.0f, 0.0f);
+}
+
+static void
+vlc_player_StopDiscontinuity(vlc_player_t *player, vlc_tick_t time, float pos,
+                             float rate)
+{
+    struct vlc_player_input *input = player->input;
+    if (!input->discontinuity)
+        return;
+
+    if (input->cache == 1.f && input->state == PLAYING_S)
+    {
+        input->discontinuity = false;
+        vlc_player_SendEvent(player, on_discontinuity_changed,
+                             input->discontinuity, time, pos, rate);
+    }
+}
+
+static void
 vlc_player_input_HandleEsEvent(struct vlc_player_input *input,
                                const struct vlc_input_event_es *ev)
 {
@@ -729,6 +761,7 @@ input_thread_events(input_thread_t *input_thread,
                     break;
                 case PAUSE_S:
                     player_state = VLC_PLAYER_STATE_PAUSED;
+                    vlc_player_StartDiscontinuity(player);
                     break;
                 case END_S:
                     player_state = VLC_PLAYER_STATE_STOPPED;
@@ -747,7 +780,7 @@ input_thread_events(input_thread_t *input_thread,
         case INPUT_EVENT_RATE:
             input->rate = event->rate;
             vlc_player_SendEvent(player, on_rate_changed, input->rate);
-            vlc_player_SendEvent(player, on_discontinuity, false);
+            vlc_player_StartDiscontinuity(player);
             break;
         case INPUT_EVENT_CAPABILITIES:
             input->capabilities = event->capabilities;
@@ -768,6 +801,9 @@ input_thread_events(input_thread_t *input_thread,
             input->position_ms = event->position.ms;
             input->position_percent = event->position.percentage;
             input->position_date = vlc_tick_now();
+            /* INPUT_EVENT_POSITION */
+            vlc_player_StopDiscontinuity(player,input->position_ms,
+                                         input->position_percent, input->rate);
             break;
         case INPUT_EVENT_LENGTH:
             input->length = event->length;
@@ -807,6 +843,8 @@ input_thread_events(input_thread_t *input_thread,
             break;
         case INPUT_EVENT_CACHE:
             input->cache = event->cache;
+            if (input->cache == 0.0f)
+                vlc_player_StartDiscontinuity(player);
             vlc_player_SendEvent(player, on_buffering, event->cache);
             break;
         case INPUT_EVENT_AOUT:
