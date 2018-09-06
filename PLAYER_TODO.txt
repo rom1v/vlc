@@ -1,4 +1,5 @@
- - Remove input/control.c
- - Move bookmark handling from input to player
+ - Remove input/control.c (move remaining implementation to player.c)
+ - Remove bookmark handling from input
+ - Remove INPUT_GET_VOUTS/INPUT_GET_AOUT
  - Add Seekpoint/title/chapter
  - Handle vout/aout
