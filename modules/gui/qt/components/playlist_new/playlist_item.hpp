@@ -3,6 +3,7 @@
 
 #include <vlc_input_item.h>
 #include <vlc_playlist_new.h>
+#include <QSharedData>
 
 class PlaylistItem
 {
@@ -96,18 +97,18 @@ public:
 
     QString getTitle() const
     {
-        return meta.title;
+        return meta->title;
     }
 
     void sync() {
         input_item_t *media = getMedia();
         vlc_mutex_lock(&media->lock);
-        meta.title = media->psz_name;
+        meta->title = media->psz_name;
         vlc_mutex_unlock(&media->lock);
     }
 
 private:
-    struct Meta {
+    struct Meta : public QSharedData {
         QString title;
         /* TODO other fields */
     };
@@ -115,7 +116,7 @@ private:
     vlc_playlist_item_t *ptr = nullptr;
 
     /* cached values, updated by sync() */
-    Meta meta;
+    QSharedDataPointer<Meta> meta;
 };
 
 #endif
