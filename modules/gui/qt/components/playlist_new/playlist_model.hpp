@@ -36,7 +36,7 @@ private slots:
 
 private:
     Playlist *playlist;
-    QVector<PlaylistItem> items; /* access only from the UI thread */
+    QVector<PlaylistItem *> items; /* access only from the UI thread */
 };
 
 #endif
