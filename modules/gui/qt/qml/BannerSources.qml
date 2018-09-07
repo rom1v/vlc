@@ -23,6 +23,7 @@
 
 import QtQuick 2.9
 import QtQuick.Controls 2.2
+import QtQuick.Layouts 1.3
 import org.videolan.medialib 0.1
 import "qrc:///style/"
 
@@ -32,139 +33,190 @@ Rectangle {
     property bool need_toggleView_button: false
     property int selectedIndex: 0
 
+    height: VLCStyle.icon_normal + VLCStyle.margin_xsmall
+
     // Triggered when the toogleView button is selected
     function toggleView () {
         medialib.gridView = !medialib.gridView
     }
 
     color: VLCStyle.colors.banner
-    property alias model: sourcesButtons.model
+    property alias model: buttonView.model
+    onActiveFocusChanged: {
+        if (activeFocus)
+            buttonView.forceActiveFocus()
+    }
 
-    Row {
+    RowLayout {
         anchors.fill: parent
 
-        /* Repeater to display each button */
-        Repeater {
-            id: sourcesButtons
-            delegate: buttonView
+
+        Item {
+            width: toolButtons.width
+            visible: parent.width > (toolButtons.width * 2 + buttonView.width)
+            Layout.alignment: Qt.AlignLeft | Qt.AlignBottom
         }
 
         /* Button for the sources */
-        Component {
+        TabBar {
             id: buttonView
-            ToolButton {
-                id: control
-                text: model.displayText
 
-                checkable: true
-                padding: 0
-                onClicked: {
-                    checked =  !control.checked;
-                    pLBannerSources.selectedIndex = model.index
-                }
+            Layout.alignment: parent.width > (toolButtons.width * 2 + buttonView.width) ? (Qt.AlignHCenter | Qt.AlignBottom ) : (Qt.AlignLeft | Qt.AlignBottom )
 
-                background: Rectangle {
-                    implicitHeight: parent.height
-                    //width: btn_txt.implicitWidth+VLCStyle.margin_small*2
-                    color: control.hovered ? VLCStyle.colors.bannerHover : VLCStyle.colors.banner
-                }
+            focus: true
+            activeFocusOnTab: true
 
-                contentItem: Row {
-                    Image {
-                        id: icon
-                        anchors {
-                            verticalCenter: parent.verticalCenter
-                            rightMargin: VLCStyle.margin_xsmall
-                            leftMargin: VLCStyle.margin_small
-                        }
-                        height: VLCStyle.icon_normal
-                        width: VLCStyle.icon_normal
-                        source: model.pic
-                        fillMode: Image.PreserveAspectFit
+            property alias model: sourcesButtons.model
+            /* Repeater to display each button */
+            Repeater {
+                id: sourcesButtons
+
+                TabButton {
+                    id: control
+                    text: model.displayText
+
+                    focusPolicy: Qt.StrongFocus
+
+                    checkable: true
+                    padding: 0
+                    onClicked: {
+                        checked =  !control.checked;
+                        pLBannerSources.selectedIndex = model.index
                     }
 
-                    Label {
-                        text: control.text
-                        font: control.font
-                        color: control.hovered ?  VLCStyle.colors.textActiveSource : VLCStyle.colors.text
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        anchors {
-                            verticalCenter: parent.verticalCenter
-                            rightMargin: VLCStyle.margin_xsmall
-                            leftMargin: VLCStyle.margin_small
+                    background: Rectangle {
+                        implicitHeight: parent.height
+                        //width: btn_txt.implicitWidth+VLCStyle.margin_small*2
+                        color: (control.hovered || control.activeFocus) ? VLCStyle.colors.bannerHover : VLCStyle.colors.banner
+                    }
+
+                    contentItem: Row {
+                        Image {
+                            id: icon
+                            anchors {
+                                verticalCenter: parent.verticalCenter
+                                rightMargin: VLCStyle.margin_xsmall
+                                leftMargin: VLCStyle.margin_small
+                            }
+                            height: VLCStyle.icon_normal
+                            width: VLCStyle.icon_normal
+                            source: model.pic
+                            fillMode: Image.PreserveAspectFit
+                        }
+
+                        Label {
+                            text: control.text
+                            font: control.font
+                            color: control.hovered ?  VLCStyle.colors.textActiveSource : VLCStyle.colors.text
+                            verticalAlignment: Text.AlignVCenter
+                            horizontalAlignment: Text.AlignHCenter
+                            anchors {
+                                verticalCenter: parent.verticalCenter
+                                rightMargin: VLCStyle.margin_xsmall
+                                leftMargin: VLCStyle.margin_small
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
-    /* button to choose the view displayed (list or grid) */
-    Image {
-        id: view_selector
+        ToolBar {
+            id: toolButtons
 
-        anchors.right: parent.right
-        anchors.rightMargin: VLCStyle.margin_normal
-        anchors.verticalCenter: parent.verticalCenter
-        height: VLCStyle.icon_normal
-        width: VLCStyle.icon_normal
+            Layout.alignment: Qt.AlignRight  | Qt.AlignBottom
 
-        fillMode: Image.PreserveAspectFit
-        source: "qrc:///toolbar/tv.svg"
+            activeFocusOnTab: true
+            onActiveFocusChanged: {
+                console.log("toolbar gained focus")
+            }
 
-        enabled: need_toggleView_button
-        visible: need_toggleView_button
+            RowLayout {
+                ToolButton {
+                    id: history_back
 
-        MouseArea {
-            anchors.fill: parent
+                    height: VLCStyle.icon_normal
+                    width: VLCStyle.icon_normal
 
-            enabled: need_toggleView_button
-            onClicked: toggleView()
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    enabled: !history.empty
+
+                    highlighted: activeFocus
+
+                    //focus: true
+                    focusPolicy: Qt.StrongFocus
+                    KeyNavigation.left: sourcesButtons
+                    KeyNavigation.right: colorTheme_selector
+                    onActiveFocusChanged: {
+                        console.log("history_back gained focus")
+                    }
+
+
+                    Image {
+                        source: "qrc:///toolbar/dvd_prev.svg"
+                        fillMode: Image.PreserveAspectFit
+                        anchors.fill: parent
+                    }
+
+                    onClicked: history.pop(History.Go)
+                }
+
+                /* button to toogle between night and day mode */
+                ToolButton {
+                    id: colorTheme_selector
+
+                    height: VLCStyle.icon_normal
+                    width: VLCStyle.icon_normal
+
+                    highlighted: activeFocus
+
+                    focusPolicy: Qt.StrongFocus
+                    KeyNavigation.left: history_back
+                    KeyNavigation.right: view_selector
+                    onActiveFocusChanged: {
+                        console.log("colorTheme_selector gained focus")
+                    }
+
+
+                    Image {
+                        source: "qrc:///prefsmenu/advanced/intf.svg"
+                        fillMode: Image.PreserveAspectFit
+                        anchors.fill: parent
+                    }
+
+                    onClicked: VLCStyle.colors.changeColorTheme()
+                }
+
+                /* button to choose the view displayed (list or grid) */
+                ToolButton {
+                    id: view_selector
+
+                    enabled: need_toggleView_button
+                    visible: need_toggleView_button
+
+                    highlighted: activeFocus
+
+                    height: VLCStyle.icon_normal
+                    width: VLCStyle.icon_normal
+
+                    focusPolicy: Qt.StrongFocus
+                    KeyNavigation.left: colorTheme_selector
+                    KeyNavigation.right: sourcesButtons
+                    onActiveFocusChanged: {
+                        console.log("view_selector gained focus")
+                    }
+
+
+                    Image {
+                        source: "qrc:///toolbar/tv.svg"
+                        fillMode: Image.PreserveAspectFit
+                        anchors.fill: parent
+                    }
+                    onClicked: toggleView()
+                }
+            }
         }
+
     }
-
-    /* button to toogle between night and day mode */
-    Image {
-        id: colorTheme_selector
-        anchors.right: view_selector.left
-        anchors.rightMargin: VLCStyle.margin_small
-        anchors.verticalCenter: parent.verticalCenter
-        height: VLCStyle.icon_normal
-        width: VLCStyle.icon_normal
-
-        fillMode: Image.PreserveAspectFit
-        source: "qrc:///prefsmenu/advanced/intf.svg"
-
-        MouseArea {
-            anchors.fill: parent
-
-            enabled: need_toggleView_button
-            onClicked: VLCStyle.colors.changeColorTheme()
-        }
-    }
-
-    Image {
-        id: history_back
-
-        anchors.right: colorTheme_selector.left
-        anchors.rightMargin: VLCStyle.margin_normal
-        anchors.verticalCenter: parent.verticalCenter
-        height: VLCStyle.icon_normal
-        width: VLCStyle.icon_normal
-
-        fillMode: Image.PreserveAspectFit
-        source: "qrc:///toolbar/dvd_prev.svg"
-
-        enabled: !history.empty
-        visible: !history.empty
-
-        MouseArea {
-            anchors.fill: parent
-
-            enabled: need_toggleView_button
-            onClicked: history.pop(History.Go)
-        }
-    }
-
 }
