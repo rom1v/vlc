@@ -88,6 +88,7 @@ Item {
                     _switchExpandItem( index )
                     delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
                     gridView_id.currentIndex = index
+                    gridView_id.forceActiveFocus()
                 }
                 onPlayClicked: medialib.addAndPlay( model.id )
                 onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
@@ -105,7 +106,7 @@ Item {
                     _switchExpandItem( index )
                     delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
                     gridView_id.currentIndex = index
-                    this.forceActiveFocus()
+                    gridView_id.forceActiveFocus()
                 }
                 onPlayClicked: medialib.addAndPlay( model.id )
                 onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
@@ -129,7 +130,7 @@ Item {
                 onItemClicked : {
                     delegateModel.updateSelection( modifier, listView_id.currentIndex, index )
                     listView_id.currentIndex = index
-                    this.forceActiveFocus()
+                    listView_id.forceActiveFocus()
                 }
                 onPlayClicked: medialib.addAndPlay( model.id )
                 onAddToPlaylistClicked : medialib.addToPlaylist( model.id )

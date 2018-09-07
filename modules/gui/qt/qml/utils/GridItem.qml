@@ -62,15 +62,8 @@ Item {
             id: mouseArea
             anchors.fill: parent
             hoverEnabled: true
-            onClicked: {
-                this.forceActiveFocus()
-                root.itemClicked(mouse.buttons, mouse.modifiers)
-            }
-            onDoubleClicked: {
-                root.itemDoubleClicked(mouse.buttons, mouse.modifiers);
-            }
-
-
+            onClicked:  root.itemClicked(mouse.buttons, mouse.modifiers)
+            onDoubleClicked: root.itemDoubleClicked(mouse.buttons, mouse.modifiers);
 
             ColumnLayout {
                 anchors.fill: parent
