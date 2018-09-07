@@ -64,9 +64,9 @@ struct vlc_playlist_callbacks
     void (*on_items_added)(vlc_playlist_t *, size_t index,
                            vlc_playlist_item_t *const [], size_t len,
                            void *userdata);
-    void (*on_items_removed)(vlc_playlist_t *, size_t index,
-                             vlc_playlist_item_t *const [], size_t len,
-                             void *userdata);
+    void (*on_items_removing)(vlc_playlist_t *, size_t index,
+                              vlc_playlist_item_t *const [], size_t len,
+                              void *userdata);
     void (*on_item_updated)(vlc_playlist_t *, size_t index,
                             vlc_playlist_item_t *, void *userdata);
     void (*on_playback_repeat_changed)(vlc_playlist_t *,

@@ -671,7 +671,7 @@ vlc_playlist_RemoveSlice(vlc_playlist_t *playlist, size_t index, size_t count)
     PlaylistAssertLocked(playlist);
     assert(index < playlist->items.size);
 
-    PlaylistNotify(playlist, on_items_removed, index,
+    PlaylistNotify(playlist, on_items_removing, index,
                    &playlist->items.data[index], count);
 
     for (size_t i = 0; i < count; ++i)
