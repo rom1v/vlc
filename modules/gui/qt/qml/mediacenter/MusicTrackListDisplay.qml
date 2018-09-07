@@ -113,6 +113,7 @@ QC14.TableView
     }
 
     rowDelegate: Rectangle {
+        id: rowDelegate
         color:  VLCStyle.colors.getBgColor(styleData.selected, hoverArea.containsMouse, root.activeFocus)
         height: VLCStyle.fontHeight_normal + VLCStyle.margin_xxsmall
 
@@ -121,9 +122,9 @@ QC14.TableView
             visible: styleData.row < (root.rowCount - 1)
             antialiasing: true
             anchors{
-                right: parent.right
-                bottom: parent.bottom
-                left: parent.left
+                right: rowDelegate.right
+                bottom: rowDelegate.bottom
+                left: rowDelegate.left
             }
             height: 1
         }
