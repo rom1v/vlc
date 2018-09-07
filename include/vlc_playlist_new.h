@@ -128,14 +128,22 @@ vlc_playlist_Clear(vlc_playlist_t *);
 VLC_API vlc_playlist_item_t *
 vlc_playlist_Append(vlc_playlist_t *, input_item_t *);
 
+VLC_API int
+vlc_playlist_AppendAll(vlc_playlist_t *, input_item_t *const [], size_t count,
+                       vlc_playlist_item_t *out[]);
+
 VLC_API vlc_playlist_item_t *
 vlc_playlist_Insert(vlc_playlist_t *, size_t index, input_item_t *);
 
-VLC_API void
-vlc_playlist_RemoveAt(vlc_playlist_t *, size_t index);
+VLC_API int
+vlc_playlist_InsertAll(vlc_playlist_t *, size_t index, input_item_t *const [],
+                       size_t count, vlc_playlist_item_t *out[]);
 
-VLC_API bool
-vlc_playlist_Remove(vlc_playlist_t *, vlc_playlist_item_t *);
+VLC_API void
+vlc_playlist_Remove(vlc_playlist_t *, size_t index);
+
+VLC_API void
+vlc_playlist_RemoveSlice(vlc_playlist_t *, size_t index, size_t count);
 
 VLC_API ssize_t
 vlc_playlist_IndexOf(vlc_playlist_t *, const vlc_playlist_item_t *);

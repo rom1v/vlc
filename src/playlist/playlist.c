@@ -157,16 +157,44 @@ static void on_media_updated(const vlc_event_t *event, void *userdata)
     vlc_playlist_Unlock(playlist);
 }
 
-static void
+static int
 RegisterMediaEvents(vlc_playlist_t *playlist, input_item_t *media)
 {
     PlaylistAssertLocked(playlist);
     vlc_event_manager_t *em = &media->event_manager;
-    vlc_event_attach(em, vlc_InputItemDurationChanged, on_media_updated,
+    int ret;
+
+    ret = vlc_event_attach(em, vlc_InputItemDurationChanged, on_media_updated,
+                           playlist);
+    if (ret != VLC_SUCCESS)
+        return ret;
+
+    ret = vlc_event_attach(em, vlc_InputItemMetaChanged, on_media_updated,
+                           playlist);
+    if (ret != VLC_SUCCESS)
+        goto cancel1;
+
+    ret = vlc_event_attach(em, vlc_InputItemNameChanged, on_media_updated,
+                           playlist);
+    if (ret != VLC_SUCCESS)
+        goto cancel2;
+
+    ret = vlc_event_attach(em, vlc_InputItemInfoChanged, on_media_updated,
+                           playlist);
+    if (ret != VLC_SUCCESS)
+        goto cancel3;
+
+    return VLC_SUCCESS;
+
+cancel3:
+    vlc_event_detach(em, vlc_InputItemNameChanged, on_media_updated, playlist);
+cancel2:
+    vlc_event_detach(em, vlc_InputItemMetaChanged, on_media_updated, playlist);
+cancel1:
+    vlc_event_detach(em, vlc_InputItemDurationChanged, on_media_updated,
                      playlist);
-    vlc_event_attach(em, vlc_InputItemMetaChanged, on_media_updated, playlist);
-    vlc_event_attach(em, vlc_InputItemNameChanged, on_media_updated, playlist);
-    vlc_event_attach(em, vlc_InputItemInfoChanged, on_media_updated, playlist);
+
+    return ret;
 }
 
 static void
@@ -179,6 +207,36 @@ DeregisterMediaEvents(vlc_playlist_t *playlist, input_item_t *media)
     vlc_event_detach(em, vlc_InputItemMetaChanged, on_media_updated, playlist);
     vlc_event_detach(em, vlc_InputItemNameChanged, on_media_updated, playlist);
     vlc_event_detach(em, vlc_InputItemInfoChanged, on_media_updated, playlist);
+}
+
+static int
+RegisterMediaArrayEvents(vlc_playlist_t *playlist,
+                         input_item_t *const media[], size_t count)
+{
+    int ret = VLC_SUCCESS;
+    size_t i;
+    for (i = 0; i < count; ++i)
+    {
+        ret = RegisterMediaEvents(playlist, media[i]);
+        if (ret != VLC_SUCCESS)
+            break;
+    }
+    if (i < count)
+    {
+        /* allocation failure, deregister partial media */
+        assert(ret != VLC_SUCCESS);
+        while (i)
+            DeregisterMediaEvents(playlist, media[--i]);
+    }
+    return ret;
+}
+
+static void
+DeregisterMediaArrayEvents(vlc_playlist_t *playlist,
+                           input_item_t *const media[], size_t count)
+{
+    for (size_t i = 0; i < count; ++i)
+        DeregisterMediaEvents(playlist, media[i]);
 }
 
 static vlc_playlist_item_t *
@@ -519,60 +577,126 @@ vlc_playlist_Clear(vlc_playlist_t *playlist)
     PlaylistSetHasNext(playlist, false);
 }
 
+static int
+PlaylistMediaToItems(input_item_t *const media[], size_t count,
+                     vlc_playlist_item_t *items[])
+{
+    size_t i;
+    for (i = 0; i < count; ++i)
+    {
+        items[i] = vlc_playlist_item_New(media[i]);
+        if (unlikely(!items[i]))
+            break;
+    }
+    if (i < count)
+    {
+        /* allocation failure, release partial items */
+        while (i)
+            vlc_playlist_item_Release(items[--i]);
+        return VLC_ENOMEM;
+    }
+    return VLC_SUCCESS;
+}
+
+static void
+PlaylistDestroyItems(vlc_playlist_item_t *items[], size_t count)
+{
+    for (size_t i = 0; i < count; ++i)
+        vlc_playlist_item_Release(items[i]);
+}
+
 vlc_playlist_item_t *
 vlc_playlist_Append(vlc_playlist_t *playlist, input_item_t *media)
 {
+    vlc_playlist_item_t *item;
+    int res = vlc_playlist_AppendAll(playlist, &media, 1, &item);
+    return res == VLC_SUCCESS ? item : NULL;
+}
+
+int
+vlc_playlist_AppendAll(vlc_playlist_t *playlist, input_item_t *const media[],
+                       size_t count, vlc_playlist_item_t *out[])
+{
     PlaylistAssertLocked(playlist);
+    return vlc_playlist_InsertAll(playlist, playlist->items.size, media, count,
+                                  out);
 
-    vlc_playlist_item_t *item = vlc_playlist_item_New(media);
-    if (unlikely(!item))
-        return NULL;
-
-    if (!vlc_vector_push(&playlist->items, item))
-    {
-        vlc_playlist_item_Release(item);
-        return NULL;
-    }
-
-    RegisterMediaEvents(playlist, media);
-
-    PlaylistNotify(playlist, on_items_added, playlist->items.size, &item, 1);
-    PlaylistRefreshHasNext(playlist);
-    vlc_player_InvalidateNextMedia(playlist->player);
-
-    return item;
+//    int ret = RegisterMediaArrayEvents(playlist, media, count);
+//    if (ret != VLC_SUCCESS)
+//        return ret;
+//
+//    ret = PlaylistMediaToItems(media, count, out);
+//    if (ret != VLC_SUCCESS)
+//    {
+//        DeregisterMediaArrayEvents(playlist, media, count);
+//        return ret;
+//    }
+//
+//    size_t index = playlist->items.size;
+//    if (!vlc_vector_push_all(&playlist->items, out, count))
+//    {
+//        PlaylistDestroyItems(out, count);
+//        DeregisterMediaArrayEvents(playlist, media, count);
+//        return ret;
+//    }
+//
+//    PlaylistNotify(playlist, on_items_added, index,
+//                   &playlist->items.data[index], count);
+//    PlaylistRefreshHasNext(playlist);
+//    vlc_player_InvalidateNextMedia(playlist->player);
+//
+//    return VLC_SUCCESS;
 }
 
 vlc_playlist_item_t *
 vlc_playlist_Insert(vlc_playlist_t *playlist, size_t index,
                     input_item_t *media)
 {
+    vlc_playlist_item_t *item;
+    int res = vlc_playlist_InsertAll(playlist, index, &media, 1, &item);
+    return res == VLC_SUCCESS ? item : NULL;
+}
+
+int
+vlc_playlist_InsertAll(vlc_playlist_t *playlist, size_t index,
+                       input_item_t *const media[], size_t count,
+                       vlc_playlist_item_t *out[])
+{
     PlaylistAssertLocked(playlist);
     assert(index <= playlist->items.size);
 
-    vlc_playlist_item_t *item = vlc_playlist_item_New(media);
-    if (unlikely(!item))
-        return NULL;
+    int ret = RegisterMediaArrayEvents(playlist, media, count);
+    if (ret != VLC_SUCCESS)
+        return ret;
 
-    if (!vlc_vector_insert(&playlist->items, index, item))
+    ret = PlaylistMediaToItems(media, count, out);
+    if (ret != VLC_SUCCESS)
     {
-        vlc_playlist_item_Release(item);
-        return NULL;
+        DeregisterMediaArrayEvents(playlist, media, count);
+        return ret;
     }
 
-    RegisterMediaEvents(playlist, media);
+    if (!vlc_vector_insert_all(&playlist->items, index, out, count))
+    {
+        PlaylistDestroyItems(out, count);
+        DeregisterMediaArrayEvents(playlist, media, count);
+        return ret;
+    }
 
-    PlaylistNotify(playlist, on_items_added, index, &item, 1);
+    PlaylistNotify(playlist, on_items_added, index,
+                   &playlist->items.data[index], count);
     PlaylistRefreshHasPrev(playlist);
     PlaylistRefreshHasNext(playlist);
     vlc_player_InvalidateNextMedia(playlist->player);
 
-    return item;
+    return VLC_SUCCESS;
 }
 
 void
-vlc_playlist_RemoveAt(vlc_playlist_t *playlist, size_t index)
+vlc_playlist_Remove(vlc_playlist_t *playlist, size_t index)
 {
+    /* do not delegate to RemoveSlice to avoid an unnecessary allocation */
+
     PlaylistAssertLocked(playlist);
     assert(index < playlist->items.size);
 
@@ -589,17 +713,24 @@ vlc_playlist_RemoveAt(vlc_playlist_t *playlist, size_t index)
     vlc_player_InvalidateNextMedia(playlist->player);
 }
 
-bool
-vlc_playlist_Remove(vlc_playlist_t *playlist, vlc_playlist_item_t *item)
+void
+vlc_playlist_RemoveSlice(vlc_playlist_t *playlist, size_t index, size_t count)
 {
+
     PlaylistAssertLocked(playlist);
+    assert(index < playlist->items.size);
 
-    ssize_t index = vlc_playlist_IndexOf(playlist, item);
-    if (index == -1)
-        return false;
+    vlc_playlist_item_t *item = playlist->items.data[index];
+    vlc_vector_remove(&playlist->items, index);
+    PlaylistNotify(playlist, on_items_removed, index, &item, 1);
 
-    vlc_playlist_RemoveAt(playlist, index);
-    return true;
+    DeregisterMediaEvents(playlist, item->media);
+
+    vlc_playlist_item_Release(item);
+
+    PlaylistRefreshHasPrev(playlist);
+    PlaylistRefreshHasNext(playlist);
+    vlc_player_InvalidateNextMedia(playlist->player);
 }
 
 ssize_t
