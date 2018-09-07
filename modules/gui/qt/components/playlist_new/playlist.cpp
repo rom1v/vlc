@@ -162,5 +162,16 @@ Playlist::raw()
     return playlist;
 }
 
+void
+Playlist::requestAddItems(size_t index, QVector<Media> media)
+{
+    vlc_playlist_Lock(playlist);
+    size_t playlistSize = vlc_playlist_Count(playlist);
+    if (index < playlistSize)
+        index = playlistSize;
+    /* TODO */
+    vlc_playlist_Unlock(playlist);
+}
+
   } // namespace playlist
 } // namespace vlc

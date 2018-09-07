@@ -28,6 +28,7 @@
 #include <QObject>
 #include <QVector>
 #include <vlc_playlist_new.h>
+#include "media.hpp"
 #include "playlist_item.hpp"
 
 namespace vlc {
@@ -42,6 +43,8 @@ public:
     ~Playlist();
 
     vlc_playlist_t *raw();
+
+    void requestAddItems(size_t index, QVector<Media>);
 
 signals:
     void playlistItemsReset(QVector<PlaylistItem>);
