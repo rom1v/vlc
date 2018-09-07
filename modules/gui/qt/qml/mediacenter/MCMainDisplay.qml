@@ -120,12 +120,6 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
 
-        Component.onCompleted: {
-            var found = loadView(view, viewProperties)
-            if (!found)
-                stackView.push(tabModel.get(0).url)
-        }
-
         replaceEnter: Transition {
             PropertyAnimation {
                 property: "opacity"

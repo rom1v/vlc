@@ -71,7 +71,7 @@ Rectangle {
                 var component = Qt.createComponent(tabModel.get(tab).url)
                 if (component.status === Component.Ready ) {
                     var page = component.createObject(stackView, viewProperties)
-                    stackView.push(page)
+                    stackView.replace(page)
                     root.view = name
                     found = true
                     break;
