@@ -47,18 +47,13 @@ Item {
             id: element
             Utils.GridItem {
                 Package.name: "grid"
-                width: VLCStyle.cover_normal
-                height: VLCStyle.cover_normal + VLCStyle.fontHeight_normal
+                id: gridItem
+                image: VLCStyle.noArtCover
+                title: model.name || "Unknown genre"
+                selected: element.DelegateModel.inSelected
 
-                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, viewLoader.activeFocus)
-
-                cover: Utils.MultiCoverPreview {
-                    albums: MLAlbumModel {
-                        ml: medialib
-                        parentId: model.id
-                    }
-                }
-                name: model.name || "Unknown genre"
+                shiftX: ((model.index % gridView_id._colCount) + 1) *
+                        ((gridView_id.width - gridView_id._colCount * gridView_id.cellWidth) / (gridView_id._colCount + 1))
 
                 onItemClicked: {
                     console.log('Clicked on details : '+model.name);
@@ -84,6 +79,25 @@ Item {
                     console.log('Clicked on addToPlaylist : '+model.name);
                     medialib.addToPlaylist( model.id );
                 }
+
+                //replace image with a mutlicovers preview
+                Utils.MultiCoverPreview {
+                    id: multicover
+                    visible: false
+                    width: VLCStyle.cover_normal
+                    height: VLCStyle.cover_normal
+
+                    albums: MLAlbumModel {
+                        ml: medialib
+                        parentId: model.id
+                    }
+                }
+                Component.onCompleted: {
+                    multicover.grabToImage(function(result) {
+                        gridItem.image = result.url
+                    })
+                    multicover.destroy()
+                }
             }
 
             Utils.ListItem {
@@ -91,7 +105,7 @@ Item {
                 height: VLCStyle.icon_normal
                 width: parent.width
 
-                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, viewLoader.activeFocus)
+                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, this.activeFocus)
 
                 cover:  Utils.MultiCoverPreview {
                     albums: MLAlbumModel {

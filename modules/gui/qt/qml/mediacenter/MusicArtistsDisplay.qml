@@ -85,34 +85,44 @@ Item {
             Utils.GridItem {
                 Package.name: "grid"
                 id: gridItem
-                width: VLCStyle.cover_normal
-                height: VLCStyle.cover_normal + VLCStyle.fontHeight_normal
 
-                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, artistViewLoader.activeFocus)
+                image: VLCStyle.noArtCover
+                title: model.name || "Unknown Artist"
+                selected: element.DelegateModel.inSelected
 
-                cover: Utils.MultiCoverPreview {
-                    albums: MLAlbumModel {
-                        ml: medialib
-                        parentId: model.id
-                    }
-                }
-                name: model.name || "Unknown Artist"
+                shiftX: ((model.index % artistGridView._colCount) + 1) *
+                        ((artistGridView.width - artistGridView._colCount * artistGridView.cellWidth) / (artistGridView._colCount + 1))
 
                 onItemClicked: {
-                    console.log('Clicked on details : '+model.name);
-                    //currentArtistIndex = index
                     artistModel.updateSelection( modifier , artistGridView.currentIndex, index)
                     artistGridView.currentIndex = index
+                    this.forceActiveFocus()
                 }
-
-
                 onPlayClicked: {
-                    console.log('Clicked on play : '+model.name);
                     medialib.addAndPlay( model.id )
                 }
                 onAddToPlaylistClicked: {
                     console.log('Clicked on addToPlaylist : '+model.name);
                     medialib.addToPlaylist( model.id );
+                }
+
+                //replace image with a mutlicovers preview
+                Utils.MultiCoverPreview {
+                    id: multicover
+                    visible: false
+                    width: VLCStyle.cover_normal
+                    height: VLCStyle.cover_normal
+
+                    albums: MLAlbumModel {
+                        ml: medialib
+                        parentId: model.id
+                    }
+                }
+                Component.onCompleted: {
+                    multicover.grabToImage(function(result) {
+                        gridItem.image = result.url
+                    })
+                    multicover.destroy()
                 }
             }
         }
@@ -167,8 +177,6 @@ Item {
                 header: Item {
                     height: VLCStyle.heightBar_xlarge
                 }
-
-                model: albumModel
 
                 //banner will stay above the display MusicAlbumsDisplay
                 ArtistTopBanner {

@@ -46,6 +46,9 @@ Item {
     }
 
     property alias model: delegateModel.model
+    onModelChanged: {
+        gridView_id.expandIndex = -1
+    }
     property alias parentId: delegateModel.parentId
     onParentIdChanged: {
         gridView_id.expandIndex = -1
@@ -56,12 +59,6 @@ Item {
             gridView_id.expandIndex = -1
         else
             gridView_id.expandIndex = index
-    }
-
-    function _gridItemClicked( keys, modifier, index ) {
-        _switchExpandItem( index )
-        delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
-        gridView_id.currentIndex = index
     }
 
     property int contentY: 0
@@ -79,12 +76,39 @@ Item {
         delegate: Package {
             id: element
 
-            MusicAlbumsDisplayGridItem {
+            Utils.GridItem {
                 Package.name: "gridTop"
+                image: model.cover || VLCStyle.noArtCover
+                title: model.title || qsTr("Unknown title")
+                subtitle: model.main_artist || qsTr("Unknown artist")
+                selected: element.DelegateModel.inSelected
+                shiftX: ((model.index % gridView_id._colCount) + 1) * (gridView_id.rightSpace / (gridView_id._colCount + 1))
+
+                onItemClicked : {
+                    _switchExpandItem( index )
+                    delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
+                    gridView_id.currentIndex = index
+                }
+                onPlayClicked: medialib.addAndPlay( model.id )
+                onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
             }
 
-            MusicAlbumsDisplayGridItem {
+            Utils.GridItem {
                 Package.name: "gridBottom"
+                image: model.cover || VLCStyle.noArtCover
+                title: model.title || qsTr("Unknown title")
+                subtitle: model.main_artist || qsTr("Unknown artist")
+                selected: element.DelegateModel.inSelected
+                shiftX: ((model.index % gridView_id._colCount) + 1) * (gridView_id.rightSpace / (gridView_id._colCount + 1))
+
+                onItemClicked : {
+                    _switchExpandItem( index )
+                    delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
+                    gridView_id.currentIndex = index
+                    this.forceActiveFocus()
+                }
+                onPlayClicked: medialib.addAndPlay( model.id )
+                onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
             }
 
             Utils.ListItem {
@@ -92,7 +116,7 @@ Item {
                 width: root.width
                 height: VLCStyle.icon_normal
 
-                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, root.activeFocus)
+                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, this.activeFocus)
 
                 cover: Image {
                     id: cover_obj
@@ -103,19 +127,12 @@ Item {
                 line2: model.main_artist || qsTr("Unknown artist")
 
                 onItemClicked : {
-                    console.log('Clicked on details : '+model.title)
-                    //switchExpandItem(index)
                     delegateModel.updateSelection( modifier, listView_id.currentIndex, index )
                     listView_id.currentIndex = index
+                    this.forceActiveFocus()
                 }
-                onPlayClicked: {
-                    console.log('Clicked on play : '+model.title);
-                    medialib.addAndPlay( model.id )
-                }
-                onAddToPlaylistClicked : {
-                    console.log('Clicked on addToPlaylist : '+model.title);
-                    medialib.addToPlaylist( model.id );
-                }
+                onPlayClicked: medialib.addAndPlay( model.id )
+                onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
             }
         }
     }
@@ -128,9 +145,10 @@ Item {
         visible: medialib.gridView
         enabled: medialib.gridView
         focus: medialib.gridView
+        activeFocusOnTab:true
 
         cellWidth: VLCStyle.cover_normal + VLCStyle.margin_small
-        cellHeight: VLCStyle.cover_normal + VLCStyle.fontHeight_normal + VLCStyle.margin_small
+        cellHeight: VLCStyle.cover_normal + VLCStyle.fontHeight_normal * 2 + VLCStyle.margin_small
 
         header: root.header
 
