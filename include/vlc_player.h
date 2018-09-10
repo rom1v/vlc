@@ -235,6 +235,12 @@ struct vlc_player_cbs
     void (*on_vout_list_changed)(vlc_player_t *player,
                                  enum vlc_player_list_action action,
                                  vout_thread_t *vout, void *data);
+
+    void (*on_item_meta_changed)(vlc_player_t *player, input_item_t *item,
+                                 void *data);
+
+    void (*on_item_epg_changed)(vlc_player_t *player, input_item_t *item,
+                                void *data);
 };
 
 /**

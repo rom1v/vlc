@@ -882,6 +882,14 @@ input_thread_events(input_thread_t *input_thread,
         case INPUT_EVENT_VOUT:
             vlc_player_input_HandleVoutEvent(input, &event->vout);
             break;
+        case INPUT_EVENT_ITEM_META:
+            vlc_player_SendEvent(player, on_item_meta_changed,
+                                 input_GetItem(input->thread));
+            break;
+        case INPUT_EVENT_ITEM_EPG:
+            vlc_player_SendEvent(player, on_item_epg_changed,
+                                 input_GetItem(input->thread));
+            break;
         case INPUT_EVENT_SUBITEMS:
             /* TODO */
             break;
