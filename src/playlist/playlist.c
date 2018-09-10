@@ -99,8 +99,8 @@ struct vlc_playlist
     struct vlc_player_listener_id *player_listener;
     playlist_item_vector_t items;
     ssize_t current;
-    bool has_next;
     bool has_prev;
+    bool has_next;
     struct vlc_list listeners; /**< list of vlc_playlist_listener_id.node */
     enum vlc_playlist_playback_repeat repeat;
     enum vlc_playlist_playback_order order;
@@ -120,6 +120,34 @@ do { \
         if (listener->cbs->event) \
             listener->cbs->event(playlist, ##__VA_ARGS__, listener->userdata); \
 } while(0)
+
+/* Helper to notify several changes at once */
+struct vlc_playlist_state {
+    ssize_t current;
+    bool has_prev;
+    bool has_next;
+};
+
+static void
+vlc_playlist_state_Save(vlc_playlist_t *playlist,
+                        struct vlc_playlist_state *state)
+{
+    state->current = playlist->current;
+    state->has_prev = playlist->has_prev;
+    state->has_next = playlist->has_next;
+}
+
+static void
+vlc_playlist_state_NotifyChanges(vlc_playlist_t *playlist,
+                                 struct vlc_playlist_state *saved_state)
+{
+    if (saved_state->current != playlist->current)
+        PlaylistNotify(playlist, on_current_item_changed, playlist->current);
+    if (saved_state->has_prev != playlist->has_prev)
+        PlaylistNotify(playlist, on_has_prev_changed, playlist->has_prev);
+    if (saved_state->has_next != playlist->has_next)
+        PlaylistNotify(playlist, on_has_next_changed, playlist->has_next);
+}
 
 static inline bool
 PlaylistHasItemUpdatedListeners(vlc_playlist_t *playlist)
@@ -189,57 +217,13 @@ PlaylistClear(vlc_playlist_t *playlist)
     vlc_vector_clear(&playlist->items);
 }
 
-static inline void
-PlaylistLocalSetCurrent(vlc_playlist_t *playlist, ssize_t current)
-{
-    PlaylistAssertLocked(playlist);
-
-    if (playlist->current == current)
-        return;
-
-    playlist->current = current;
-    PlaylistNotify(playlist, on_current_item_changed, current);
-}
-
 static inline int
-PlaylistSetCurrent(vlc_playlist_t *playlist, ssize_t current)
+PlaylistSetCurrentMedia(vlc_playlist_t *playlist, ssize_t index)
 {
     PlaylistAssertLocked(playlist);
 
-    if (playlist->current == current)
-        return VLC_SUCCESS;
-
-    vlc_playlist_item_t *item = PlaylistGetItem(playlist, current);
-    int ret = vlc_player_SetCurrentMedia(playlist->player, item->media);
-    if (ret != VLC_SUCCESS)
-        return ret;
-
-    PlaylistLocalSetCurrent(playlist, current);
-    return VLC_SUCCESS;
-}
-
-static inline void
-PlaylistSetHasPrev(vlc_playlist_t *playlist, bool has_prev)
-{
-    PlaylistAssertLocked(playlist);
-
-    if (playlist->has_prev == has_prev)
-        return;
-
-    playlist->has_prev = has_prev;
-    PlaylistNotify(playlist, on_has_prev_changed, has_prev);
-}
-
-static inline void
-PlaylistSetHasNext(vlc_playlist_t *playlist, bool has_next)
-{
-    PlaylistAssertLocked(playlist);
-
-    if (playlist->has_next == has_next)
-        return;
-
-    playlist->has_next = has_next;
-    PlaylistNotify(playlist, on_has_next_changed, has_next);
+    vlc_playlist_item_t *item = PlaylistGetItem(playlist, index);
+    return vlc_player_SetCurrentMedia(playlist->player, item->media);
 }
 
 static inline bool
@@ -284,18 +268,6 @@ PlaylistHasNext(vlc_playlist_t *playlist)
         default:
             vlc_assert_unreachable();
     }
-}
-
-static inline void
-PlaylistRefreshHasPrev(vlc_playlist_t *playlist)
-{
-    PlaylistSetHasPrev(playlist, PlaylistHasPrev(playlist));
-}
-
-static inline void
-PlaylistRefreshHasNext(vlc_playlist_t *playlist)
-{
-    PlaylistSetHasNext(playlist, PlaylistHasNext(playlist));
 }
 
 static size_t
@@ -357,7 +329,13 @@ static void player_on_current_media_changed(vlc_player_t *player,
         return;
 
     ssize_t index = vlc_playlist_IndexOfMedia(playlist, new_media);
-    PlaylistLocalSetCurrent(playlist, index);
+
+    struct vlc_playlist_state state;
+    vlc_playlist_state_Save(playlist, &state);
+
+    playlist->current = index;
+
+    vlc_playlist_state_NotifyChanges(playlist, &state);
 }
 
 static input_item_t *
@@ -531,11 +509,17 @@ vlc_playlist_Clear(vlc_playlist_t *playlist)
     PlaylistAssertLocked(playlist);
 
     PlaylistClear(playlist);
-    PlaylistSetCurrent(playlist, -1);
-    PlaylistNotify(playlist, on_items_reset, NULL, 0);
+    vlc_player_SetCurrentMedia(playlist->player, NULL);
 
-    PlaylistSetHasPrev(playlist, false);
-    PlaylistSetHasNext(playlist, false);
+    struct vlc_playlist_state state;
+    vlc_playlist_state_Save(playlist, &state);
+
+    playlist->current = -1;
+    playlist->has_prev = false;
+    playlist->has_next = false;
+
+    PlaylistNotify(playlist, on_items_reset, NULL, 0);
+    vlc_playlist_state_NotifyChanges(playlist, &state);
 }
 
 static int
@@ -600,10 +584,18 @@ vlc_playlist_InsertAll(vlc_playlist_t *playlist, size_t index,
         return ret;
     }
 
+    struct vlc_playlist_state state;
+    vlc_playlist_state_Save(playlist, &state);
+
+    if (playlist->current >= (ssize_t) index)
+        playlist->current += count;
+    playlist->has_prev = PlaylistHasPrev(playlist);
+    playlist->has_next = PlaylistHasNext(playlist);
+
     PlaylistNotify(playlist, on_items_added, index,
                    &playlist->items.data[index], count);
-    PlaylistRefreshHasPrev(playlist);
-    PlaylistRefreshHasNext(playlist);
+    vlc_playlist_state_NotifyChanges(playlist, &state);
+
     vlc_player_InvalidateNextMedia(playlist->player);
 
     return VLC_SUCCESS;
@@ -628,9 +620,40 @@ vlc_playlist_RemoveSlice(vlc_playlist_t *playlist, size_t index, size_t count)
 
     vlc_vector_remove_slice(&playlist->items, index, count);
 
-    PlaylistRefreshHasPrev(playlist);
-    PlaylistRefreshHasNext(playlist);
-    vlc_player_InvalidateNextMedia(playlist->player);
+    struct vlc_playlist_state state;
+    vlc_playlist_state_Save(playlist, &state);
+
+    bool invalidate_next_media = true;
+    if (playlist->current != -1) {
+        size_t current = (size_t) playlist->current;
+        if (current >= index && current < index + count) {
+            /* current item has been removed */
+            if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_NORMAL)
+            {
+                if (index + count < playlist->items.size) {
+                    /* select the first item after the removed block */
+                    playlist->current = index;
+                } else {
+                    /* no more items */
+                    playlist->current = -1;
+                }
+            }
+            /* change current playback */
+            PlaylistSetCurrentMedia(playlist, playlist->current);
+            /* we changed the current media, this already resets the next */
+            invalidate_next_media = false;
+        } else if (current >= index + count) {
+            playlist->current -= count;
+        }
+    }
+    playlist->has_prev = PlaylistHasPrev(playlist);
+    playlist->has_next = PlaylistHasNext(playlist);
+
+    PlaylistNotify(playlist, on_items_removed, index, count);
+    vlc_playlist_state_NotifyChanges(playlist, &state);
+
+    if (invalidate_next_media)
+        vlc_player_InvalidateNextMedia(playlist->player);
 }
 
 ssize_t
@@ -724,12 +747,19 @@ vlc_playlist_Prev(vlc_playlist_t *playlist)
     PlaylistAssertLocked(playlist);
     assert(PlaylistHasPrev(playlist));
 
-    size_t index = PlaylistGetPrevIndex(playlist);
-    int ret = PlaylistSetCurrent(playlist, index);
-    if (ret != VLC_SUCCESS)
-        return ret;
 
-    PlaylistRefreshHasPrev(playlist);
+    size_t index = PlaylistGetPrevIndex(playlist);
+    int ret = PlaylistSetCurrentMedia(playlist, index);
+
+    struct vlc_playlist_state state;
+    vlc_playlist_state_Save(playlist, &state);
+
+    playlist->current = ret == VLC_SUCCESS ? (ssize_t) index : -1;
+    playlist->has_prev = PlaylistHasPrev(playlist);
+    playlist->has_next = PlaylistHasNext(playlist);
+
+    vlc_playlist_state_NotifyChanges(playlist, &state);
+
     return VLC_SUCCESS;
 }
 
@@ -740,11 +770,17 @@ vlc_playlist_Next(vlc_playlist_t *playlist)
     assert(PlaylistHasNext(playlist));
 
     size_t index = PlaylistGetNextIndex(playlist);
-    int ret = PlaylistSetCurrent(playlist, index);
-    if (ret != VLC_SUCCESS)
-        return ret;
+    int ret = PlaylistSetCurrentMedia(playlist, index);
 
-    PlaylistRefreshHasNext(playlist);
+    struct vlc_playlist_state state;
+    vlc_playlist_state_Save(playlist, &state);
+
+    playlist->current = ret == VLC_SUCCESS ? (ssize_t) index : -1;
+    playlist->has_prev = PlaylistHasPrev(playlist);
+    playlist->has_next = PlaylistHasNext(playlist);
+
+    vlc_playlist_state_NotifyChanges(playlist, &state);
+
     return VLC_SUCCESS;
 }
 
@@ -754,11 +790,17 @@ vlc_playlist_GoTo(vlc_playlist_t *playlist, size_t index)
     PlaylistAssertLocked(playlist);
     assert(index < playlist->items.size);
 
-    int ret = PlaylistSetCurrent(playlist, index);
-        return ret;
+    int ret = PlaylistSetCurrentMedia(playlist, index);
 
-    PlaylistRefreshHasPrev(playlist);
-    PlaylistRefreshHasNext(playlist);
+    struct vlc_playlist_state state;
+    vlc_playlist_state_Save(playlist, &state);
+
+    playlist->current = ret == VLC_SUCCESS ? (ssize_t) index : -1;
+    playlist->has_prev = PlaylistHasPrev(playlist);
+    playlist->has_next = PlaylistHasNext(playlist);
+
+    vlc_playlist_state_NotifyChanges(playlist, &state);
+
     return VLC_SUCCESS;
 }
 
