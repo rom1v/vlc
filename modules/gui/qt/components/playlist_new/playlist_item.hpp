@@ -89,4 +89,6 @@ static_assert(sizeof(PlaylistItem) == sizeof(void *));
   } // namespace playlist
 } // namespace vlc
 
+Q_DECLARE_METATYPE(vlc::playlist::PlaylistItem);
+
 #endif
