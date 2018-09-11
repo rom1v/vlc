@@ -31,6 +31,9 @@
 #include "components/playlist/selector.hpp"       /* PLSelector */
 #include "components/playlist/playlist_model.hpp" /* PLModel */
 #include "components/interface_widgets.hpp"       /* CoverArtLabel */
+#include "components/playlist_new/playlist_model.hpp"
+#include <vlc_playlist_new.h>
+#include <QtConcurrent>
 
 #include "util/searchlineedit.hpp"
 
@@ -79,7 +82,7 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
     CONNECT( THEMIM->getIM(), artChanged( input_item_t * ),
              art, showArtUpdate( input_item_t * ) );
 
-    leftSplitter->addWidget( artContainer );
+    //leftSplitter->addWidget( artContainer );
 
     /*******************
      * Right           *
@@ -139,9 +142,46 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
     /* */
     split = new QSplitter( this );
 
+    QTreeView *view = new QTreeView(this);
+    vlc_playlist_t *raw_playlist = vlc_intf_GetMainPlaylist(p_intf);
+    Q_ASSERT(raw_playlist);
+    auto *playlist = new vlc::playlist::Playlist(raw_playlist, this);
+    auto *newModel = new vlc::playlist::PlaylistModel(playlist, this);
+    view->setModel(newModel);
+
+    QtConcurrent::run([playlist, newModel] {
+        QThread::sleep(1);
+        playlist->append({
+            {"http://1", "media1"},
+            {"http://2", "media2"},
+            {"http://3", "media3"},
+            {"http://4", "media4"},
+            {"http://5", "media5"},
+        });
+        /* unsafe, but just for quick-testing */
+        QThread::sleep(2);
+        playlist->move({
+            newModel->itemAt(2),
+            newModel->itemAt(3),
+        }, 3, 2);
+        QThread::sleep(2);
+        playlist->shuffle();
+        QThread::sleep(2);
+        playlist->sort({
+            {VLC_PLAYLIST_SORT_KEY_TITLE, VLC_PLAYLIST_SORT_ORDER_DESCENDING}
+        });
+        QThread::sleep(2);
+        playlist->remove({
+            newModel->itemAt(2),
+            newModel->itemAt(3),
+        }, 2);
+    });
+
     /* Add the two sides of the QSplitter */
     split->addWidget( leftSplitter );
-    split->addWidget( mainView );
+    //split->addWidget( mainView );
+    split->addWidget(view);
+    mainView->hide();
 
     QList<int> sizeList;
     sizeList << 180 << 420 ;
