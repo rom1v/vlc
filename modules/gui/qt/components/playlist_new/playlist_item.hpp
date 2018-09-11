@@ -25,82 +25,57 @@
 #include <vlc_playlist_new.h>
 #include <QSharedData>
 
-namespace vlc {
-  namespace playlist {
-
-class PlaylistItemPtr
-{
+template <typename T, typename H, typename R, H HOLD, R RELEASE>
+class vlcptr {
+    T *ptr;
 public:
-    PlaylistItemPtr(vlc_playlist_item_t *ptr = nullptr)
-        : ptr(ptr)
+    vlcptr(T *ptr = nullptr) : ptr(ptr)
     {
         if (ptr)
-            vlc_playlist_item_Hold(ptr);
+            HOLD(ptr);
     }
 
-    PlaylistItemPtr(const PlaylistItemPtr &other)
-        : PlaylistItemPtr(other.ptr) {}
-
-    PlaylistItemPtr(PlaylistItemPtr &&other) noexcept
-        : ptr(std::exchange(other.ptr, nullptr)) {}
-
-    ~PlaylistItemPtr()
+    vlcptr(const vlcptr &other) : vlcptr(other.ptr) {}
+    vlcptr(vlcptr &&other) noexcept : ptr(std::exchange(other.ptr, nullptr)) {}
+    ~vlcptr()
     {
         if (ptr)
-            vlc_playlist_item_Release(ptr);
+            RELEASE(ptr);
     }
-
-    PlaylistItemPtr &operator=(const PlaylistItemPtr &other)
+    vlcptr &operator=(const vlcptr &other)
     {
         if (other.ptr)
             /* hold before in case ptr == other.ptr */
-            vlc_playlist_item_Hold(other.ptr);
+            HOLD(other.ptr);
         if (ptr)
-            vlc_playlist_item_Release(ptr);
+            RELEASE(ptr);
         ptr = other.ptr;
         return *this;
     }
-
-    PlaylistItemPtr &operator=(PlaylistItemPtr &&other) noexcept
+    vlcptr &operator=(vlcptr &&other) noexcept
     {
         ptr = std::exchange(other.ptr, nullptr);
         return *this;
     }
-
-    bool operator==(const PlaylistItemPtr &other)
-    {
-        return ptr == other.ptr;
-    }
-
-    bool operator!=(const PlaylistItemPtr &other)
-    {
-        return !(*this == other);
-    }
-
-    operator bool() const
-    {
-        return ptr;
-    }
-
-    vlc_playlist_item_t *raw()
-    {
-        return ptr;
-    }
-
-    const vlc_playlist_item_t *raw() const
-    {
-        return ptr;
-    }
-
-    input_item_t *getMedia() const
-    {
-        return vlc_playlist_item_GetMedia(ptr);
-    }
-
-private:
-    /* vlc_playlist_item_t is opaque, no need for * and -> */
-    vlc_playlist_item_t *ptr = nullptr;
+    bool operator==(const vlcptr &other) { return ptr == other.ptr; }
+    bool operator!=(const vlcptr &other) { return !(*this == other); }
+    operator bool() const { return ptr; }
+    T &operator*() { return *ptr; }
+    const T &operator*() const { return ptr; }
+    T *operator->() { return ptr; }
+    const T *operator->() const { return *ptr; }
+    T *raw() { return ptr;}
+    const T *raw() const { return ptr; }
 };
+
+namespace vlc {
+  namespace playlist {
+
+using PlaylistItemPtr = vlcptr<vlc_playlist_item_t,
+                               decltype(&vlc_playlist_item_Hold),
+                               decltype(&vlc_playlist_item_Release),
+                               &vlc_playlist_item_Hold,
+                               &vlc_playlist_item_Release>;
 
 /* PlaylistItemPtr + with cached data */
 class PlaylistItem
@@ -135,7 +110,7 @@ public:
     }
 
     void sync() {
-        input_item_t *media = d->item.getMedia();
+        input_item_t *media = vlc_playlist_item_GetMedia(d->item.raw());
         vlc_mutex_lock(&media->lock);
         d->title = media->psz_name;
         vlc_mutex_unlock(&media->lock);
