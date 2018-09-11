@@ -122,6 +122,69 @@ inline std::unique_ptr<T[], void (*)(void*)> wrap_carray( T* ptr ) noexcept
 
 } // anonymous namespace
 
+///
+/// Wraps a C shared pointer having associated Hold() and Release() functions
+//
+/// This is a RAII wrapper for C shared pointers (which are manually managed by
+/// calling explicitly their Hold() and Release() functions).
+///
+/// The Hold() and Release() functions must accept exactly one parameter having
+/// type T* (the raw pointer type). Their return type is irrelevant.
+///
+/// To create a new shared pointer wrapper type for my_type_t, simply declare:
+///
+///     using MyTypePtr =
+///             vlc_shared_ptr_type(my_type_t, my_type_Hold, my_type_Release);
+///
+/// You can then use it to wrap a raw C pointer:
+///
+///     my_type_t *raw_ptr = /* ... */;
+///     MyTypePtr ptr(raw_ptr);
+
+// In C++17, the template declaration could be replaced by:
+//     template<typename T, auto HOLD, auto RELEASE>
+template <typename T, typename H, typename R, H HOLD, R RELEASE>
+class vlc_shared_ptr {
+    T *ptr;
+public:
+    explicit vlc_shared_ptr(T *ptr = nullptr) : ptr(ptr) { if (ptr) HOLD(ptr); }
+    vlc_shared_ptr(const vlc_shared_ptr &o) : vlc_shared_ptr(o.ptr) {}
+    vlc_shared_ptr(vlc_shared_ptr &&o) noexcept :
+        ptr(std::exchange(o.ptr, nullptr)) {}
+    ~vlc_shared_ptr() { if (ptr) RELEASE(ptr); }
+    vlc_shared_ptr &operator=(const vlc_shared_ptr &o)
+    {
+        reset(o.ptr);
+        return *this;
+    }
+    vlc_shared_ptr &operator=(vlc_shared_ptr &&o) noexcept
+    {
+        ptr = std::exchange(o.ptr, nullptr);
+        return *this;
+    }
+    bool operator==(const vlc_shared_ptr &o) const { return ptr == o.ptr; }
+    bool operator!=(const vlc_shared_ptr &o) const { return !(*this == o); }
+    operator bool() const { return ptr; }
+    T &operator*() { return *ptr; }
+    const T &operator*() const { return *ptr; }
+    T *operator->() { return ptr; }
+    const T *operator->() const { return ptr; }
+    T *get() { return ptr; }
+    const T *get() const { return ptr; }
+    void reset(T *newptr) {
+        if (newptr)
+            /* hold before in case ptr == newptr */
+            HOLD(newptr);
+        if (ptr)
+            RELEASE(ptr);
+        ptr = newptr;
+    }
+};
+
+// useful due to the unnecessarily complex template before C++17
+#define vlc_shared_ptr_type(type, hold, release) \
+    vlc_shared_ptr<type, decltype(&hold), decltype(&release), &hold, &release>
+
 #ifdef VLC_THREADS_H_
 
 namespace threads
