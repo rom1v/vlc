@@ -530,7 +530,8 @@ check_PROGRAMS = \
 	test_xmlent \
 	test_headers \
 	test_mrl_helpers \
-	test_arrays
+	test_arrays \
+	test_shared_data_ptr
 
 TESTS = $(check_PROGRAMS) check_symbols
 
@@ -553,6 +554,7 @@ test_xmlent_SOURCES = test/xmlent.c
 test_headers_SOURCES = test/headers.c
 test_mrl_helpers_SOURCES = test/mrl_helpers.c
 test_arrays_SOURCES = test/arrays.c
+test_shared_data_ptr_SOURCES = test/shared_data_ptr.cpp
 
 AM_LDFLAGS = -no-install
 LDADD = libvlccore.la \
