@@ -171,6 +171,11 @@ PlaylistModel::data(const QModelIndex &index, int role) const
 {
     switch (role)
     {
+        case Qt::DisplayRole:
+            // in QML, it will use custom roles for "columns" content
+            // but for now, in Qt widgets, it use DisplayRole + column index
+            // (that's stupid, the same model may not work both in
+            // QListView/QTreeView and in QML components)
         case TitleRole:
             return items[index.row()].getTitle();
         case IsCurrentRole:
