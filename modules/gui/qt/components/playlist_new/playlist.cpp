@@ -209,5 +209,18 @@ Playlist::requestInsert(size_t index, QVector<Media> media)
         throw std::bad_alloc();
 }
 
+void
+requestRemove(size_t index, size_t count)
+{
+    PlaylistLocker locker(this);
+
+    size_t playlistSize = vlc_playlist_Count(playlist);
+
+    for (size_t i = 0; i < count, ++i)
+    {
+
+    }
+}
+
   } // namespace playlist
 } // namespace vlc
