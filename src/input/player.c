@@ -23,8 +23,7 @@
 #endif
 
 #include <vlc_common.h>
-#include <vlc_player.h>
-#include <vlc_player.h>
+#include "player.h"
 #include <vlc_aout.h>
 #include <vlc_renderer_discovery.h>
 #include <vlc_list.h>
@@ -161,7 +160,7 @@ struct vlc_player_t
 static void
 input_thread_events(input_thread_t *, const struct vlc_input_event *, void *);
 
-static inline void
+void
 vlc_player_assert_locked(vlc_player_t *player)
 {
     assert(player);

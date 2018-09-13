@@ -244,6 +244,7 @@ libvlccore_la_SOURCES = \
 	input/es_out_timeshift.c \
 	input/input.c \
 	input/player.c \
+	input/player.h \
 	input/info.h \
 	input/meta.c \
 	clock/input_clock.h \
