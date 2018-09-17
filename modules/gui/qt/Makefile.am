@@ -40,6 +40,8 @@ libqt_plugin_la_CPPFLAGS += -DUPDATE_CHECK
 endif
 
 libqt_plugin_la_SOURCES = \
+	gui/playlist_proxy.h \
+	gui/playlist_proxy.c \
 	gui/qt/qt.cpp gui/qt/qt.hpp \
 	gui/qt/menus.cpp gui/qt/menus.hpp \
 	gui/qt/main_interface.cpp gui/qt/main_interface.hpp \

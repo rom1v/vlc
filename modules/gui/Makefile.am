@@ -23,3 +23,11 @@ gui_LTLIBRARIES += $(LTLIBminimal_macosx)
 include gui/macosx/Makefile.am
 include gui/qt/Makefile.am
 include gui/skins2/Makefile.am
+
+LOCAL_TESTS = test_playlist_proxy
+
+check_PROGRAMS += $(LOCAL_TESTS)
+TESTS += $(LOCAL_TESTS)
+
+test_playlist_proxy_SOURCES = gui/playlist_proxy.c
+test_playlist_proxy_CFLAGS = -DTEST
