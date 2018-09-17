@@ -182,22 +182,23 @@ Playlist::raw()
     return playlist;
 }
 
-static QVector<input_item_t *> toRawMedia(const QVector<Media> &media)
+template <typename RAW, typename WRAPPER>
+static QVector<RAW> toRaw(const QVector<WRAPPER> &items)
 {
-    QVector<input_item_t *> vec;
-    int count = media.size();
+    QVector<RAW> vec;
+    int count = items.size();
     vec.reserve(count);
     for (int i = 0; i < count; ++i)
-        vec.push_back(media[i].raw());
+        vec.push_back(items[i].raw());
     return vec;
 }
 
 void
-Playlist::requestAppend(const QVector<Media> &media)
+Playlist::append(const QVector<Media> &media)
 {
     PlaylistLocker locker(this);
 
-    auto rawMedia = toRawMedia(media);
+    auto rawMedia = toRaw<input_item_t *>(media);
     int ret = vlc_playlist_Append(playlist,
                                   rawMedia.constData(), rawMedia.size());
     if (ret != VLC_SUCCESS)
@@ -205,83 +206,27 @@ Playlist::requestAppend(const QVector<Media> &media)
 }
 
 void
-Playlist::requestInsert(size_t index, const QVector<Media> &media)
+Playlist::insert(size_t index, const QVector<Media> &media)
 {
     PlaylistLocker locker(this);
 
-    size_t playlistSize = vlc_playlist_Count(playlist);
-    if (index > playlistSize)
-        index = playlistSize;
-
-    auto rawMedia = toRawMedia(media);
-    int ret = vlc_playlist_Insert(playlist, index,
-                                  rawMedia.constData(), rawMedia.size());
+    auto rawMedia = toRaw<input_item_t *>(media);
+    int ret = vlc_playlist_RequestInsert(playlist, index,
+                                         rawMedia.constData(), rawMedia.size());
     if (ret != VLC_SUCCESS)
         throw std::bad_alloc();
 }
 
-inline ssize_t
-Playlist::findRealIndex(const PlaylistItem &item, ssize_t indexHint)
-{
-    if (indexHint != -1 && (size_t) indexHint < vlc_playlist_Count(playlist))
-    {
-        if (item.raw() == vlc_playlist_Get(playlist, indexHint))
-            /* we are lucky */
-            return indexHint;
-    }
-
-    /* we are unlucky, we need to find the item */
-    return vlc_playlist_IndexOf(playlist, item.raw());
-}
-
-inline QVector<size_t>
-Playlist::findIndices(const QVector<PlaylistItem> items, ssize_t indexHint)
-{
-    QVector<size_t> indices;
-    int count = items.size();
-    for (int i = 0; i < count; ++i)
-    {
-        ssize_t realIndex = findRealIndex(items[i], indexHint + i);
-        if (realIndex != -1)
-            indices.push_back(realIndex);
-    }
-    return indices;
-}
-
 void
-Playlist::removeBySlices(const QVector<size_t> &sortedIndices)
-{
-    int lastIndex = sortedIndices.last();
-    int blockSize = 1;
-    for (int i = sortedIndices.size() - 2; i >= 0; --i)
-    {
-        int index = sortedIndices[i];
-        if (index == lastIndex - 1) {
-            blockSize++;
-        } else {
-             /* the previous slice is complete */
-            vlc_playlist_Remove(playlist, lastIndex, blockSize);
-            blockSize = 1;
-        }
-        lastIndex = index;
-    }
-    /* remove the last slice */
-    vlc_playlist_Remove(playlist, lastIndex, blockSize);
-}
-
-void
-Playlist::requestRemove(const QVector<PlaylistItem> &items, size_t indexHint)
+Playlist::remove(const QVector<PlaylistItem> &items, ssize_t indexHint)
 {
     PlaylistLocker locker(this);
 
-    QVector<size_t> indices = findIndices(items, indexHint);
-    if (indices.isEmpty())
-        return;
-
-    /* sort so that removing an item does not shift the other indices */
-    std::sort(indices.begin(), indices.end());
-
-    removeBySlices(indices);
+    auto rawItems = toRaw<vlc_playlist_item_t *>(items);
+    int ret = vlc_playlist_RequestRemove(playlist, rawItems.constData(),
+                                         rawItems.size(), indexHint);
+    if (ret != VLC_SUCCESS)
+        throw std::bad_alloc();
 }
 
   } // namespace playlist

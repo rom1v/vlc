@@ -47,9 +47,9 @@ public:
     void lock();
     void unlock();
 
-    void requestAppend(const QVector<Media> &);
-    void requestInsert(size_t index, const QVector<Media> &);
-    void requestRemove(const QVector<PlaylistItem> &, size_t indexHint = -1);
+    void append(const QVector<Media> &);
+    void insert(size_t index, const QVector<Media> &);
+    void remove(const QVector<PlaylistItem> &, ssize_t indexHint = -1);
 
 signals:
     void playlistItemsReset(QVector<PlaylistItem>);
@@ -64,10 +64,6 @@ signals:
     void playlistHasNextChanged(bool hasNext);
 
 private:
-    ssize_t findRealIndex(const PlaylistItem &, ssize_t indexHint);
-    QVector<size_t> findIndices(const QVector<PlaylistItem>, ssize_t indexHint);
-    void removeBySlices(const QVector<size_t> &);
-
     vlc_playlist_t *playlist;
     vlc_playlist_listener_id *listener;
 };
