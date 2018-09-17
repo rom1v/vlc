@@ -8,6 +8,10 @@
 #include <vlc_playlist_new.h>
 #include <vlc_vector.h>
 
+#ifdef __cplusplus
+static_assert(false, "This file must not be compiled as C++");
+#endif
+
 int
 vlc_playlist_RequestInsert(vlc_playlist_t *playlist, size_t index,
                            input_item_t *const media[], size_t count)
@@ -118,4 +122,5 @@ int main(void)
 {
     return 0;
 }
+
 #endif

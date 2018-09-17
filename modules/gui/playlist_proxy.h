@@ -23,6 +23,10 @@
 
 #include <vlc_common.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* forward declarations */
 typedef struct vlc_playlist vlc_playlist_t;
 typedef struct vlc_playlist_item vlc_playlist_item_t;
@@ -35,5 +39,9 @@ vlc_playlist_RequestInsert(vlc_playlist_t *playlist, size_t index,
 int
 vlc_playlist_RequestRemove(vlc_playlist_t *playlist, ssize_t index_hint,
                            vlc_playlist_item_t *const items[], size_t count);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif
