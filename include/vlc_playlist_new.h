@@ -96,6 +96,12 @@ extern "C" {
  * manages a cursor to the "current" item, and expose whether a previous and
  * next items (which depend on the playback order and repeat mode) are
  * available.
+ *
+ * When a user requests to insert, move or remove items, before the core
+ * playlist lock is successfully acquired, another client may have changed the
+ * list. Therefore, vlc_playlist_Request*() functions are exposed to resolve
+ * potential conflicts and apply the changes. The actual changes applied are
+ * notified through the callbacks
  */
 
 /* forward declarations */
@@ -489,6 +495,89 @@ vlc_playlist_RemoveOne(vlc_playlist_t *playlist, size_t index)
 {
     vlc_playlist_Remove(playlist, index, 1);
 }
+
+/**
+ * Insert a list of media at a given index (if in range), or append.
+ *
+ * Contrary to vlc_playlist_Insert(), the index need not be in range: if it is
+ * out of bounds, items will be appended.
+ *
+ * This is an helper to apply a desynchronized insert request, i.e. the
+ * playlist content may have changed since the request had been submitted.
+ * This is typically the case for user requests (e.g. from UI), because the
+ * playlist lock has to be acquired *after* the user requested the
+ * change.
+ *
+ * \param playlist the playlist, locked
+ * \index index    the index where the media are to be inserted
+ * \param media    the array of media to insert
+ * \param count    the number of media to insert
+ * \return VLC_SUCCESS on success, another value on error
+ */
+VLC_API int
+vlc_playlist_RequestInsert(vlc_playlist_t *playlist, size_t index,
+                           input_item_t *const media[], size_t count);
+
+/**
+ * Move a slice of items by value.
+ *
+ * If the indices are known, use vlc_playlist_Move() instead.
+ *
+ * This is an helper to apply a desynchronized move request, i.e. the playlist
+ * content may have changed since the request had been submitted. This is
+ * typically the case for user requests (e.g. from UI), because the playlist
+ * lock has to be acquired *after* the user requested the change.
+ *
+ * For optimization purpose, it is possible to pass an `index_hint_`, which is
+ * the expected index of the first item of the slice (as known by the client).
+ * Hopefully, the index should often match, since conflicts are expected to be
+ * rare. Pass -1 not to pass any hint.
+ *
+ * \param playlist   the playlist, locked
+ * \param items      the array of items to move
+ * \param count      the number of items to move
+ * \param target     the new index of the moved slice
+ * \param index_hint the expected index of the first item
+ * \return VLC_SUCCESS on success, another value on error
+ */
+VLC_API int
+vlc_playlist_RequestMove(vlc_playlist_t *playlist,
+                         vlc_playlist_item_t *const items[], size_t count,
+                         size_t target, ssize_t index_hint);
+
+/**
+ * Remove a slice of items by value.
+ *
+ * If the indices are known, use vlc_playlist_Remove() instead.
+ *
+ * This is an helper to apply a desynchronized remove request, i.e. the
+ * playlist content may have changed since the request had been submitted.
+ * This is typically the case for user requests (e.g. from UI), because the
+ * playlist lock has to be acquired *after* the user requested the change.
+ *
+ * For optimization purpose, it is possible to pass an `index_hint_`, which is
+ * the expected index of the first item of the slice (as known by the client).
+ * Hopefully, the index should often match, since conflicts are expected to be
+ * rare. Pass -1 not to pass any hint.
+ *
+ * \param playlist   the playlist, locked
+ * \param items      the array of items to remove
+ * \param count      the number of items to remove
+ * \param index_hint the expected index of the first item
+ * \return VLC_SUCCESS on success, another value on error
+ */
+VLC_API int
+vlc_playlist_RequestRemove(vlc_playlist_t *playlist,
+                           vlc_playlist_item_t *const items[], size_t count,
+                           ssize_t index_hint);
+
+/**
+ * Shuffle the playlist.
+ *
+ * \param playlist the playlist, locked
+ */
+VLC_API void
+vlc_playlist_Shuffle(vlc_playlist_t *playlist);
 
 /**
  * Return the index of a given item.
