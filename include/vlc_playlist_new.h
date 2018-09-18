@@ -99,6 +99,17 @@ struct vlc_playlist_callbacks
                            void *userdata);
 
     /**
+     * Called when a slice of items have been moved.
+     *
+     * \param playlist the playlist
+     * \param index    the index of the first moved item
+     * \param count    the number of items moved
+     * \param target   the new index of the moved slice
+     * \param userdata userdata provided to AddListener()
+     */
+    void (*on_items_moved)(vlc_playlist_t *playlist, size_t index,
+                             size_t count, size_t target, void *userdata);
+    /**
      * Called when a slice of items have been removed from the playlist.
      *
      * \param playlist the playlist
@@ -362,6 +373,37 @@ static inline int
 vlc_playlist_AppendOne(vlc_playlist_t *playlist, input_item_t *media)
 {
     return vlc_playlist_Append(playlist, &media, 1);
+}
+
+/**
+ * Move a slice of items to a given target index.
+ *
+ * The slice and the target must be in range (both index+count and target+count
+ * less than or equal to vlc_playlist_Count()).
+ *
+ * \param playlist the playlist, locked
+ * \param index    the index of the first item to move
+ * \param count    the number of items to move
+ * \param target the new index of the moved slice
+ */
+VLC_API void
+vlc_playlist_Move(vlc_playlist_t *playlist, size_t index, size_t count,
+                  size_t target);
+
+/**
+ * Move an item to a given target index.
+ *
+ * The index and the target must be in range (index less than, and target less
+ * than or equal to, vlc_playlist_Count()).
+ *
+ * \param playlist the playlist, locked
+ * \param index    the index of the item to move
+ * \param target the new index of the moved item
+ */
+static inline void
+vlc_playlist_MoveOne(vlc_playlist_t *playlist, size_t index, size_t target)
+{
+    vlc_playlist_Move(playlist, index, 1, target);
 }
 
 /**

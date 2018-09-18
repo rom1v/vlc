@@ -603,6 +603,41 @@ vlc_playlist_Insert(vlc_playlist_t *playlist, size_t index,
 }
 
 void
+vlc_playlist_Move(vlc_playlist_t *playlist, size_t index, size_t count,
+                  size_t target)
+{
+    PlaylistAssertLocked(playlist);
+    assert(index + count <= playlist->items.size);
+    assert(target + count <= playlist->items.size);
+
+    vlc_vector_move_slice(&playlist->items, index, count, target);
+
+    struct vlc_playlist_state state;
+    vlc_playlist_state_Save(playlist, &state);
+
+    if (playlist->current != -1) {
+        size_t current = (size_t) playlist->current;
+        if (current >= index && current < target + count)
+        {
+            if (current < index + count)
+                /* current item belongs the moved block */
+                playlist->current += target - index;
+            else
+                /* current item was shifted due to the moved block */
+                playlist->current -= count;
+        }
+    }
+
+    playlist->has_prev = PlaylistHasPrev(playlist);
+    playlist->has_next = PlaylistHasNext(playlist);
+
+    PlaylistNotify(playlist, on_items_moved, index, count, target);
+    vlc_playlist_state_NotifyChanges(playlist, &state);
+
+    vlc_player_InvalidateNextMedia(playlist->player);
+}
+
+void
 vlc_playlist_Remove(vlc_playlist_t *playlist, size_t index, size_t count)
 {
     PlaylistAssertLocked(playlist);
@@ -1039,6 +1074,51 @@ test_insert(void)
 }
 
 static void
+test_move(void)
+{
+    vlc_playlist_t *playlist = vlc_playlist_New(NULL);
+    assert(playlist);
+
+    input_item_t *media[10];
+    CreateDummyMediaArray(media, 10);
+
+    /* initial playlist with 10 items */
+    int ret = vlc_playlist_Append(playlist, media, 10);
+    assert(ret == VLC_SUCCESS);
+
+    /* move slice {3, 4, 5, 6} so that its new position is 5 */
+    vlc_playlist_Move(playlist, 3, 4, 5);
+
+    EXPECT_AT(0, 0);
+    EXPECT_AT(1, 1);
+    EXPECT_AT(2, 2);
+    EXPECT_AT(3, 7);
+    EXPECT_AT(4, 8);
+    EXPECT_AT(5, 3);
+    EXPECT_AT(6, 4);
+    EXPECT_AT(7, 5);
+    EXPECT_AT(8, 6);
+    EXPECT_AT(9, 9);
+
+    /* move it back to its original position */
+    vlc_playlist_Move(playlist, 5, 4, 3);
+
+    EXPECT_AT(0, 0);
+    EXPECT_AT(1, 1);
+    EXPECT_AT(2, 2);
+    EXPECT_AT(3, 3);
+    EXPECT_AT(4, 4);
+    EXPECT_AT(5, 5);
+    EXPECT_AT(6, 6);
+    EXPECT_AT(7, 7);
+    EXPECT_AT(8, 8);
+    EXPECT_AT(9, 9);
+
+    DestroyMediaArray(media, 10);
+    vlc_playlist_Delete(playlist);
+}
+
+static void
 test_remove(void)
 {
     vlc_playlist_t *playlist = vlc_playlist_New(NULL);
@@ -1173,6 +1253,14 @@ struct items_added_report
     struct playlist_state state;
 };
 
+struct items_moved_report
+{
+    size_t index;
+    size_t count;
+    size_t target;
+    struct playlist_state state;
+};
+
 struct items_removed_report
 {
     size_t index;
@@ -1199,6 +1287,7 @@ struct callback_ctx
 {
     struct VLC_VECTOR(struct items_reset_report)           vec_items_reset;
     struct VLC_VECTOR(struct items_added_report)           vec_items_added;
+    struct VLC_VECTOR(struct items_moved_report)           vec_items_moved;
     struct VLC_VECTOR(struct items_removed_report)         vec_items_removed;
     struct VLC_VECTOR(struct current_index_changed_report)
                                                       vec_current_index_changed;
@@ -1214,6 +1303,7 @@ struct callback_ctx
     VLC_VECTOR_INITIALIZER, \
     VLC_VECTOR_INITIALIZER, \
     VLC_VECTOR_INITIALIZER, \
+    VLC_VECTOR_INITIALIZER, \
 }
 
 static inline void
@@ -1221,6 +1311,7 @@ callback_ctx_reset(struct callback_ctx *ctx)
 {
     vlc_vector_clear(&ctx->vec_items_reset);
     vlc_vector_clear(&ctx->vec_items_added);
+    vlc_vector_clear(&ctx->vec_items_moved);
     vlc_vector_clear(&ctx->vec_items_removed);
     vlc_vector_clear(&ctx->vec_current_index_changed);
     vlc_vector_clear(&ctx->vec_has_prev_changed);
@@ -1258,6 +1349,22 @@ callback_on_items_added(vlc_playlist_t *playlist, size_t index,
     report.count = count;
     playlist_state_init(&report.state, playlist);
     vlc_vector_push(&ctx->vec_items_added, report);
+}
+
+static void
+callback_on_items_moved(vlc_playlist_t *playlist, size_t index, size_t count,
+                        size_t target, void *userdata)
+{
+    PlaylistAssertLocked(playlist);
+
+    struct callback_ctx *ctx = userdata;
+
+    struct items_moved_report report;
+    report.index = index;
+    report.count = count;
+    report.target = target;
+    playlist_state_init(&report.state, playlist);
+    vlc_vector_push(&ctx->vec_items_moved, report);
 }
 
 static void
@@ -1398,6 +1505,98 @@ test_items_added_callbacks(void)
 
     assert(ctx.vec_has_next_changed.size == 1);
     assert(ctx.vec_has_next_changed.data[0].has_next);
+
+    callback_ctx_reset(&ctx);
+    vlc_playlist_RemoveListener(playlist, listener);
+    DestroyMediaArray(media, 10);
+    vlc_playlist_Delete(playlist);
+}
+
+static void
+test_items_moved_callbacks(void)
+{
+    vlc_playlist_t *playlist = vlc_playlist_New(NULL);
+    assert(playlist);
+
+    input_item_t *media[10];
+    CreateDummyMediaArray(media, 10);
+
+    /* initial playlist with 10 items */
+    int ret = vlc_playlist_Append(playlist, media, 10);
+    assert(ret == VLC_SUCCESS);
+
+    struct vlc_playlist_callbacks cbs = {
+        .on_items_moved = callback_on_items_moved,
+        .on_current_index_changed = callback_on_current_index_changed,
+        .on_has_prev_changed = callback_on_has_prev_changed,
+        .on_has_next_changed = callback_on_has_next_changed,
+    };
+
+    struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
+    vlc_playlist_listener_id *listener =
+            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+    assert(listener);
+
+    vlc_playlist_Move(playlist, 2, 3, 5);
+
+    assert(ctx.vec_items_moved.size == 1);
+    assert(ctx.vec_items_moved.data[0].index == 2);
+    assert(ctx.vec_items_moved.data[0].count == 3);
+    assert(ctx.vec_items_moved.data[0].target == 5);
+    assert(ctx.vec_items_moved.data[0].state.playlist_size == 10);
+    assert(ctx.vec_items_moved.data[0].state.current == -1);
+    assert(!ctx.vec_items_moved.data[0].state.has_prev);
+    assert(ctx.vec_items_moved.data[0].state.has_next);
+
+    assert(ctx.vec_current_index_changed.size == 0);
+    assert(ctx.vec_has_prev_changed.size == 0);
+    assert(ctx.vec_has_next_changed.size == 0);
+
+    playlist->current = 3;
+    playlist->has_prev = true;
+    playlist->has_next = true;
+
+    callback_ctx_reset(&ctx);
+
+    /* the current index belongs to the moved slice */
+    vlc_playlist_Move(playlist, 1, 3, 5);
+
+    assert(ctx.vec_items_moved.size == 1);
+    assert(ctx.vec_items_moved.data[0].index == 1);
+    assert(ctx.vec_items_moved.data[0].count == 3);
+    assert(ctx.vec_items_moved.data[0].target == 5);
+    assert(ctx.vec_items_moved.data[0].state.playlist_size == 10);
+    assert(ctx.vec_items_moved.data[0].state.current == 7);
+    assert(ctx.vec_items_moved.data[0].state.has_prev);
+    assert(ctx.vec_items_moved.data[0].state.has_next);
+
+    assert(ctx.vec_current_index_changed.size == 1);
+    assert(ctx.vec_current_index_changed.data[0].current == 7);
+
+    assert(ctx.vec_has_prev_changed.size == 0);
+    assert(ctx.vec_has_next_changed.size == 0);
+
+    callback_ctx_reset(&ctx);
+
+    /* as a result of this move, the current item (7) will be at index 0 */
+    vlc_playlist_Move(playlist, 0, 7, 1);
+
+    assert(ctx.vec_items_moved.size == 1);
+    assert(ctx.vec_items_moved.data[0].index == 0);
+    assert(ctx.vec_items_moved.data[0].count == 7);
+    assert(ctx.vec_items_moved.data[0].target == 1);
+    assert(ctx.vec_items_moved.data[0].state.playlist_size == 10);
+    assert(ctx.vec_items_moved.data[0].state.current == 0);
+    assert(!ctx.vec_items_moved.data[0].state.has_prev);
+    assert(ctx.vec_items_moved.data[0].state.has_next);
+
+    assert(ctx.vec_current_index_changed.size == 1);
+    assert(ctx.vec_current_index_changed.data[0].current == 0);
+
+    assert(ctx.vec_has_prev_changed.size == 1);
+    assert(!ctx.vec_has_prev_changed.data[0].has_prev);
+
+    assert(ctx.vec_has_next_changed.size == 0);
 
     callback_ctx_reset(&ctx);
     vlc_playlist_RemoveListener(playlist, listener);
@@ -1845,10 +2044,12 @@ int main(void)
 {
     test_append();
     test_insert();
+    test_move();
     test_remove();
     test_clear();
     test_expand_item();
     test_items_added_callbacks();
+    test_items_moved_callbacks();
     test_items_removed_callbacks();
     test_items_reset_callbacks();
     test_index_of();
