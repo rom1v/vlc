@@ -46,7 +46,8 @@ Rectangle {
 
             Layout.preferredHeight: VLCStyle.cover_large
             Layout.preferredWidth: VLCStyle.cover_large
-            Layout.margins: VLCStyle.margin_xsmall
+            Layout.alignment: Qt.AlignTop
+            Layout.margins: VLCStyle.margin_small
 
             source: model.cover || VLCStyle.noArtCover
         }
@@ -63,10 +64,35 @@ Rectangle {
                 id: expand_infos_titleRect_id
                 height: expand_infos_title_id.implicitHeight
                 Layout.fillWidth:  true
+                Layout.alignment: Qt.AlignLeft
+                Layout.topMargin: VLCStyle.margin_small
+                Layout.leftMargin: VLCStyle.margin_small
+                Layout.rightMargin: VLCStyle.margin_small
                 color: "transparent"
                 Text {
                     id: expand_infos_title_id
                     text: "<b>"+(model.title || "Unknown title")+"</b>"
+                    font.pixelSize: VLCStyle.fontSize_xxlarge
+                    color: VLCStyle.colors.text
+                }
+            }
+
+            Rectangle {
+                id: expand_infos_subtitleRect_id
+                height: expand_infos_subtitle_id.implicitHeight
+                Layout.fillWidth:  true
+                Layout.alignment: Qt.AlignLeft
+                Layout.leftMargin: VLCStyle.margin_small
+                Layout.rightMargin: VLCStyle.margin_small
+                Layout.topMargin: VLCStyle.margin_xxsmall
+                color: "transparent"
+                Text {
+                    id: expand_infos_subtitle_id
+                    text: qsTr("By %1 - %2 - %3")
+                        .arg(model.main_artist || "Unknown title")
+                        .arg(model.release_year || "")
+                        .arg(model.duration || "")
+                    font.pixelSize: VLCStyle.fontSize_large
                     color: VLCStyle.colors.text
                 }
             }
@@ -75,12 +101,15 @@ Rectangle {
             MusicTrackListDisplay {
                 id: expand_track_id
 
-                Layout.leftMargin: VLCStyle.margin_large
-                Layout.rightMargin: VLCStyle.margin_large
+                Layout.alignment: Qt.AlignLeft
+                Layout.leftMargin: VLCStyle.margin_small
+                Layout.rightMargin: VLCStyle.margin_small
                 Layout.topMargin: VLCStyle.margin_xsmall
                 Layout.bottomMargin: VLCStyle.margin_small
                 Layout.fillHeight: true
                 Layout.fillWidth: true
+
+                Layout.preferredHeight: expand_track_id.flickableItem.height
 
                 parentId : root.model.id
 
