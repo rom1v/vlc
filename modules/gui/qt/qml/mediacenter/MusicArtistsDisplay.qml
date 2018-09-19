@@ -121,8 +121,9 @@ Item {
                 Component.onCompleted: {
                     multicover.grabToImage(function(result) {
                         gridItem.image = result.url
+                        multicover.destroy()
                     })
-                    multicover.destroy()
+
                 }
             }
         }
