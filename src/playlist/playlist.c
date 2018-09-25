@@ -50,7 +50,7 @@
 
 struct vlc_playlist_listener_id
 {
-    const struct vlc_playlist_callbacks *cbs;
+    struct vlc_playlist_callbacks cbs;
     void *userdata;
     struct vlc_list node; /**< node of vlc_playlist.listeners */
 };
@@ -126,8 +126,8 @@ do { \
     PlaylistAssertLocked(playlist); \
     vlc_playlist_listener_id *listener; \
     vlc_playlist_listener_foreach(listener, playlist) \
-        if (listener->cbs->event) \
-            listener->cbs->event(playlist, ##__VA_ARGS__, listener->userdata); \
+        if (listener->cbs.event) \
+            listener->cbs.event(playlist, ##__VA_ARGS__, listener->userdata); \
 } while(0)
 
 /* Helper to notify several changes at once */
@@ -163,7 +163,7 @@ PlaylistHasItemUpdatedListeners(vlc_playlist_t *playlist)
 {
     vlc_playlist_listener_id *listener;
     vlc_playlist_listener_foreach(listener, playlist)
-        if (listener->cbs->on_items_updated)
+        if (listener->cbs.on_items_updated)
             return true;
     return false;
 }
@@ -545,7 +545,7 @@ vlc_playlist_AddListener(vlc_playlist_t *playlist,
     if (unlikely(!listener))
         return NULL;
 
-    listener->cbs = cbs;
+    listener->cbs = *cbs;
     listener->userdata = userdata;
     vlc_list_append(&listener->node, &playlist->listeners);
     return listener;
