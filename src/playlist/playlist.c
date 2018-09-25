@@ -30,6 +30,7 @@
 #include <vlc_atomic.h>
 #include <vlc_input_item.h>
 #include <vlc_list.h>
+#include <vlc_rand.h>
 #include <vlc_threads.h>
 #include <vlc_vector.h>
 #include "input/player.h"
@@ -894,6 +895,48 @@ vlc_playlist_Remove(vlc_playlist_t *playlist, size_t index, size_t count)
     vlc_vector_remove_slice(&playlist->items, index, count);
 
     PlaylistItemsRemoved(playlist, index, count);
+}
+
+void
+vlc_playlist_Shuffle(vlc_playlist_t *playlist)
+{
+    PlaylistAssertLocked(playlist);
+    if (playlist->items.size < 2)
+        /* we use size_t (unsigned), so the following loop would be incorrect */
+        return;
+
+    input_item_t *current_media = PlaylistGetMedia(playlist, playlist->current);
+
+    /* initialize separately instead of using vlc_lrand48() to avoid locking the
+     * mutex once for each item */
+    unsigned short xsubi[3];
+    vlc_rand_bytes(xsubi, sizeof(xsubi));
+
+    /* Fisher-Yates shuffle */
+    for (size_t i = playlist->items.size - 1; i != 0; --i)
+    {
+        size_t selected = (size_t) (nrand48(xsubi) % (i + 1));
+
+        /* swap items i and selected */
+        vlc_playlist_item_t *tmp = playlist->items.data[i];
+        playlist->items.data[i] = playlist->items.data[selected];
+        playlist->items.data[selected] = tmp;
+    }
+
+    struct vlc_playlist_state state;
+    if (current_media)
+    {
+        /* the current position have changed after the shuffle */
+        vlc_playlist_state_Save(playlist, &state);
+        playlist->current = vlc_playlist_IndexOfMedia(playlist, current_media);
+        playlist->has_prev = PlaylistHasPrev(playlist);
+        playlist->has_next = PlaylistHasNext(playlist);
+    }
+
+    PlaylistNotify(playlist, on_items_reset, playlist->items.data,
+                   playlist->items.size);
+    if (current_media)
+        vlc_playlist_state_NotifyChanges(playlist, &state);
 }
 
 ssize_t
@@ -3146,6 +3189,89 @@ test_request_move_adapt(void)
     vlc_playlist_Delete(playlist);
 }
 
+static void
+test_shuffle(void)
+{
+    vlc_playlist_t *playlist = vlc_playlist_New(NULL);
+    assert(playlist);
+
+    input_item_t *media[10];
+    CreateDummyMediaArray(media, 10);
+
+    /* initial playlist with 10 items */
+    int ret = vlc_playlist_Append(playlist, media, 10);
+    assert(ret == VLC_SUCCESS);
+
+    struct vlc_playlist_callbacks cbs = {
+        .on_items_reset = callback_on_items_reset,
+        .on_current_index_changed = callback_on_current_index_changed,
+        .on_has_prev_changed = callback_on_has_prev_changed,
+        .on_has_next_changed = callback_on_has_next_changed,
+    };
+
+    struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
+    vlc_playlist_listener_id *listener =
+            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+    assert(listener);
+
+    /* on_items_reset is called once during AddListener() */
+    callback_ctx_reset(&ctx);
+
+    playlist->current = 4;
+    playlist->has_prev = true;
+    playlist->has_next = true;
+
+    vlc_playlist_Shuffle(playlist);
+
+    ssize_t index = vlc_playlist_IndexOfMedia(playlist, media[4]);
+    assert(index != -1);
+    assert(index == playlist->current);
+
+    assert(ctx.vec_items_reset.size == 1);
+    assert(ctx.vec_items_reset.data[0].count == 10);
+    assert(ctx.vec_items_reset.data[0].state.playlist_size == 10);
+    assert(ctx.vec_items_reset.data[0].state.current == index);
+    assert(ctx.vec_items_reset.data[0].state.has_prev == (index > 0));
+    assert(ctx.vec_items_reset.data[0].state.has_next == (index < 9));
+
+    if (index == 4)
+        assert(ctx.vec_current_index_changed.size == 0);
+    else
+    {
+        assert(ctx.vec_current_index_changed.size == 1);
+        assert(ctx.vec_current_index_changed.data[0].current == index);
+    }
+
+    if (index == 0)
+    {
+        assert(!playlist->has_prev);
+        assert(ctx.vec_has_prev_changed.size == 1);
+        assert(!ctx.vec_has_prev_changed.data[0].has_prev);
+    }
+    else
+    {
+        assert(playlist->has_prev);
+        assert(ctx.vec_has_prev_changed.size == 0);
+    }
+
+    if (index == 9)
+    {
+        assert(!playlist->has_next);
+        assert(ctx.vec_has_next_changed.size == 1);
+        assert(!ctx.vec_has_next_changed.data[0].has_next);
+    }
+    else
+    {
+        assert(playlist->has_next);
+        assert(ctx.vec_has_next_changed.size == 0);
+    }
+
+    callback_ctx_destroy(&ctx);
+    vlc_playlist_RemoveListener(playlist, listener);
+    DestroyMediaArray(media, 10);
+    vlc_playlist_Delete(playlist);
+}
+
 #undef EXPECT_AT
 
 int main(void)
@@ -3174,6 +3300,7 @@ int main(void)
     test_request_move_with_matching_hint();
     test_request_move_without_hint();
     test_request_move_adapt();
+    test_shuffle();
     return 0;
 }
 #endif /* TEST_PLAYLIST */

@@ -580,6 +580,14 @@ VLC_API void
 vlc_playlist_Shuffle(vlc_playlist_t *playlist);
 
 /**
+ * Shuffle the playlist.
+ *
+ * \param playlist the playlist, locked
+ */
+VLC_API void
+vlc_playlist_Shuffle(vlc_playlist_t *playlist);
+
+/**
  * Return the index of a given item.
  *
  * \param playlist the playlist, locked
