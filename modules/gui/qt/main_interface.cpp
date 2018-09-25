@@ -1215,12 +1215,6 @@ int MainInterface::getControlsVisibilityStatus()
             + CONTROLS_ADVANCED * controls->b_advancedVisible );
 }
 
-StandardPLPanel *MainInterface::getPlaylistView()
-{
-    if( !playlistWidget ) return NULL;
-    else return playlistWidget->mainView;
-}
-
 void MainInterface::setStatusBarVisibility( bool b_visible )
 {
     statusBar()->setVisible( b_visible );
@@ -1639,7 +1633,8 @@ void MainInterface::handleKeyPress( QKeyEvent *e )
     else if( ( e->modifiers() & Qt::ControlModifier ) && ( e->key() == Qt::Key_K ) &&
         playlistWidget )
     {
-        playlistWidget->setSearchFieldFocus();
+        //FIXME search focus
+        //playlistWidget->setSearchFieldFocus();
         e->accept();
     }
 

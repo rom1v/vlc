@@ -490,9 +490,6 @@ QMenu *VLCMenuBar::ViewMenu( intf_thread_t *p_intf, QMenu *current, MainInterfac
     action->setChecked( mi->isPlDocked() );
     CONNECT( action, triggered( bool ), mi, dockPlaylist( bool ) );
 
-    if( mi->getPlaylistView() )
-        menu->addMenu( StandardPLPanel::viewSelectionMenu( mi->getPlaylistView() ) );
-
     menu->addSeparator();
 
     action = menu->addAction( qtr( "Always on &top" ) );

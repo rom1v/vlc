@@ -44,6 +44,10 @@
 
 #include <QtQuickWidgets/QQuickWidget>
 
+#include <vlc_playlist_new.h>
+#include "components/playlist_new/playlist_model.hpp"
+
+
 class StandardPLPanel;
 class LocationBar;
 class QSignalMapper;
@@ -62,17 +66,9 @@ public:
 
     void forceHide();
     void forceShow();
-    void setSearchFieldFocus();
-    QStackedWidget *artContainer;
-    StandardPLPanel      *mainView;
+
     QQuickWidget         *mediacenterView;
     VideoOverlay         *videoOverlay;
-
-private:
-    QSplitter            *split;
-
-    LocationBar          *locationBar;
-    SearchLineEdit       *searchEdit;
 
     intf_thread_t *p_intf;
 
@@ -81,55 +77,8 @@ protected:
     void dropEvent( QDropEvent *) Q_DECL_OVERRIDE;
     void dragEnterEvent( QDragEnterEvent * ) Q_DECL_OVERRIDE;
     void closeEvent( QCloseEvent * ) Q_DECL_OVERRIDE;
-private slots:
-    void changeView( const QModelIndex& index );
 
     friend class PlaylistDialog;
 };
-
-class LocationButton : public QPushButton
-{
-public:
-    LocationButton( const QString &, bool bold, bool arrow, QWidget * parent = NULL );
-    QSize sizeHint() const Q_DECL_OVERRIDE;
-protected:
-    void paintEvent ( QPaintEvent * event ) Q_DECL_OVERRIDE;
-private:
-    bool b_arrow;
-};
-
-class VLCModel;
-
-class LocationBar : public QWidget
-{
-    Q_OBJECT
-public:
-    LocationBar( VLCModel * );
-    void setIndex( const QModelIndex & );
-    void setModel( VLCModel * _model ) { model = _model; };
-    QSize sizeHint() const Q_DECL_OVERRIDE;
-protected:
-    void resizeEvent ( QResizeEvent * event ) Q_DECL_OVERRIDE;
-
-private:
-    void layOut( const QSize& size );
-
-    VLCModel *model;
-    QSignalMapper *mapper;
-    QWidgetList buttons;
-    QList<QAction*> actions;
-    LocationButton *btnMore;
-    QMenu *menuMore;
-    QList<int> widths;
-
-public slots:
-    void setRootIndex();
-private slots:
-    void invoke( int i_item_id );
-
-signals:
-    void invoked( const QModelIndex & );
-};
-
 
 #endif

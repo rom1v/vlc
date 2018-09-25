@@ -96,7 +96,6 @@ public:
     bool isPlDocked() { return ( b_plDocked != false ); }
     bool isInterfaceFullScreen() { return b_interfaceFullScreen; }
     bool isInterfaceAlwaysOnTop() { return b_interfaceOnTop; }
-    StandardPLPanel* getPlaylistView();
 
 protected:
     void dropEventPlay( QDropEvent* event, bool b_play );
