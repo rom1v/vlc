@@ -857,6 +857,7 @@ vlc_playlist_Get
 vlc_playlist_Clear
 vlc_playlist_Insert
 vlc_playlist_Remove
+vlc_playlist_Shuffle
 vlc_playlist_IndexOf
 vlc_playlist_IndexOfMedia
 vlc_playlist_GetPlaybackRepeat
