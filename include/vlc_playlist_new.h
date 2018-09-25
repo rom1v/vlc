@@ -267,7 +267,7 @@ vlc_playlist_Unlock(vlc_playlist_t *);
  * vlc_player_RemoveListener().
  *
  * \param playlist the playlist
- * \param cbs      the callbacks (must be valid until the listener is removed)
+ * \param cbs      the callbacks (they are copied)
  * \param userdata userdata provided as a parameter in callbacks
  * \return a listener identifier, or NULL if an error occurred
  */
