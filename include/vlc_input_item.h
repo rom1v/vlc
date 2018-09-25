@@ -281,6 +281,8 @@ VLC_API void input_item_SetDuration( input_item_t * p_i, vlc_tick_t i_duration )
 VLC_API bool input_item_IsPreparsed( input_item_t *p_i );
 VLC_API bool input_item_IsArtFetched( input_item_t *p_i );
 
+VLC_API const char *input_item_GetMetaLocked(input_item_t *, vlc_meta_type_t meta_type);
+
 #define INPUT_META( name ) \
 static inline \
 void input_item_Set ## name (input_item_t *p_input, const char *val) \
