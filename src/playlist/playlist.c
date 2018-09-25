@@ -30,6 +30,7 @@
 #include <vlc_atomic.h>
 #include <vlc_input_item.h>
 #include <vlc_list.h>
+#include <vlc_rand.h>
 #include <vlc_threads.h>
 #include <vlc_vector.h>
 #include "input/player.h"
@@ -734,6 +735,34 @@ vlc_playlist_Remove(vlc_playlist_t *playlist, size_t index, size_t count)
 
     if (invalidate_next_media)
         vlc_player_InvalidateNextMedia(playlist->player);
+}
+
+void
+vlc_playlist_Shuffle(vlc_playlist_t *playlist)
+{
+    PlaylistAssertLocked(playlist);
+    if (playlist->items.size < 2)
+        /* we use size_t (unsigned), so the following loop would be incorrect */
+        return;
+
+    /* initialize separately instead of using vlc_lrand48() to avoid locking the
+     * mutex once for each item */
+    unsigned short xsubi[3];
+    vlc_rand_bytes(xsubi, sizeof(xsubi));
+
+    /* Fisher-Yates shuffle */
+    for (size_t i = playlist->items.size - 1; i != 0; --i)
+    {
+        size_t selected = (size_t) (nrand48(xsubi) % (i + 1));
+
+        /* swap items i and selected */
+        vlc_playlist_item_t *tmp = playlist->items.data[i];
+        playlist->items.data[i] = playlist->items.data[selected];
+        playlist->items.data[selected] = tmp;
+    }
+
+    PlaylistNotify(playlist, on_items_reset, playlist->items.data,
+                   playlist->items.size);
 }
 
 ssize_t
