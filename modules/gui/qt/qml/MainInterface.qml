@@ -31,19 +31,32 @@ import org.videolan.medialib 0.1
 import "qrc:///style/"
 
 import "qrc:///mediacenter/" as MC
+import "qrc:///playlist/" as PL
 
 Rectangle {
     color: VLCStyle.colors.bg
 
-    MC.MCMainDisplay {
+    Row {
         anchors.fill: parent
+        MC.MCMainDisplay {
+            //anchors.fill: parent
+            width: parent.width * (2. / 3)
+            height: parent.height
+        }
+
+        PL.PlaylistListView {
+            width: parent.width / 3
+            height: parent.height
+        }
     }
+
 
     MC.ScanProgressBar {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
     }
+
 
     Component.onCompleted: {
         history.push({

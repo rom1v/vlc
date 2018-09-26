@@ -5,6 +5,7 @@ DelegateModel {
     id: delegateModel
 
     property int shiftIndex: -1
+    property alias selectedGroup: selectedGroup
 
     groups: [
         DelegateModelGroup { id: selectedGroup; name: "selected"; includeByDefault: false }

@@ -516,6 +516,10 @@ libqt_plugin_la_RES = \
 	gui/qt/qml/mediacenter/MusicTrackListDisplay.qml \
 	gui/qt/qml/mediacenter/Presentation.qml \
 	gui/qt/qml/mediacenter/ScanProgressBar.qml \
+	gui/qt/qml/playlist/PlaylistListView.qml \
+	gui/qt/qml/playlist/PLItem.qml \
+	gui/qt/qml/playlist/PLItemFooter.qml \
+	gui/qt/qml/playlist/PlaylistMenu.qml \
 	gui/qt/qml/style/qmldir \
 	gui/qt/qml/style/VLCStyle.qml \
 	gui/qt/qml/style/VLCColors.qml
