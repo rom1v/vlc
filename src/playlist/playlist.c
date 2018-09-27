@@ -233,92 +233,103 @@ PlaylistSetCurrentMedia(vlc_playlist_t *playlist, ssize_t index)
     return vlc_player_SetCurrentMedia(playlist->player, item->media);
 }
 
-static inline bool
-PlaylistHasPrev(vlc_playlist_t *playlist)
+static inline ssize_t
+PlaylistNormalOrderGetPrevIndex(vlc_playlist_t *playlist)
 {
-    PlaylistAssertLocked(playlist);
+    if (playlist->current == -1)
+        return -1;
+
     switch (playlist->repeat)
     {
         case VLC_PLAYLIST_PLAYBACK_REPEAT_NONE:
         case VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT:
-            if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
-                return false; /* TODO*/
-            /* not the first item */
-            return playlist->current > 0;
+            /* also works for playlist->current == 0 */
+            return playlist->current - 1;
         case VLC_PLAYLIST_PLAYBACK_REPEAT_ALL:
-            if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
-                return false; /* TODO*/
-            /* not empty */
-            return playlist->items.size != 0;
+            if (playlist->current == 0)
+                return playlist->items.size - 1;
+            return playlist->current + 1;
         default:
             vlc_assert_unreachable();
     }
+}
+
+static inline ssize_t
+PlaylistNormalOrderGetNextIndex(vlc_playlist_t *playlist)
+{
+    switch (playlist->repeat)
+    {
+        case VLC_PLAYLIST_PLAYBACK_REPEAT_NONE:
+        case VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT:
+            if (playlist->current >= (ssize_t) playlist->items.size - 1)
+                return -1;
+            return playlist->current + 1;
+        case VLC_PLAYLIST_PLAYBACK_REPEAT_ALL:
+                if (playlist->items.size == 0)
+                    return -1;
+            return (playlist->current + 1) % playlist->items.size;
+        default:
+            vlc_assert_unreachable();
+    }
+}
+
+
+static inline ssize_t
+PlaylistRandomOrderGetPrevIndex(vlc_playlist_t *playlist)
+{
+    VLC_UNUSED(playlist);
+    /* TODO */
+    return -1;
+}
+
+static inline ssize_t
+PlaylistRandomOrderGetNextIndex(vlc_playlist_t *playlist)
+{
+    VLC_UNUSED(playlist);
+    /* TODO */
+    return -1;
+}
+
+static ssize_t
+PlaylistGetPrevIndex(vlc_playlist_t *playlist)
+{
+    PlaylistAssertLocked(playlist);
+    switch (playlist->order)
+    {
+        case VLC_PLAYLIST_PLAYBACK_ORDER_NORMAL:
+            return PlaylistNormalOrderGetPrevIndex(playlist);
+        case VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM:
+            return PlaylistRandomOrderGetPrevIndex(playlist);
+        default:
+            vlc_assert_unreachable();
+    }
+}
+
+static ssize_t
+PlaylistGetNextIndex(vlc_playlist_t *playlist)
+{
+    PlaylistAssertLocked(playlist);
+    switch (playlist->order)
+    {
+        case VLC_PLAYLIST_PLAYBACK_ORDER_NORMAL:
+            return PlaylistNormalOrderGetNextIndex(playlist);
+        case VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM:
+            return PlaylistRandomOrderGetNextIndex(playlist);
+        default:
+            vlc_assert_unreachable();
+    }
+}
+
+static inline bool
+PlaylistHasPrev(vlc_playlist_t *playlist)
+{
+    return PlaylistGetPrevIndex(playlist) != -1;
 }
 
 static inline bool
 PlaylistHasNext(vlc_playlist_t *playlist)
 {
-    PlaylistAssertLocked(playlist);
-    switch (playlist->repeat)
-    {
-        case VLC_PLAYLIST_PLAYBACK_REPEAT_NONE:
-        case VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT:
-            if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
-                return false; /* TODO*/
-            /* not the last item */
-            return playlist->current < (ssize_t) playlist->items.size - 1;
-        case VLC_PLAYLIST_PLAYBACK_REPEAT_ALL:
-            if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
-                return false; /* TODO*/
-            /* not empty */
-            return playlist->items.size != 0;
-        default:
-            vlc_assert_unreachable();
-    }
-}
-
-static size_t
-PlaylistGetPrevIndex(vlc_playlist_t *playlist)
-{
-    PlaylistAssertLocked(playlist);
-    assert(PlaylistHasPrev(playlist));
-    switch (playlist->repeat)
-    {
-        case VLC_PLAYLIST_PLAYBACK_REPEAT_NONE:
-        case VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT:
-            if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
-                return 0; /* TODO */
-            return playlist->current - 1;
-        case VLC_PLAYLIST_PLAYBACK_REPEAT_ALL:
-            if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
-                return 0; /* TODO */
-            if (playlist->current == 0)
-                return playlist->items.size - 1;
-            return playlist->current - 1;
-        default:
-            vlc_assert_unreachable();
-    }
-}
-
-static size_t
-PlaylistGetNextIndex(vlc_playlist_t *playlist)
-{
-    PlaylistAssertLocked(playlist);
-    assert(PlaylistHasNext(playlist));
-    switch (playlist->repeat)
-    {
-        case VLC_PLAYLIST_PLAYBACK_REPEAT_NONE:
-        case VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT:
-            if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
-                return 0; /* TODO */
-            return playlist->current + 1;
-        case VLC_PLAYLIST_PLAYBACK_REPEAT_ALL:
-            if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
-                return 0; /* TODO */
-            return (playlist->current + 1) % playlist->items.size;
-        default:
-            vlc_assert_unreachable();
-    }
+    return PlaylistGetNextIndex(playlist) != -1;
 }
 
 static void
