@@ -33,6 +33,7 @@
 #include <vlc_vector.h>
 #include "input/player.h"
 #include "libvlc.h" // for vlc_MetadataRequest()
+#include "randomizer.h"
 
 #ifdef TEST_PLAYLIST
 /* disable vlc_assert_locked in tests since the symbol is not exported */
@@ -107,6 +108,7 @@ struct vlc_playlist
     /* all remaining fields are protected by the lock of the player */
     struct vlc_player_listener_id *player_listener;
     playlist_item_vector_t items;
+    struct randomizer randomizer;
     ssize_t current;
     bool has_prev;
     bool has_next;
@@ -294,31 +296,39 @@ PlaylistNormalOrderGetNextIndex(vlc_playlist_t *playlist)
 static inline bool
 PlaylistRandomOrderHasPrev(vlc_playlist_t *playlist)
 {
-    VLC_UNUSED(playlist);
-    /* TODO */
-    return false;
+    return randomizer_HasPrev(&playlist->randomizer);
 }
 
 static inline size_t
 PlaylistRandomOrderGetPrevIndex(vlc_playlist_t *playlist)
 {
-    VLC_UNUSED(playlist);
-    /* TODO */
-    return -0;
+    vlc_playlist_item_t *prev = randomizer_PeekPrev(&playlist->randomizer);
+    assert(prev);
+    ssize_t index = vlc_playlist_IndexOf(playlist, prev);
+    assert(index != -1);
+    return (size_t) index;
 }
 
 static inline bool
 PlaylistRandomOrderHasNext(vlc_playlist_t *playlist)
 {
-    VLC_UNUSED(playlist);
-    /* TODO */
-    return false;
+    if (playlist->repeat == VLC_PLAYLIST_PLAYBACK_REPEAT_ALL)
+        return playlist->items.size > 0;
+    return randomizer_HasNext(&playlist->randomizer);
 }
 
 static inline size_t
 PlaylistRandomOrderGetNextIndex(vlc_playlist_t *playlist)
 {
-    VLC_UNUSED(playlist);
+    vlc_playlist_item_t *selected;
+    if (playlist->repeat == VLC_PLAYLIST_PLAYBACK_REPEAT_ALL)
+    {
+        /* TODO */
+    }
+    vlc_playlist_item_t *next = randomizer_PeekNext(&playlist->randomizer);
+    assert(next);
+    ssize_t index = vlc_playlist_IndexOf(playlist, next);
+    assert(index != -1);
     /* TODO */
     return 0;
 }
@@ -386,6 +396,18 @@ PlaylistHasNext(vlc_playlist_t *playlist)
 static void
 PlaylistPlaybackOrderChanged(vlc_playlist_t *playlist)
 {
+
+    if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
+    {
+        /* randomizer is expected to be empty at this point */
+        assert(randomizer_Count(&playlist->randomizer) == 0);
+        randomizer_Add(&playlist->randomizer, playlist->items.data,
+                       playlist->items.size);
+    }
+    else
+        /* we don't use the randomizer anymore */
+        randomizer_Clear(&playlist->randomizer);
+
     struct vlc_playlist_state state;
     vlc_playlist_state_Save(playlist, &state);
 
@@ -688,6 +710,7 @@ vlc_playlist_New(vlc_object_t *parent)
     }
 
     vlc_vector_init(&playlist->items);
+    randomizer_Init(&playlist->randomizer);
     playlist->current = -1;
     playlist->has_prev = false;
     playlist->has_next = false;
@@ -711,6 +734,7 @@ vlc_playlist_Delete(vlc_playlist_t *playlist)
     vlc_player_Unlock(playlist->player);
 
     vlc_player_Delete(playlist->player);
+    randomizer_Destroy(&playlist->randomizer);
 
     PlaylistClear(playlist);
 
@@ -956,6 +980,14 @@ vlc_playlist_Prev(vlc_playlist_t *playlist)
     if (ret != VLC_SUCCESS)
         return ret;
 
+    if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
+    {
+        /* mark the item as selected in the randomizer */
+        vlc_playlist_item_t *selected = randomizer_Next(&playlist->randomizer);
+        assert(selected == playlist->items.data[index]);
+        VLC_UNUSED(selected);
+    }
+
     PlaylistSetCurrentIndex(playlist, index);
     return VLC_SUCCESS;
 }
@@ -972,6 +1004,14 @@ vlc_playlist_Next(vlc_playlist_t *playlist)
     int ret = PlaylistSetCurrentMedia(playlist, index);
     if (ret != VLC_SUCCESS)
         return ret;
+
+    if (playlist->order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
+    {
+        /* mark the item as selected in the randomizer */
+        vlc_playlist_item_t *selected = randomizer_Next(&playlist->randomizer);
+        assert(selected == playlist->items.data[index]);
+        VLC_UNUSED(selected);
+    }
 
     PlaylistSetCurrentIndex(playlist, index);
     return VLC_SUCCESS;
