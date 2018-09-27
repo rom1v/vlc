@@ -415,8 +415,19 @@ vlc_player_GetState(vlc_player_t *player);
  * @return true if the player is started (vlc_player_Start() succeeded and
  * vlc_player_cbs.on_playback_event didn't send a stopped/dead event).
  */
-VLC_API bool
-vlc_player_IsStarted(vlc_player_t *player);
+static inline bool
+vlc_player_IsStarted(vlc_player_t *player)
+{
+    switch (vlc_player_GetState(player))
+    {
+        case VLC_PLAYER_STATE_STARTED:
+        case VLC_PLAYER_STATE_PLAYING:
+        case VLC_PLAYER_STATE_PAUSED:
+            return true;
+        default:
+            return false;
+    }
+}
 
 /**
  * Get the paused state.
@@ -428,8 +439,23 @@ vlc_player_IsStarted(vlc_player_t *player);
  * @param player locked player instance
  * @return true if the player is paused
  */
-VLC_API bool
-vlc_player_IsPaused(vlc_player_t *player);
+static inline bool
+vlc_player_IsPaused(vlc_player_t *player)
+{
+    return vlc_player_GetState(player) == VLC_PLAYER_STATE_PAUSED;
+}
+
+static inline void
+vlc_player_TogglePause(vlc_player_t *player)
+{
+    if (vlc_player_IsStarted(player))
+    {
+        if (vlc_player_IsPaused(player))
+            vlc_player_Resume(player);
+        else
+            vlc_player_Pause(player);
+    }
+}
 
 /**
  * Get the player capabilities
@@ -958,14 +984,14 @@ vlc_player_aout_Mute(vlc_player_t *player, bool mute)
 VLC_API int
 vlc_player_aout_EnableFilter(vlc_player_t *player, const char *name, bool add);
 
-static inline void
-vlc_player_TogglePause(vlc_player_t *player)
-{
-    if (vlc_player_IsPaused(player))
-        vlc_player_Resume(player);
-    else
-        vlc_player_Pause(player);
-}
+VLC_API bool
+vlc_player_vout_IsFullscreen(vlc_player_t *player);
+
+/**
+ * This will have an effect on all currrent and futures vouts.
+ */
+VLC_API void
+vlc_player_vout_SetFullscreen(vlc_player_t *player, bool enabled);
 
 /** @} */
 #endif

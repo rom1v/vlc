@@ -814,7 +814,6 @@ vlc_player_GetTrackCount
 vlc_player_GetVouts
 vlc_player_IncrementRate
 vlc_player_InvalidateNextMedia
-vlc_player_IsPaused
 vlc_player_IsRecording
 vlc_player_IsStarted
 vlc_player_Lock
@@ -844,3 +843,6 @@ vlc_player_Start
 vlc_player_Stop
 vlc_player_Unlock
 vlc_player_UnselectTrack
+vlc_player_vout_IsFullscreen
+vlc_player_vout_SetFullscreen
+vlc_playlist_GetPlayer

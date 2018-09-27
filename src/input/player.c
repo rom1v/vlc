@@ -249,6 +249,7 @@ vlc_player_input_Start(struct vlc_player_input *input)
     if (ret != VLC_SUCCESS)
         return ret;
     input->started = true;
+    input->state = VLC_PLAYER_STATE_STARTED;
     return ret;
 }
 
@@ -1167,6 +1168,9 @@ vlc_player_New(vlc_object_t *parent,
 } while(0)
 
     VAR_CREATE("rate", VLC_VAR_FLOAT | VLC_VAR_DOINHERIT);
+    VAR_CREATE("fullscreen", VLC_VAR_BOOL | VLC_VAR_DOINHERIT);
+    VAR_CREATE("video-on-top", VLC_VAR_BOOL | VLC_VAR_DOINHERIT);
+    VAR_CREATE("video-wallpaper", VLC_VAR_BOOL | VLC_VAR_DOINHERIT);
 
 #undef VAR_CREATE
 
@@ -1433,20 +1437,6 @@ vlc_player_GetState(vlc_player_t *player)
 {
     struct vlc_player_input *input = vlc_player_get_input_locked(player);
     return input ? input->state : VLC_PLAYER_STATE_IDLE;
-}
-
-bool
-vlc_player_IsStarted(vlc_player_t *player)
-{
-    struct vlc_player_input *input = vlc_player_get_input_locked(player);
-    return input && input->started;
-}
-
-bool
-vlc_player_IsPaused(vlc_player_t *player)
-{
-    struct vlc_player_input *input = vlc_player_get_input_locked(player);
-    return !input || input->state != VLC_PLAYER_STATE_PLAYING;
 }
 
 int
@@ -1747,4 +1737,26 @@ vlc_player_aout_EnableFilter(vlc_player_t *player, const char *name, bool add)
                             "audio-filter", name, add);
     vlc_object_release(aout);
     return 0;
+}
+
+
+bool
+vlc_player_vout_IsFullscreen(vlc_player_t *player)
+{
+    return var_GetBool(player, "fullscreen");
+}
+
+void
+vlc_player_vout_SetFullscreen(vlc_player_t *player, bool enabled)
+{
+    var_SetBool(player, "fullscreen", enabled);
+
+    vout_thread_t **vouts;
+    size_t count = vlc_player_GetVouts(player, &vouts);
+    for (size_t i = 0; i < count; i++)
+    {
+        var_SetBool(vouts[i], "fullscreen", enabled);
+        vlc_object_release(vouts[i]);
+    }
+    free(vouts);
 }
