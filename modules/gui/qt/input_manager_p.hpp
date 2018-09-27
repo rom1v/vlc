@@ -67,32 +67,24 @@ public slots:
 public:
     intf_thread_t           *p_intf;
     vlc_player_t            *m_player;
-    vlc_playlist_t          *m_playlist;
 
     //callbacks
     vlc_player_listener_id* m_player_listener = nullptr;
     vlc_player_aout_listener_id* m_player_aout_listener = nullptr;
     vlc_player_vout_listener_id* m_player_vout_listener = nullptr;
-    vlc_playlist_listener_id* m_playlist_listener = nullptr;
 
     //playback
     InputManager::PlayingState m_playing_status = InputManager::PLAYING_STATE_STOPPED;
     QString         m_name;
     float           m_buffering = 0.f;
     float           m_rate = 1.f;
+    InputManager::MediaStopAction m_mediaStopAction = InputManager::MEDIA_STOPPED_CONTINUE;
 
     vlc_tick_t      m_time = 0;
     float           m_position = 0.f;
     vlc_tick_t      m_length= 0;
 
     int             m_capabilities = 0;
-
-    //playlist
-    bool m_hasNext= false;
-    bool m_hasPrev = false;
-    InputManager::PlaybackRepeat m_repeat = InputManager::PLAYBACK_REPEAT_NONE;
-    bool            m_random = false;
-    InputManager::MediaStopAction m_mediaStopAction = InputManager::MEDIA_STOPPED_CONTINUE;
 
     //tracks
     TrackListModel m_videoTracks;

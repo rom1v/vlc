@@ -27,24 +27,29 @@
 
 #include <QAbstractListModel>
 #include <QVector>
-#include "playlist.hpp"
+#include "playlist_common.hpp"
+#include "playlist_item.hpp"
 
 namespace vlc {
-  namespace playlist {
+namespace playlist {
 
-class PlaylistModel : public QAbstractListModel
+class PlaylistListModelPrivate;
+class PlaylistListModel : public QAbstractListModel
 {
     Q_OBJECT
-    Q_ENUMS(Roles)
+    Q_PROPERTY(PlaylistPtr playlistId READ getPlaylistId WRITE setPlaylistId NOTIFY playlistIdChanged)
 
 public:
     enum Roles
     {
         TitleRole = Qt::UserRole,
+        DurationRole,
         IsCurrentRole,
     };
 
-    PlaylistModel(vlc_playlist_t *playlist, QObject *parent = nullptr);
+    PlaylistListModel(QObject *parent = nullptr);
+    PlaylistListModel(vlc_playlist_t *playlist, QObject *parent = nullptr);
+    ~PlaylistListModel();
 
     QHash<int, QByteArray> roleNames() const override;
     int rowCount(const QModelIndex &parent = {}) const override;
@@ -53,26 +58,24 @@ public:
 
     /* provided for convenience */
     const PlaylistItem &itemAt(int index) const;
-    int count() const;
 
-private slots:
-    void onPlaylistItemsReset(QVector<PlaylistItem>);
-    void onPlaylistItemsAdded(size_t index, QVector<PlaylistItem>);
-    void onPlaylistItemsMoved(size_t index, size_t count, size_t target);
-    void onPlaylistItemsRemoved(size_t index, size_t count);
-    void onPlaylistItemsUpdated(size_t index, QVector<PlaylistItem>);
-    void onPlaylistCurrentItemChanged(ssize_t index);
+    Q_INVOKABLE virtual void removeItems(const QList<int> &indexes);
+    Q_INVOKABLE virtual void moveItems(const QList<int> &indexes, int target);
+
+public slots:
+    PlaylistPtr getPlaylistId() const;
+    void setPlaylistId(PlaylistPtr id);
+    void setPlaylistId(vlc_playlist_t* playlist);
+
+signals:
+    void playlistIdChanged(const PlaylistPtr& );
 
 private:
-    void notifyItemsChanged(int index, int count,
-                            const QVector<int> &roles = {});
+    Q_DECLARE_PRIVATE(PlaylistListModel)
+    QScopedPointer<PlaylistListModelPrivate> d_ptr;
 
-    Playlist playlist;
-
-    /* access only from the UI thread */
-    QVector<PlaylistItem> items;
-    ssize_t current = -1;
 };
+
 
   } // namespace playlist
 } // namespace vlc

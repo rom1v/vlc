@@ -67,10 +67,16 @@ public:
         return d->title;
     }
 
+    vlc_tick_t getDuration() const
+    {
+        return d->duration;
+    }
+
     void sync() {
         input_item_t *media = vlc_playlist_item_GetMedia(d->item.get());
         vlc_mutex_lock(&media->lock);
         d->title = media->psz_name;
+        d->duration = media->i_duration;
         vlc_mutex_unlock(&media->lock);
     }
 
@@ -80,6 +86,7 @@ private:
 
         /* cached values */
         QString title;
+        vlc_tick_t duration;
     };
 
     QExplicitlySharedDataPointer<Data> d;

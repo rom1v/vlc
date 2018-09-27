@@ -32,12 +32,10 @@
 #include <vlc_input.h>
 
 #include "qt.hpp"
-#include "util/singleton.hpp"
-#include "adapters/variables.hpp"
-
 #include <QObject>
 #include <QEvent>
 #include <QAbstractListModel>
+#include <QScopedPointer>
 #include <vlc_cxx_helpers.hpp>
 
 class QSignalMapper;
@@ -72,10 +70,9 @@ private:
 };
 
 class InputManagerPrivate;
-class InputManager : public QObject, public Singleton<InputManager>
+class InputManager : public QObject
 {
     Q_OBJECT
-    friend class Singleton<InputManager>;
     friend class VLCMenuBar;
 
 public:
@@ -96,14 +93,6 @@ public:
     };
     Q_ENUM(PlayingState)
 
-    enum PlaybackRepeat
-    {
-        PLAYBACK_REPEAT_NONE = VLC_PLAYLIST_PLAYBACK_REPEAT_NONE,
-        PLAYBACK_REPEAT_CURRENT = VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT,
-        PLAYBACK_REPEAT_ALL = VLC_PLAYLIST_PLAYBACK_REPEAT_ALL
-    };
-    Q_ENUM(PlaybackRepeat)
-
     enum MediaStopAction
     {
         MEDIA_STOPPED_CONTINUE = VLC_PLAYER_MEDIA_STOPPED_CONTINUE,
@@ -119,6 +108,7 @@ public:
     Q_PROPERTY(QString name READ getName NOTIFY nameChanged)
     Q_PROPERTY(float buffering READ getBuffering  NOTIFY bufferingChanged)
     Q_PROPERTY(float rate READ getRate WRITE setRate NOTIFY rateChanged)
+    Q_PROPERTY(MediaStopAction mediaStopAction READ getMediaStopAction WRITE setMediaStopAction NOTIFY mediaStopActionChanged)
 
     Q_PROPERTY(vlc_tick_t time READ getTime WRITE setTime NOTIFY timeChanged)
     Q_PROPERTY(float position READ getPosition WRITE setPosition NOTIFY positionChanged)
@@ -129,13 +119,6 @@ public:
     Q_PROPERTY(bool pausable READ isPausable NOTIFY pausableChanged)
     Q_PROPERTY(bool recordable READ isRecordable NOTIFY recordableChanged)
     Q_PROPERTY(bool ratechangable READ isRateChangable NOTIFY rateChangableChanged)
-
-    //playlist
-    Q_PROPERTY(bool hasNext READ hasNext NOTIFY hasNextChanged)
-    Q_PROPERTY(bool hasPrev READ hasPrev NOTIFY hasPrevChanged)
-    Q_PROPERTY(bool random READ isRandom WRITE setRandom NOTIFY randomChanged )
-    Q_PROPERTY(PlaybackRepeat repeatMode READ getRepeatMode WRITE setRepeatMode NOTIFY repeatModeChanged)
-    Q_PROPERTY(MediaStopAction mediaStopAction READ getMediaStopAction WRITE setMediaStopAction NOTIFY mediaStopActionChanged)
 
     //tracks
     Q_PROPERTY(QAbstractListModel* videoTracks READ getVideoTracks CONSTANT)
@@ -190,15 +173,6 @@ public:
 
     /* exposed actions */
 public slots:
-    //playback
-    Q_INVOKABLE void play();
-    Q_INVOKABLE void pause();
-    Q_INVOKABLE void stop();
-    Q_INVOKABLE void next();
-    Q_INVOKABLE void prev();
-    Q_INVOKABLE void prevOrReset();
-    Q_INVOKABLE void togglePlayPause();
-
     Q_INVOKABLE void reverse();
     Q_INVOKABLE void slower();
     Q_INVOKABLE void faster();
@@ -211,11 +185,6 @@ public slots:
     Q_INVOKABLE void jumpToTime( vlc_tick_t i_time );
     Q_INVOKABLE void jumpToPos( float );
     Q_INVOKABLE void frameNext();
-
-    //playlist
-    Q_INVOKABLE void toggleRandom();
-    Q_INVOKABLE void toggleRepeatMode();
-    Q_INVOKABLE void activatePlayQuit( bool );
 
     //title/chapters/menu
     Q_INVOKABLE void sectionNext();
@@ -242,6 +211,10 @@ public slots:
     Q_INVOKABLE void toggleABloopState();
     Q_INVOKABLE void snapshot();
     Q_INVOKABLE void toggleRecord();
+
+public:
+    InputManager( intf_thread_t * );
+    ~InputManager();
 
 public:
     template<typename T>
@@ -271,8 +244,6 @@ public:
     InputManager::AoutPtr getAout();
     int AddAssociatedMedia(enum es_format_category_e cat, const QString& uri, bool select, bool notify, bool check_ext);
 
-    bool isPlaylistEmpty();
-
     void requestArtUpdate( input_item_t *p_item, bool b_forced );
     void setArt( input_item_t *p_item, QString fileUrl );
     static const QString decodeArtURL( input_item_t *p_item );
@@ -286,6 +257,8 @@ public slots:
     float getBuffering() const;
     float getRate() const;
     void setRate( float );
+    MediaStopAction getMediaStopAction() const;
+    void setMediaStopAction(MediaStopAction );
     vlc_tick_t getTime() const;
     void setTime(vlc_tick_t);
     float getPosition() const;
@@ -296,16 +269,6 @@ public slots:
     bool isPausable() const;
     bool isRecordable() const;
     bool isRateChangable() const;
-
-    //playlist
-    bool hasNext() const;
-    bool hasPrev() const;
-    bool isRandom() const;
-    void setRandom( bool );
-    PlaybackRepeat getRepeatMode() const;
-    void setRepeatMode( InputManager::PlaybackRepeat mode );
-    MediaStopAction getMediaStopAction() const;
-    void setMediaStopAction(MediaStopAction );
 
     //tracks
     QAbstractListModel* getVideoTracks();
@@ -378,6 +341,7 @@ signals:
     void nameChanged( const QString& );
     void bufferingChanged( float );
     void rateChanged( float );
+    void mediaStopActionChanged( MediaStopAction );
 
     void timeChanged( vlc_tick_t );
     void positionChanged( float );
@@ -392,17 +356,6 @@ signals:
     void pausableChanged( bool );
     void recordableChanged( bool );
     void rateChangableChanged( bool );
-
-    //playlist
-    void hasNextChanged( bool );
-    void hasPrevChanged( bool );
-    void randomChanged( bool );
-    void repeatModeChanged( InputManager::PlaybackRepeat );
-    void mediaStopActionChanged( MediaStopAction );
-
-    void playlistItemAppended( int itemId, int parentId );//fixme
-    void playlistItemRemoved( int itemId );//fixme
-    void playlistNotEmpty( bool ); //fixme
 
     //tracks
     void audioDelayChanged(vlc_tick_t);
@@ -461,8 +414,6 @@ private slots:
     void menusUpdateAudio( const QString& );
 
 private:
-    InputManager( intf_thread_t * );
-    virtual ~InputManager();
     Q_DECLARE_PRIVATE(InputManager)
     QScopedPointer<InputManagerPrivate> d_ptr;
     QSignalMapper *menusAudioMapper; //used by VLCMenuBar

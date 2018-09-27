@@ -23,164 +23,381 @@
 #endif
 
 #include "playlist_model.hpp"
+#include "playlist_model_p.hpp"
 #include <algorithm>
 #include <assert.h>
 
 namespace vlc {
-  namespace playlist {
+namespace playlist {
 
-PlaylistModel::PlaylistModel(vlc_playlist_t *raw_playlist, QObject *parent)
-    : QAbstractListModel(parent)
-    , playlist(raw_playlist)
+namespace {
+
+static QVector<PlaylistItem> toVec(vlc_playlist_item_t *const items[],
+                                   size_t len)
 {
-    /* Do not use a Qt::AutoConnection, because in case the changes have been
-     * requested from the Qt UI thread, the slot will be executed directly, like
-     * with a Qt::DirectConnection, which would possibly break the order in
-     * which the events received by the core playlist are handled. In that case,
-     * the indices provided by the events would be invalid. */
-    connect(&playlist, &Playlist::playlistItemsReset,
-            this, &PlaylistModel::onPlaylistItemsReset,
-            Qt::QueuedConnection);
-    connect(&playlist, &Playlist::playlistItemsAdded,
-            this, &PlaylistModel::onPlaylistItemsAdded,
-            Qt::QueuedConnection);
-    connect(&playlist, &Playlist::playlistItemsMoved,
-            this, &PlaylistModel::onPlaylistItemsMoved,
-            Qt::QueuedConnection);
-    connect(&playlist, &Playlist::playlistItemsRemoved,
-            this, &PlaylistModel::onPlaylistItemsRemoved,
-            Qt::QueuedConnection);
-    connect(&playlist, &Playlist::playlistItemsUpdated,
-            this, &PlaylistModel::onPlaylistItemsUpdated,
-            Qt::QueuedConnection);
-    connect(&playlist, &Playlist::playlistCurrentItemChanged,
-            this, &PlaylistModel::onPlaylistCurrentItemChanged,
-            Qt::QueuedConnection);
-
-    playlist.attach();
+    QVector<PlaylistItem> vec;
+    for (size_t i = 0; i < len; ++i)
+        vec.push_back(items[i]);
+    return vec;
 }
 
-void
-PlaylistModel::notifyItemsChanged(int idx, int count, const QVector<int> &roles)
+template <typename RAW, typename WRAPPER>
+static QVector<RAW> toRaw(const QVector<WRAPPER> &items)
 {
-    QModelIndex first = index(idx, 0);
-    QModelIndex last = index(idx + count - 1);
-    emit dataChanged(first, last, roles);
+    QVector<RAW> vec;
+    int count = items.size();
+    vec.reserve(count);
+    for (int i = 0; i < count; ++i)
+        vec.push_back(items[i].raw());
+    return vec;
+}
 }
 
-void
-PlaylistModel::onPlaylistItemsReset(QVector<PlaylistItem> newContent)
+extern "C" { // for C callbacks
+
+static void
+on_playlist_items_reset(vlc_playlist_t *playlist,
+                        vlc_playlist_item_t *const items[],
+                        size_t len, void *userdata)
 {
-    beginResetModel();
-    items.swap(newContent);
-    endResetModel();
+    PlaylistListModelPrivate *that = static_cast<PlaylistListModelPrivate *>(userdata);
+    QVector<PlaylistItem> newContent = toVec(items, len);
+    that->callAsync([=]() {
+        if (that->m_playlist != playlist)
+            return;
+        that->onItemsReset(newContent);
+    });
 }
 
-void
-PlaylistModel::onPlaylistItemsAdded(size_t index, QVector<PlaylistItem> added)
+static void
+on_playlist_items_added(vlc_playlist_t *playlist, size_t index,
+                        vlc_playlist_item_t *const items[], size_t len,
+                        void *userdata)
 {
+    PlaylistListModelPrivate *that = static_cast<PlaylistListModelPrivate *>(userdata);
+    QVector<PlaylistItem> added = toVec(items, len);
+    that->callAsync([=]() {
+        if (that->m_playlist != playlist)
+            return;
+        that->onItemsAdded(added, index);
+    });
+}
+
+static void
+on_playlist_items_moved(vlc_playlist_t *playlist, size_t index, size_t count,
+                        size_t target, void *userdata)
+{
+    PlaylistListModelPrivate *that = static_cast<PlaylistListModelPrivate *>(userdata);
+    that->callAsync([=]() {
+        if (that->m_playlist != playlist)
+            return;
+        that->onItemsMoved(index, count, target);
+    });
+}
+
+static void
+on_playlist_items_removed(vlc_playlist_t *playlist, size_t index, size_t count,
+                          void *userdata)
+{
+    PlaylistListModelPrivate *that = static_cast<PlaylistListModelPrivate *>(userdata);
+    that->callAsync([=](){
+        if (that->m_playlist != playlist)
+            return;
+        that->onItemsRemoved(index, count);
+    });
+}
+
+static void
+on_playlist_items_updated(vlc_playlist_t *playlist, size_t index,
+                          vlc_playlist_item_t *const items[], size_t len,
+                          void *userdata)
+{
+    PlaylistListModelPrivate *that = static_cast<PlaylistListModelPrivate *>(userdata);
+    QVector<PlaylistItem> updated = toVec(items, len);
+    that->callAsync([=](){
+        if (that->m_playlist != playlist)
+            return;
+        int count = updated.size();
+        for (int i = 0; i < count; ++i)
+        {
+            assert(that->m_items[index + i].raw() == updated[i].raw());
+            that->m_items[index + i] = updated[i]; /* sync metadata */
+        }
+        that->notifyItemsChanged(index, count);
+    });
+}
+
+static void
+on_playlist_current_item_changed(vlc_playlist_t *playlist, ssize_t index,
+                                 void *userdata)
+{
+    PlaylistListModelPrivate *that = static_cast<PlaylistListModelPrivate *>(userdata);
+    that->callAsync([=](){
+        if (that->m_playlist != playlist)
+            return;
+        ssize_t oldCurrent = that->m_current;
+        that->m_current = index;
+        if (oldCurrent != -1)
+            that->notifyItemsChanged(oldCurrent, 1, {PlaylistListModel::IsCurrentRole});
+        if (index != -1)
+            that->notifyItemsChanged(index, 1, {PlaylistListModel::IsCurrentRole});
+    });
+}
+
+} // extern "C"
+
+static const struct vlc_playlist_callbacks playlist_callbacks = {
+    /* C++ (before C++20) does not support designated initializers */
+    on_playlist_items_reset,
+    on_playlist_items_added,
+    on_playlist_items_moved,
+    on_playlist_items_removed,
+    on_playlist_items_updated,
+    nullptr,
+    nullptr,
+    on_playlist_current_item_changed,
+    nullptr,
+    nullptr,
+};
+
+// private API
+
+PlaylistListModelPrivate::PlaylistListModelPrivate(PlaylistListModel* playlistListModel)
+    : q_ptr(playlistListModel)
+{
+}
+
+PlaylistListModelPrivate::~PlaylistListModelPrivate()
+{
+    if (m_playlist && m_listener)
+    {
+        PlaylistLocker locker(m_playlist);
+        vlc_playlist_RemoveListener(m_playlist, m_listener);
+    }
+}
+
+void PlaylistListModelPrivate::onItemsReset(const QVector<PlaylistItem>& newContent)
+{
+    Q_Q(PlaylistListModel);
+    q->beginResetModel();
+    m_items = newContent;
+    q->endResetModel();
+}
+
+void PlaylistListModelPrivate::onItemsAdded(const QVector<PlaylistItem>& added, size_t index)
+{
+    Q_Q(PlaylistListModel);
     int count = added.size();
-    beginInsertRows({}, index, index + count - 1);
-    items.insert(index, count, nullptr);
-    std::move(added.cbegin(), added.cend(), items.begin() + index);
-    endInsertRows();
+    q->beginInsertRows({}, index, index + count - 1);
+    m_items.insert(index, count, nullptr);
+    std::move(added.cbegin(), added.cend(), m_items.begin() + index);
+    q->endInsertRows();
 }
 
-void
-PlaylistModel::onPlaylistItemsMoved(size_t index, size_t count, size_t target)
+void PlaylistListModelPrivate::onItemsMoved(size_t index, size_t count, size_t target)
 {
+    Q_Q(PlaylistListModel);
     size_t qtTarget = target;
     if (qtTarget > index)
         /* Qt interprets the target index as the index of the insertion _before_
-         * the move, while the playlist core interprets it as the new index of
-         * the slice _after_ the move. */
+       * the move, while the playlist core interprets it as the new index of
+       * the slice _after_ the move. */
         qtTarget += count;
 
-    beginMoveRows({}, index, index + count - 1, {}, qtTarget);
+    q->beginMoveRows({}, index, index + count - 1, {}, qtTarget);
     if (index < target)
-        std::rotate(items.begin() + index,
-                    items.begin() + index + count,
-                    items.begin() + target + count);
+        std::rotate(m_items.begin() + index,
+                    m_items.begin() + index + count,
+                    m_items.begin() + target + count);
     else
-        std::rotate(items.begin() + target,
-                    items.begin() + index,
-                    items.begin() + index + count);
-    endMoveRows();
+        std::rotate(m_items.begin() + target,
+                    m_items.begin() + index,
+                    m_items.begin() + index + count);
+    q->endMoveRows();
 }
 
-void
-PlaylistModel::onPlaylistItemsRemoved(size_t index, size_t count)
+void PlaylistListModelPrivate::onItemsRemoved(size_t index, size_t count)
 {
-    beginRemoveRows({}, index, index + count - 1);
-    items.remove(index, count);
-    endRemoveRows();
+    Q_Q(PlaylistListModel);
+    q->beginRemoveRows({}, index, index + count - 1);
+    m_items.remove(index, count);
+    q->endRemoveRows();
 }
 
-void
-PlaylistModel::onPlaylistItemsUpdated(size_t index,
-                                      QVector<PlaylistItem> updated)
-{
-    int count = updated.size();
-    for (int i = 0; i < count; ++i)
-    {
-        assert(items[index + i].raw() == updated[i].raw());
-        items[index + i] = updated[i]; /* sync metadata */
-    }
-    notifyItemsChanged(index, count);
-}
 
 void
-PlaylistModel::onPlaylistCurrentItemChanged(ssize_t index)
+PlaylistListModelPrivate::notifyItemsChanged(int idx, int count, const QVector<int> &roles)
 {
-    ssize_t oldCurrent = current;
-    current = index;
-    if (oldCurrent != -1)
-        notifyItemsChanged(oldCurrent, 1, {IsCurrentRole});
-    if (index != -1)
-        notifyItemsChanged(index, 1, {IsCurrentRole});
+    Q_Q(PlaylistListModel);
+    QModelIndex first = q->index(idx, 0);
+    QModelIndex last = q->index(idx + count - 1);
+    emit q->dataChanged(first, last, roles);
+}
+
+// public API
+
+PlaylistListModel::PlaylistListModel(QObject *parent)
+    : QAbstractListModel(parent)
+    , d_ptr(new PlaylistListModelPrivate(this))
+{
+}
+
+PlaylistListModel::PlaylistListModel(vlc_playlist_t *raw_playlist, QObject *parent)
+    : QAbstractListModel(parent)
+    , d_ptr(new PlaylistListModelPrivate(this))
+{
+    setPlaylistId(PlaylistPtr(raw_playlist));
+}
+
+PlaylistListModel::~PlaylistListModel()
+{
 }
 
 QHash<int, QByteArray>
-PlaylistModel::roleNames() const
+PlaylistListModel::roleNames() const
 {
     return {
         { TitleRole, "title" },
+        { DurationRole, "duration" },
         { IsCurrentRole, "isCurrent" },
     };
 }
 
 int
-PlaylistModel::rowCount(const QModelIndex &parent) const
+PlaylistListModel::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    return items.size();
+    Q_D(const PlaylistListModel);
+    if (! d->m_playlist)
+        return 0;
+    return d->m_items.size();
 }
 
 const PlaylistItem &
-PlaylistModel::itemAt(int index) const
+PlaylistListModel::itemAt(int index) const
 {
-    return items[index];
+    Q_D(const PlaylistListModel);
+    return d->m_items[index];
 }
 
-int
-PlaylistModel::count() const
+void PlaylistListModel::removeItems(const QList<int>& indexes)
 {
-    return rowCount();
-}
+    Q_D(PlaylistListModel);
+    if (!d->m_playlist)
+        return;
+    if (indexes.size() == 0)
+        return;
+    QVector<vlc_playlist_item_t *> itemsToRemove;
+    std::transform(indexes.begin(), indexes.end(),std::back_inserter(itemsToRemove), [&] (int index) {
+        return d->m_items[index].raw();
+    });
 
-QVariant
-PlaylistModel::data(const QModelIndex &index, int role) const
-{
-    switch (role)
     {
-        case TitleRole:
-            return items[index.row()].getTitle();
-        case IsCurrentRole:
-            return index.row() != -1 && index.row() == current;
-        default:
-            return {};
+        PlaylistLocker locker(d->m_playlist);
+        int ret = vlc_playlist_RequestRemove(d->m_playlist, itemsToRemove.constData(),
+                                             itemsToRemove.size(), indexes[0]);
+        if (ret != VLC_SUCCESS)
+            throw std::bad_alloc();
     }
 }
 
-  } // namespace playlist
+void PlaylistListModel::moveItems(const QList<int> &indexes, int target)
+{
+    Q_D(PlaylistListModel);
+    if (!d->m_playlist)
+        return;
+    int targetPre = target;
+    int targetPost = target;
+    if (indexes.size() == 0)
+        return;
+    QVector<vlc_playlist_item_t*> itemsToMove;
+    //std::sort(indexes.begin(), indexes.end()); //Indexes are already sorted
+    std::transform(indexes.begin(), indexes.end(),std::back_inserter(itemsToMove), [&] (int index) {
+        return d->m_items[index].raw();
+    });
+    //the target is in the referential of the list before doing the operation,
+    //the playlist expect the target to be defined as the index after the operation
+    for ( const int index : indexes ) {
+        if (index < targetPre)
+            targetPost--;
+        else
+            break;
+    }
+
+    {
+        PlaylistLocker locker(d->m_playlist);
+        int ret = vlc_playlist_RequestMove(d->m_playlist, itemsToMove.constData(),
+                                           itemsToMove.size(), targetPost, indexes[0]);
+        if (ret != VLC_SUCCESS)
+            throw std::bad_alloc();
+    }
+}
+
+PlaylistPtr PlaylistListModel::getPlaylistId() const
+{
+    Q_D(const PlaylistListModel);
+    if (!d->m_playlist)
+        return {};
+    return PlaylistPtr(d->m_playlist);
+}
+
+void PlaylistListModel::setPlaylistId(vlc_playlist_t* playlist)
+{
+    Q_D(PlaylistListModel);
+    if (d->m_playlist && d->m_listener)
+    {
+        PlaylistLocker locker(d->m_playlist);
+        vlc_playlist_RemoveListener(d->m_playlist, d->m_listener);
+        d->m_playlist = nullptr;
+        d->m_listener = nullptr;
+    }
+    if (playlist)
+    {
+        PlaylistLocker locker(playlist);
+        d->m_playlist = playlist;
+        d->m_listener = vlc_playlist_AddListener(d->m_playlist, &playlist_callbacks, d, true);
+    }
+    emit playlistIdChanged( PlaylistPtr(d->m_playlist) );
+}
+
+void PlaylistListModel::setPlaylistId(PlaylistPtr id)
+{
+    setPlaylistId(id.m_playlist);
+}
+
+QVariant
+PlaylistListModel::data(const QModelIndex &index, int role) const
+{
+    Q_D(const PlaylistListModel);
+    if (!d->m_playlist)
+        return {};
+
+    switch (role)
+    {
+    case TitleRole:
+        return d->m_items[index.row()].getTitle();
+    case IsCurrentRole:
+        return index.row() != -1 && index.row() == d->m_current;
+    case DurationRole:
+    {
+        int64_t t_sec = SEC_FROM_VLC_TICK(d->m_items[index.row()].getDuration());
+        int sec = t_sec % 60;
+        int min = (t_sec / 60) % 60;
+        int hour = t_sec / 3600;
+        if (hour == 0)
+            return QString("%1:%2")
+                    .arg(min, 2, 10, QChar('0'))
+                    .arg(sec, 2, 10, QChar('0'));
+        else
+            return QString("%1:%2:%3")
+                    .arg(hour, 2, 10, QChar('0'))
+                    .arg(min, 2, 10, QChar('0'))
+                    .arg(sec, 2, 10, QChar('0'));
+    }
+    default:
+        return {};
+    }
+}
+
+} // namespace playlist
 } // namespace vlc

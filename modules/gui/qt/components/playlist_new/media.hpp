@@ -25,6 +25,8 @@
 #include <vlc_common.h>
 #include <vlc_input_item.h>
 #include <QString>
+#include <QStringList>
+#include "util/qt_dirs.hpp"
 
 namespace vlc {
   namespace playlist {
@@ -47,7 +49,7 @@ public:
         }
     }
 
-    Media(QString uri, QString name)
+    Media(QString uri, QString name, QStringList* options = nullptr)
     {
         auto uUri = uri.toUtf8();
         auto uName = name.toUtf8();
@@ -56,6 +58,29 @@ public:
         ptr.reset(input_item_New(rawUri, rawName), false);
         if (!ptr)
             throw std::bad_alloc();
+
+        if (options && options->count() > 0)
+        {
+            char **ppsz_options = NULL;
+            int i_options = 0;
+
+            ppsz_options = new char *[options->count()];
+            auto optionDeleter = vlc::wrap_carray<char*>(ppsz_options, [&i_options](char *ptr[]) {
+                for(int i = 0; i < i_options; i++)
+                    free(ptr[i]);
+                delete[] ptr;
+            });
+
+            for (int i = 0; i < options->count(); i++)
+            {
+                QString option = colon_unescape( options->at(i) );
+                ppsz_options[i] = strdup(option.toUtf8().constData());
+                if (!ppsz_options[i])
+                    throw std::bad_alloc();
+                i_options++;
+            }
+            input_item_AddOptions( ptr.get(), i_options, ppsz_options, VLC_INPUT_OPTION_TRUSTED );
+        }
     }
 
     operator bool() const

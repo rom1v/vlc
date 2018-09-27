@@ -51,11 +51,10 @@
 
 InputManagerPrivate::~InputManagerPrivate()
 {
-    vlc_playlist_locker locker{m_playlist}; //this also locks the player
+    vlc_player_locker locker{m_player}; //this also locks the player
     vlc_player_vout_RemoveListener( m_player, m_player_vout_listener );
     vlc_player_aout_RemoveListener( m_player, m_player_aout_listener );
     vlc_player_RemoveListener( m_player, m_player_listener );
-    vlc_playlist_RemoveListener( m_playlist, m_playlist_listener );
 }
 
 void InputManagerPrivate::UpdateName(input_item_t* media)
@@ -746,54 +745,7 @@ static void on_player_aout_mute_changed(vlc_player_t *, bool muted, void *data)
     });
 }
 
-//playlist callbacks
-
-static void on_playlist_playback_repeat_changed(vlc_playlist_t *, enum vlc_playlist_playback_repeat repeat, void *userdata)
-{
-    InputManagerPrivate* that = static_cast<InputManagerPrivate*>( userdata );
-    msg_Info( that->p_intf, "on_playlist_playback_repeat_changed %u", repeat);
-    that->callAsync([=]{
-        that->m_repeat = static_cast<InputManager::PlaybackRepeat>(repeat);
-        emit that->q_func()->repeatModeChanged( that->m_repeat );
-    });
-}
-
-static void on_playlist_playback_order_changed(vlc_playlist_t *, enum vlc_playlist_playback_order order, void *userdata)
-{
-    InputManagerPrivate* that = static_cast<InputManagerPrivate*>( userdata );
-    msg_Info( that->p_intf, "on_playlist_playback_order_changed" );
-    that->callAsync([=]{
-        that->m_random = order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM;
-        emit that->q_func()->randomChanged(that->m_random);
-    });
-}
-
-static void on_playlist_current_index_changed(vlc_playlist_t *, ssize_t index, void *userdata)
-{
-    InputManagerPrivate* that = static_cast<InputManagerPrivate*>( userdata );
-    msg_Info( that->p_intf, "on_playlist_current_index_changed" );
-    VLC_UNUSED(index);
-}
-
-static void on_playlist_has_prev_changed(vlc_playlist_t *, bool has_prev, void *userdata)
-{
-    InputManagerPrivate* that = static_cast<InputManagerPrivate*>( userdata );
-    msg_Info( that->p_intf, "on_playlist_has_prev_changed" );
-    that->callAsync([=]{
-        that->m_hasPrev = has_prev;
-        emit that->q_func()->hasPrevChanged(that->m_hasPrev);
-    });
-}
-
-static void on_playlist_has_next_changed(vlc_playlist_t *, bool has_next, void *userdata)
-{
-    InputManagerPrivate* that = static_cast<InputManagerPrivate*>( userdata );
-    msg_Info( that->p_intf, "on_playlist_has_next_changed" );
-    that->callAsync([=]{
-        that->m_hasNext = has_next;
-        emit that->q_func()->hasNextChanged(that->m_hasNext);
-    });
-}
+} //extern "C"
 
 static const struct vlc_player_cbs player_cbs = {
     on_player_current_media_changed,
@@ -840,26 +792,10 @@ static const struct vlc_player_aout_cbs player_aout_cbs = {
     on_player_aout_mute_changed,
 };
 
-static const struct vlc_playlist_callbacks playlist_cbs = {
-    NULL, //on_playlist_items_reset
-    NULL, //on_playlist_items_added
-    NULL, //on_playlist_items_moved
-    NULL, //on_playlist_items_removed
-    NULL, //on_playlist_items_updated
-    on_playlist_playback_repeat_changed,
-    on_playlist_playback_order_changed,
-    on_playlist_current_index_changed,
-    on_playlist_has_prev_changed,
-    on_playlist_has_next_changed,
-};
-
-}
-
 InputManagerPrivate::InputManagerPrivate(InputManager *inputManager, intf_thread_t *p_intf)
     : q_ptr(inputManager)
     , p_intf(p_intf)
     , m_player(p_intf->p_sys->p_player)
-    , m_playlist(p_intf->p_sys->p_playlist)
     , m_videoTracks(m_player)
     , m_audioTracks(m_player)
     , m_subtitleTracks(m_player)
@@ -876,11 +812,10 @@ InputManagerPrivate::InputManagerPrivate(InputManager *inputManager, intf_thread
     , m_audioVisualization(nullptr, "visual")
 {
     {
-        vlc_playlist_locker locker{m_playlist}; //this also locks the player
+        vlc_player_locker locker{m_player};
         m_player_listener = vlc_player_AddListener( m_player, &player_cbs, this );
         m_player_aout_listener = vlc_player_aout_AddListener( m_player, &player_aout_cbs, this );
         m_player_vout_listener = vlc_player_vout_AddListener( m_player, &player_vout_cbs, this );
-        m_playlist_listener =vlc_playlist_AddListener( m_playlist, &playlist_cbs, this , true);
     }
 
     QObject::connect( &m_autoscale, &VLCVarBooleanObserver::valueChanged, q_ptr, &InputManager::autoscaleChanged );
@@ -921,69 +856,6 @@ bool InputManager::hasInput() const
     return vlc_player_IsStarted( d->m_player );
 }
 
-void InputManager::play()
-{
-    Q_D(InputManager);
-    vlc_playlist_locker lock{ d->m_playlist };
-    vlc_playlist_Start( d->m_playlist );
-}
-
-void InputManager::pause()
-{
-    Q_D(InputManager);
-    vlc_playlist_locker lock{ d->m_playlist };
-    vlc_playlist_Pause( d->m_playlist );
-}
-
-void InputManager::stop()
-{
-    Q_D(InputManager);
-    vlc_playlist_locker lock{ d->m_playlist };
-    vlc_playlist_Stop( d->m_playlist );
-}
-
-void InputManager::next()
-{
-    Q_D(InputManager);
-    msg_Info(d->p_intf, "InputManager::next");
-    vlc_playlist_locker lock{ d->m_playlist };
-    vlc_playlist_Next( d->m_playlist );
-}
-
-void InputManager::prev()
-{
-    Q_D(InputManager);
-    msg_Info(d->p_intf, "InputManager::prev");
-    vlc_playlist_locker lock{ d->m_playlist };
-    vlc_playlist_Prev( d->m_playlist );
-}
-
-void InputManager::prevOrReset()
-{
-    Q_D(InputManager);
-    bool seek = false;
-    {
-        vlc_playlist_locker lock{ d->m_playlist };
-        if( !vlc_player_IsStarted(d->m_player) || vlc_player_GetTime(d->m_player) < VLC_TICK_FROM_MS(10) )
-        {
-            int ret = vlc_playlist_Prev( d->m_playlist );
-            if (ret == VLC_SUCCESS)
-                vlc_playlist_Start( d->m_playlist );
-        }
-        else
-            seek = true;
-    }
-    if (seek)
-        jumpToPos( 0.0 );
-}
-
-void InputManager::togglePlayPause()
-{
-    Q_D(InputManager);
-    vlc_player_locker lock{ d->m_player };
-    vlc_player_TogglePause( d->m_player );
-}
-
 void InputManager::reverse()
 {
     Q_D(InputManager);
@@ -1003,6 +875,13 @@ void InputManager::setRate( float new_rate )
     vlc_player_locker lock{ d->m_player };
     if ( vlc_player_CanChangeRate( d->m_player ) )
         vlc_player_ChangeRate( d->m_player, new_rate );
+}
+
+void InputManager::setMediaStopAction(InputManager::MediaStopAction action)
+{
+    Q_D(InputManager);
+    vlc_player_locker lock{ d->m_player };
+    vlc_player_SetMediaStoppedAction( d->m_player, static_cast<vlc_player_media_stopped_action>(action) );
 }
 
 void InputManager::slower()
@@ -1107,93 +986,6 @@ void InputManager::frameNext()
     Q_D(InputManager);
     vlc_player_locker lock{ d->m_player };
     vlc_player_NextVideoFrame( d->m_player );
-}
-
-//PLAYLIST
-
-void InputManager::setRepeatMode(InputManager::PlaybackRepeat mode)
-{
-    Q_D(InputManager);
-    {
-        vlc_playlist_locker lock{ d->m_playlist };
-        vlc_playlist_SetPlaybackRepeat( d->m_playlist, static_cast<vlc_playlist_playback_repeat>(mode) );
-    }
-    config_PutInt( "repeat", mode );
-}
-
-void InputManager::setMediaStopAction(InputManager::MediaStopAction action)
-{
-    Q_D(InputManager);
-    vlc_player_locker lock{ d->m_player };
-    vlc_player_SetMediaStoppedAction( d->m_player, static_cast<vlc_player_media_stopped_action>(action) );
-}
-
-bool InputManager::isPlaylistEmpty()
-{
-    Q_D(InputManager);
-    vlc_playlist_locker lock{ d->m_playlist };
-    bool b_empty = vlc_playlist_Count( d->m_playlist ) == 0;
-    return b_empty;
-}
-
-void InputManager::setRandom(bool random)
-{
-    Q_D(InputManager);
-    vlc_playlist_locker lock{ d->m_playlist };
-    vlc_playlist_SetPlaybackOrder( d->m_playlist, random
-                        ? VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM
-                        : VLC_PLAYLIST_PLAYBACK_ORDER_NORMAL );
-}
-
-void InputManager::toggleRandom()
-{
-    Q_D(InputManager);
-    vlc_playlist_locker lock{ d->m_playlist };
-
-    vlc_playlist_playback_order old_order = vlc_playlist_GetPlaybackOrder( d->m_playlist );
-    vlc_playlist_playback_order new_order;
-
-    if ( old_order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM )
-        new_order = VLC_PLAYLIST_PLAYBACK_ORDER_NORMAL;
-    else
-        new_order = VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM;
-    vlc_playlist_SetPlaybackOrder( d->m_playlist, new_order );
-    config_PutInt( "random", new_order );
-}
-
-void InputManager::toggleRepeatMode()
-{
-    Q_D(InputManager);
-    vlc_playlist_playback_repeat new_repeat;
-    /* Toggle Normal -> Loop -> Repeat -> Normal ... */
-    switch ( d->m_repeat ) {
-    case VLC_PLAYLIST_PLAYBACK_REPEAT_NONE:
-        new_repeat = VLC_PLAYLIST_PLAYBACK_REPEAT_ALL;
-        break;
-    case VLC_PLAYLIST_PLAYBACK_REPEAT_ALL:
-        new_repeat = VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT;
-        break;
-    case VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT:
-    default:
-        new_repeat = VLC_PLAYLIST_PLAYBACK_REPEAT_NONE;
-        break;
-    }
-    msg_Info( d->p_intf, "toggleRepeatMode -> %i", new_repeat);
-    {
-        vlc_playlist_locker lock{ d->m_playlist };
-        vlc_playlist_SetPlaybackRepeat( d->m_playlist, new_repeat );
-    }
-    config_PutInt( "repeat", new_repeat );
-}
-
-void InputManager::activatePlayQuit( bool b_exit )
-{
-    Q_D(InputManager);
-    vlc_player_locker lock{ d->m_player };
-    if (b_exit)
-        vlc_player_SetMediaStoppedAction( d->m_player, VLC_PLAYER_MEDIA_STOPPED_EXIT );
-    else
-        vlc_player_SetMediaStoppedAction( d->m_player, VLC_PLAYER_MEDIA_STOPPED_CONTINUE );
 }
 
 //TRACKS
@@ -1640,15 +1432,11 @@ PRIMITIVETYPE_GETTER(bool, isRateChangable, m_capabilities & VLC_INPUT_CAPABILIT
 PRIMITIVETYPE_GETTER(float, getSubtitleFPS, m_subtitleFPS)
 PRIMITIVETYPE_GETTER(bool, hasVideoOutput, m_hasVideo)
 PRIMITIVETYPE_GETTER(float, getBuffering, m_buffering)
+PRIMITIVETYPE_GETTER(InputManager::MediaStopAction, getMediaStopAction, m_mediaStopAction)
 PRIMITIVETYPE_GETTER(float, getVolume, m_volume)
 PRIMITIVETYPE_GETTER(bool, isMuted, m_muted)
 PRIMITIVETYPE_GETTER(bool, isFullscreen, m_fullscreen)
 PRIMITIVETYPE_GETTER(bool, getWallpaperMode, m_wallpaperMode)
-PRIMITIVETYPE_GETTER(bool, isRandom, m_random)
-PRIMITIVETYPE_GETTER(InputManager::PlaybackRepeat, getRepeatMode, m_repeat)
-PRIMITIVETYPE_GETTER(InputManager::MediaStopAction, getMediaStopAction, m_mediaStopAction)
-PRIMITIVETYPE_GETTER(bool, hasNext, m_hasNext)
-PRIMITIVETYPE_GETTER(bool, hasPrev, m_hasPrev)
 PRIMITIVETYPE_GETTER(float, getRate, m_rate)
 PRIMITIVETYPE_GETTER(bool, hasTitles, m_hasTitles)
 PRIMITIVETYPE_GETTER(bool, hasChapters, m_hasChapters)
