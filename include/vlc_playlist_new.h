@@ -240,6 +240,12 @@ vlc_playlist_item_GetMedia(vlc_playlist_item_t *);
 /* Playlist */
 
 /**
+ * Return the main playlist associated to the libvlc instance.
+ */
+VLC_API vlc_playlist_t *
+vlc_playlist_GetMainPlaylist(libvlc_int_t *);
+
+/**
  * Create a new playlist.
  *
  * \param parent   a VLC object

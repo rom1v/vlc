@@ -476,6 +476,12 @@ static const struct vlc_player_cbs player_callbacks = {
 };
 
 vlc_playlist_t *
+vlc_playlist_GetMainPlaylist(libvlc_int_t *libvlc)
+{
+    return libvlc_priv(libvlc)->main_playlist;
+}
+
+vlc_playlist_t *
 vlc_playlist_New(vlc_object_t *parent)
 {
     vlc_playlist_t *playlist = malloc(sizeof(*playlist));
