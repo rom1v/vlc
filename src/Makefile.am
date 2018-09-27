@@ -567,7 +567,7 @@ test_arrays_SOURCES = test/arrays.c
 test_vector_SOURCES = test/vector.c
 test_randomizer_SOURCES = playlist/randomizer.c
 test_randomizer_CFLAGS = -DTEST_RANDOMIZER
-test_playlist_SOURCES = playlist/playlist.c
+test_playlist_SOURCES = playlist/playlist.c playlist/randomizer.c
 test_playlist_CFLAGS = -DTEST_PLAYLIST
 
 AM_LDFLAGS = -no-install
