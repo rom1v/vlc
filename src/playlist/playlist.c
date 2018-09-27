@@ -33,6 +33,7 @@
 #include <vlc_vector.h>
 #include "input/player.h"
 #include "libvlc.h" // for vlc_MetadataRequest()
+#include "randomizer.h"
 
 #ifdef TEST_PLAYLIST
 /* disable vlc_assert_locked in tests since the symbol is not exported */
@@ -107,6 +108,7 @@ struct vlc_playlist
     /* all remaining fields are protected by the lock of the player */
     struct vlc_player_listener_id *player_listener;
     playlist_item_vector_t items;
+    struct randomizer randomizer;
     ssize_t current;
     bool has_prev;
     bool has_next;
@@ -501,6 +503,7 @@ vlc_playlist_New(vlc_object_t *parent)
     }
 
     vlc_vector_init(&playlist->items);
+    randomizer_Init(&playlist->randomizer);
     playlist->current = -1;
     playlist->has_prev = false;
     playlist->has_next = false;
@@ -524,6 +527,7 @@ vlc_playlist_Delete(vlc_playlist_t *playlist)
     vlc_player_Unlock(playlist->player);
 
     vlc_player_Delete(playlist->player);
+    randomizer_Destroy(&playlist->randomizer);
 
     PlaylistClear(playlist);
 
@@ -811,7 +815,25 @@ vlc_playlist_SetPlaybackOrder(vlc_playlist_t *playlist,
 
     playlist->order = order;
 
+    if (order == VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM)
+    {
+        /* randomizer expected to be empty at this point */
+        assert(randomizer_Count(&playlist->randomizer) == 0);
+        randomizer_Add(&playlist->randomizer, playlist->items.data,
+                       playlist->items.size);
+    }
+    else
+        /* we don't use the randomizer anymore */
+        randomizer_Clear(&playlist->randomizer);
+
+    struct vlc_playlist_state state;
+    vlc_playlist_state_Save(playlist, &state);
+
+    playlist->has_prev = PlaylistHasPrev(playlist);
+    playlist->has_next = PlaylistHasNext(playlist);
+
     PlaylistNotify(playlist, on_playback_order_changed, order);
+    vlc_playlist_state_NotifyChanges(playlist, &state);
 }
 
 ssize_t
