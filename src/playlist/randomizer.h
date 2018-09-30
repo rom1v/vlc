@@ -26,14 +26,21 @@
 
 typedef struct vlc_playlist_item vlc_playlist_item_t;
 
+#define RANDOMIZER_MIN_HISTORY_SIZE 5
+
 struct randomizer {
     struct VLC_VECTOR(vlc_playlist_item_t *) items;
     unsigned short xsubi[3]; /* random state */
     bool loop;
-    bool empty_history; /* to distinguish between full and empty */
     size_t head;
     size_t next;
-    size_t history;
+
+    /* additional history to keep after an auto-reshuffle if loop is enabled */
+    struct {
+        vlc_playlist_item_t *items[RANDOMIZER_MIN_HISTORY_SIZE];
+        size_t len;
+        size_t current; /* meaningful when randomizer.next == 0 && len > 0 */
+    } additional_history;
 };
 
 void
