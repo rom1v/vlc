@@ -34,13 +34,6 @@ struct randomizer {
     bool loop;
     size_t head;
     size_t next;
-
-    /* additional history to keep after an auto-reshuffle if loop is enabled */
-    struct {
-        vlc_playlist_item_t *items[RANDOMIZER_MIN_HISTORY_SIZE];
-        size_t len;
-        size_t current; /* meaningful when randomizer.next == 0 && len > 0 */
-    } additional_history;
 };
 
 void
