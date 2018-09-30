@@ -29,8 +29,11 @@ typedef struct vlc_playlist_item vlc_playlist_item_t;
 struct randomizer {
     struct VLC_VECTOR(vlc_playlist_item_t *) items;
     unsigned short xsubi[3]; /* random state */
+    bool loop;
+    bool empty_history; /* to distinguish between full and empty */
     size_t head;
     size_t next;
+    size_t history;
 };
 
 void
@@ -38,6 +41,9 @@ randomizer_Init(struct randomizer *randomizer);
 
 void
 randomizer_Destroy(struct randomizer *randomizer);
+
+void
+randomizer_SetLoop(struct randomizer *randomizer, bool loop);
 
 bool
 randomizer_Count(struct randomizer *randomizer);

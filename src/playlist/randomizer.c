@@ -32,6 +32,17 @@
 #include <vlc_rand.h>
 #include "randomizer.h"
 
+/* On auto-reshuffle, avoid to select the same item before at least
+ * NOT_SAME_BEFORE other items have been selected (between the end of the
+ * previous shuffle and the start of the new shuffle). */
+#define NOT_SAME_BEFORE 1
+
+
+/**
+ * 0      next   head       history           size
+ * |-------|------|............|---------------|
+ */
+
 void
 randomizer_Init(struct randomizer *randomizer)
 {
@@ -41,8 +52,11 @@ randomizer_Init(struct randomizer *randomizer)
      * the mutex for every random number generation */
     vlc_rand_bytes(randomizer->xsubi, sizeof(randomizer->xsubi));
 
+    randomizer->loop = false;
+    randomizer->empty_history = true;
     randomizer->head = 0;
     randomizer->next = 0;
+    randomizer->history = 0;
 }
 
 void
@@ -51,8 +65,21 @@ randomizer_Destroy(struct randomizer *randomizer)
     vlc_vector_clear(&randomizer->items);
 }
 
+void
+randomizer_SetLoop(struct randomizer *randomizer, bool loop)
+{
+    randomizer->loop = loop;
+}
+
+//long
+//randomizer_NextLong(struct randomizer *randomizer, long n)
+//{
+//    return nrand48(randomizer->xsubi) % n;
+//}
+
 static inline ssize_t
-randomizer_IndexOf(struct randomizer *randomizer, const vlc_playlist_item_t *item)
+randomizer_IndexOf(struct randomizer *randomizer,
+                   const vlc_playlist_item_t *item)
 {
     ssize_t index;
     vlc_vector_index_of(&randomizer->items, item, &index);
@@ -69,8 +96,10 @@ void
 randomizer_Reshuffle(struct randomizer *randomizer)
 {
     /* yeah, it's that simple */
+    randomizer->empty = true;
     randomizer->head = 0;
     randomizer->next = 0;
+    randomizer->history = 0;
 }
 
 static inline void
@@ -81,46 +110,73 @@ swap_items(struct randomizer *randomizer, int i, int j)
     randomizer->items.data[j] = item;
 }
 
+//static inline size_t
+//RandomizerGetEndIndex(struct randomizer *randomizer)
+//{
+//    if (!randomizer->cycled || randomizer->head > NOT_SAME_BEFORE)
+//        return randomizer->items.size;
+//
+//    return randomizer->items.size - (NOT_SAME_BEFORE - randomizer->items.head);
+//}
+
 bool
 randomizer_HasPrev(struct randomizer *randomizer)
 {
-    return randomizer->next > 0;
+    return !randomizer->empty_history;
 }
 
 bool
 randomizer_HasNext(struct randomizer *randomizer)
 {
-    return randomizer->head < randomizer->items.size;
+    return randomizer->loop || randomizer->head < randomizer->items.size;
+}
+
+static size_t
+randomizer_GetPrevIndex(struct randomizer *randomizer)
+{
+    assert(randomizer_HasPrev(randomizer));
+    if (randomizer->next == 0)
+        return randomizer->items.size - 1;
+    return randomizer->next - 1;
+}
+
+static size_t
+randomizer_GetNextIndex(struct randomizer *randomizer)
+{
+    assert(randomizer_HasNext(randomizer));
+    return randomizer->next;
 }
 
 vlc_playlist_item_t *
 randomizer_PeekPrev(struct randomizer *randomizer)
 {
-    assert(randomizer_HasPrev(randomizer));
-    return randomizer->items.data[randomizer->next - 1];
+    size_t index = randomizer_GetPrevIndex(randomizer);
+    return randomizer->items.data[index];
+}
+
+static inline void
+randomizer_DetermineOne(struct randomizer *randomizer)
+{
+    assert(randomizer->head < randomizer->items.size);
+    size_t range_len = randomizer->items.size - randomizer->head;
+    size_t selected = randomizer->head +
+                      (nrand48(randomizer->xsubi) % range_len);
+    swap_items(randomizer, randomizer->head, selected);
+
+    if (!randomizer->empty_history && randomizer->history == randomizer->head)
+        randomizer->history++;
+    randomizer->head++;
 }
 
 vlc_playlist_item_t *
 randomizer_PeekNext(struct randomizer *randomizer)
 {
     assert(randomizer_HasNext(randomizer));
-    size_t size = randomizer->items.size;
-    assert(randomizer->head <= size);
-    assert(randomizer->next <= randomizer->head);
+    assert(randomizer->head <= randomizer->items.size);
 
     if (randomizer->next == randomizer->head)
-    {
         /* execute 1 step of the Fisher–Yates shuffle */
-        size_t head = randomizer->head;
-        size_t remaining = size - head;
-        assert(remaining > 0);
-
-        size_t selected = head + (nrand48(randomizer->xsubi) % remaining);
-        assert(selected >= head && selected < size);
-
-        swap_items(randomizer, head, selected);
-        randomizer->head++;
-    }
+        randomizer_DetermineOne(randomizer);
 
     return randomizer->items.data[randomizer->next];
 }
@@ -139,6 +195,7 @@ randomizer_Next(struct randomizer *randomizer)
 {
     assert(randomizer_HasNext(randomizer));
     vlc_playlist_item_t *item = randomizer_PeekNext(randomizer);
+
     randomizer->next++;
     return item;
 }
