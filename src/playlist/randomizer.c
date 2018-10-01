@@ -104,9 +104,9 @@ randomizer_DetermineOne_(struct randomizer *r, size_t avoid_last_n)
     size_t selected = r->head + (nrand48(r->xsubi) % range_len);
     swap_items(r, r->head, selected);
 
-    r->head++;
     if (r->head == r->history)
         r->history = (r->history + 1) % r->items.size;
+    r->head++;
 }
 
 static inline void
@@ -121,7 +121,10 @@ randomizer_DetermineOne(struct randomizer *r)
 static void
 randomizer_AutoReshuffle(struct randomizer *r)
 {
-    randomizer_Reshuffle(r);
+    assert(r->items.size > 0);
+    r->head = 0;
+    r->next = 0;
+    r->history = 1; /* biggest possible history (0 = no history) */
     size_t avoid_last_n = NOT_SAME_BEFORE;
     if (avoid_last_n > r->items.size - 1)
         /* cannot ignore all */
@@ -133,6 +136,14 @@ randomizer_AutoReshuffle(struct randomizer *r)
 bool
 randomizer_HasPrev(struct randomizer *r)
 {
+    if (!r->loop || !r->history)
+        /* no history, a previous exists if the current is > 0, i.e. next > 1 */
+        return r->next > 1;
+
+    if (r->history && r->next == r->history)
+        /* the history covers the whole circular array */
+        return true;
+
     return (r->next + r->items.size - r->history) % r->items.size > 1;
 }
 
@@ -255,6 +266,11 @@ randomizer_RemoveAt(struct randomizer *r, size_t index)
      * |<--------->|                                   |<------------->|
      *    ordered                                           ordered
      */
+
+    /* update next before may be updated */
+    if (index < r->next)
+        r->next--;
+
     if (index < r->head)
     {
         /* item was selected, keep the selected part ordered */
@@ -265,29 +281,29 @@ randomizer_RemoveAt(struct randomizer *r, size_t index)
         index = r->head; /* the new index to remove */
     }
 
+    if (!r->history || index < r->history)
+    {
+        size_t swap = (r->history + r->items.size - 1) % r->items.size;
+        r->items.data[index] = r->items.data[swap];
+        index = swap;
+    }
+
     if (r->history)
     {
-        if (index < r->history)
-        {
-            size_t swap = (r->history + r->items.size - 1) % r->items.size;
-            r->items.data[index] = r->items.data[swap];
-            index = swap;
-        }
-
         memmove(&r->items.data[index],
                 &r->items.data[index + 1],
                 (r->items.size - index - 1) * sizeof(*r->items.data));
 
-        if (r->history > index)
+        if (index < r->history)
             r->history--;
         else if (r->history == r->items.size)
             r->history = 0;
 
-        if (r->next > index)
-            r->next--;
-        else if (r->next == r->items.size)
+        if (r->next == r->items.size)
             r->next = 0;
     }
+
+    r->items.size--;
 }
 
 static void
@@ -413,9 +429,101 @@ test_all_items_selected_exactly_once_per_cycle(void)
 }
 
 static void
-test_all_items_selected_exactly_once_with_additions_and_removals(void)
+test_all_items_selected_exactly_once_with_additions(void)
 {
-    // TODO
+    struct randomizer randomizer;
+    randomizer_Init(&randomizer);
+
+    #define SIZE 100
+    vlc_playlist_item_t *items[SIZE];
+    ArrayInit(items, SIZE);
+
+    bool ok = randomizer_Add(&randomizer, items, 75);
+    assert(ok);
+
+    bool selected[SIZE] = {0};
+    for (int i = 0; i < 50; ++i)
+    {
+        assert(randomizer_HasNext(&randomizer));
+        vlc_playlist_item_t *item = randomizer_Next(&randomizer);
+        assert(item);
+        assert(!selected[item->index]); /* never selected twice */
+        selected[item->index] = true;
+    }
+
+    ok = randomizer_Add(&randomizer, &items[75], 25);
+    assert(ok);
+    for (int i = 50; i < SIZE; ++i)
+    {
+        assert(randomizer_HasNext(&randomizer));
+        vlc_playlist_item_t *item = randomizer_Next(&randomizer);
+        assert(item);
+        assert(!selected[item->index]); /* never selected twice */
+        selected[item->index] = true;
+    }
+
+    assert(!randomizer_HasNext(&randomizer)); /* no more items */
+
+    for (int i = 0; i < SIZE; ++i)
+        assert(selected[i]); /* all selected */
+
+    ArrayDestroy(items, SIZE);
+    randomizer_Destroy(&randomizer);
+    #undef SIZE
+}
+
+static void
+test_all_items_selected_exactly_once_with_removals(void)
+{
+    struct randomizer randomizer;
+    randomizer_Init(&randomizer);
+
+    #define SIZE 100
+    vlc_playlist_item_t *items[SIZE];
+    ArrayInit(items, SIZE);
+
+    bool ok = randomizer_Add(&randomizer, items, 100);
+    assert(ok);
+
+    bool selected[SIZE] = {0};
+    for (int i = 0; i < 50; ++i)
+    {
+        assert(randomizer_HasNext(&randomizer));
+        vlc_playlist_item_t *item = randomizer_Next(&randomizer);
+        assert(item);
+        assert(!selected[item->index]); /* never selected twice */
+        selected[item->index] = true;
+    }
+
+    vlc_playlist_item_t *to_remove[20];
+    /* copy 10 items already selected */
+    memcpy(to_remove, &randomizer.items.data[20], 10 * sizeof(*to_remove));
+    /* copy 10 items not already selected */
+    memcpy(&to_remove[10], &randomizer.items.data[70], 10 * sizeof(*to_remove));
+
+    randomizer_Remove(&randomizer, to_remove, 20);
+
+    for (int i = 50; i < SIZE - 10; ++i)
+    {
+        assert(randomizer_HasNext(&randomizer));
+        vlc_playlist_item_t *item = randomizer_Next(&randomizer);
+        assert(item);
+        assert(!selected[item->index]); /* never selected twice */
+        selected[item->index] = true;
+    }
+
+    assert(!randomizer_HasNext(&randomizer)); /* no more items */
+
+    int count = 0;
+    for (int i = 0; i < SIZE; ++i)
+        if (selected[i])
+            count++;
+
+    assert(count == SIZE - 10);
+
+    ArrayDestroy(items, SIZE);
+    randomizer_Destroy(&randomizer);
+    #undef SIZE
 }
 
 static void
@@ -494,7 +602,8 @@ test_force_select_item_already_selected(void)
             assert(randomizer.items.data[randomizer.next - 1] == item);
         }
         assert(item);
-        assert((i != 50) ^ selected[item->index]); /* never selected twice, except for item 50 */
+        /* never selected twice, except for item 50 */
+        assert((i != 50) ^ selected[item->index]);
         selected[item->index] = true;
     }
 
@@ -505,22 +614,251 @@ test_force_select_item_already_selected(void)
 
     ArrayDestroy(items, SIZE);
     randomizer_Destroy(&randomizer);
+    #undef SIZE
 }
 
 static void
-test_previous_item()
+test_prev(void)
 {
-    // TODO
+    struct randomizer randomizer;
+    randomizer_Init(&randomizer);
+
+    #define SIZE 10
+    vlc_playlist_item_t *items[SIZE];
+    ArrayInit(items, SIZE);
+
+    bool ok = randomizer_Add(&randomizer, items, SIZE);
+    assert(ok);
+
+    assert(!randomizer_HasPrev(&randomizer));
+
+    vlc_playlist_item_t *actual[SIZE];
+    for (int i = 0; i < SIZE; ++i)
+    {
+        assert(randomizer_HasNext(&randomizer));
+        actual[i] = randomizer_Next(&randomizer);
+        assert(actual[i]);
+    }
+
+    assert(!randomizer_HasNext(&randomizer));
+
+    for (int i = SIZE - 2; i >= 0; --i)
+    {
+        assert(randomizer_HasPrev(&randomizer));
+        vlc_playlist_item_t *item = randomizer_Prev(&randomizer);
+        assert(item == actual[i]);
+    }
+
+    assert(!randomizer_HasPrev(&randomizer));
+
+    for (int i = 1; i < SIZE; ++i)
+    {
+        assert(randomizer_HasNext(&randomizer));
+        vlc_playlist_item_t *item = randomizer_Next(&randomizer);
+        assert(item == actual[i]);
+    }
+
+    ArrayDestroy(items, SIZE);
+    randomizer_Destroy(&randomizer);
+    #undef SIZE
+}
+
+static void
+test_prev_with_select(void)
+{
+    struct randomizer randomizer;
+    randomizer_Init(&randomizer);
+
+    #define SIZE 10
+    vlc_playlist_item_t *items[SIZE];
+    ArrayInit(items, SIZE);
+
+    bool ok = randomizer_Add(&randomizer, items, SIZE);
+    assert(ok);
+
+    assert(!randomizer_HasPrev(&randomizer));
+
+    vlc_playlist_item_t *actual[SIZE];
+    for (int i = 0; i < 5; ++i)
+    {
+        assert(randomizer_HasNext(&randomizer));
+        actual[i] = randomizer_Next(&randomizer);
+        assert(actual[i]);
+    }
+
+    randomizer_Select(&randomizer, actual[2]);
+
+    vlc_playlist_item_t *item;
+
+    assert(randomizer_HasPrev(&randomizer));
+    item = randomizer_Prev(&randomizer);
+    assert(item == actual[4]);
+
+    assert(randomizer_HasPrev(&randomizer));
+    item = randomizer_Prev(&randomizer);
+    assert(item == actual[3]);
+
+    assert(randomizer_HasPrev(&randomizer));
+    item = randomizer_Prev(&randomizer);
+    assert(item == actual[1]);
+
+    assert(randomizer_HasPrev(&randomizer));
+    item = randomizer_Prev(&randomizer);
+    assert(item == actual[0]);
+
+    assert(!randomizer_HasPrev(&randomizer));
+
+    ArrayDestroy(items, SIZE);
+    randomizer_Destroy(&randomizer);
+    #undef SIZE
+}
+
+static void
+test_prev_across_reshuffle_loops(void)
+{
+    struct randomizer randomizer;
+    randomizer_Init(&randomizer);
+
+    #define SIZE 10
+    vlc_playlist_item_t *items[SIZE];
+    ArrayInit(items, SIZE);
+
+    bool ok = randomizer_Add(&randomizer, items, SIZE);
+    assert(ok);
+
+    assert(!randomizer_HasPrev(&randomizer));
+
+    vlc_playlist_item_t *actual[SIZE];
+    for (int i = 0; i < SIZE; ++i)
+    {
+        assert(randomizer_HasNext(&randomizer));
+        actual[i] = randomizer_Next(&randomizer);
+        assert(actual[i]);
+    }
+
+    assert(!randomizer_HasNext(&randomizer));
+    randomizer_SetLoop(&randomizer, true);
+    assert(randomizer_HasNext(&randomizer));
+
+    /* this tests this specific implementation, but this still helps */
+
+    vlc_playlist_item_t *item;
+
+    assert(randomizer_HasNext(&randomizer));
+    item = randomizer_Next(&randomizer);
+    assert(item);
+
+    assert(randomizer_HasNext(&randomizer));
+    item = randomizer_Next(&randomizer);
+    assert(item);
+
+    assert(randomizer_HasPrev(&randomizer));
+    item = randomizer_Prev(&randomizer);
+    assert(item);
+
+    /* it tests the specific implementation, but it still helps */
+    assert(randomizer.head == 2); /* two items determined */
+    assert(randomizer.next == 1); /* item 0 is current */
+    assert(randomizer.history == 2); /* the history is stored from index 2 */
+
+    /* TODO */
+
+    ArrayDestroy(items, SIZE);
+    randomizer_Destroy(&randomizer);
+    #undef SIZE
+}
+
+/* when loop is enabled, we must take care that the last items of the
+ * previous order are not the same as the first items of the new order */
+static void
+test_loop_respect_not_same_before(void)
+{
+    struct randomizer randomizer;
+    randomizer_Init(&randomizer);
+    randomizer_SetLoop(&randomizer, true);
+
+    #define SIZE (NOT_SAME_BEFORE + 2)
+    vlc_playlist_item_t *items[SIZE];
+    ArrayInit(items, SIZE);
+
+    bool ok = randomizer_Add(&randomizer, items, SIZE);
+    assert(ok);
+
+    vlc_playlist_item_t *actual[SIZE];
+    for (int i = 0; i < SIZE; ++i)
+    {
+        assert(randomizer_HasNext(&randomizer));
+        actual[i] = randomizer_Next(&randomizer);
+    }
+
+    for (int cycle = 0; cycle < 20; cycle++)
+    {
+        /* check that the first items are not the same as the last ones of the
+         * previous order */
+        for (int i = 0; i < NOT_SAME_BEFORE; ++i)
+        {
+            assert(randomizer_HasNext(&randomizer));
+            actual[i] = randomizer_Next(&randomizer);
+            for (int j = (i + SIZE - NOT_SAME_BEFORE) % SIZE;
+                 j != i;
+                 j = (j + 1) % SIZE)
+            {
+                assert(actual[i] != actual[j]);
+            }
+        }
+        for (int i = NOT_SAME_BEFORE; i < SIZE; ++i)
+        {
+            assert(randomizer_HasNext(&randomizer));
+            actual[i] = randomizer_Next(&randomizer);
+        }
+    }
+
+    ArrayDestroy(items, SIZE);
+    randomizer_Destroy(&randomizer);
+    #undef SIZE
+}
+
+/* if there are less items than NOT_SAME_BEFORE, obviously we can't avoid
+ * repeating last items in the new order, but it must still work */
+static void
+test_loop_respect_not_same_before_impossible(void)
+{
+    struct randomizer randomizer;
+    randomizer_Init(&randomizer);
+    randomizer_SetLoop(&randomizer, true);
+
+    #define SIZE NOT_SAME_BEFORE
+    vlc_playlist_item_t *items[SIZE];
+    ArrayInit(items, SIZE);
+
+    bool ok = randomizer_Add(&randomizer, items, SIZE);
+    assert(ok);
+
+    for (int i = 0; i < 10 * SIZE; ++i)
+    {
+        assert(randomizer_HasNext(&randomizer));
+        vlc_playlist_item_t *item = randomizer_Next(&randomizer);
+        assert(item);
+    }
+
+    ArrayDestroy(items, SIZE);
+    randomizer_Destroy(&randomizer);
+    #undef SIZE
 }
 
 int main(void)
 {
     test_all_items_selected_exactly_once();
     test_all_items_selected_exactly_once_per_cycle();
-    test_all_items_selected_exactly_once_with_additions_and_removals();
+    test_all_items_selected_exactly_once_with_additions();
+    test_all_items_selected_exactly_once_with_removals();
     test_force_select_new_item();
     test_force_select_item_already_selected();
-    test_previous_item();
+    test_prev();
+    test_prev_with_select();
+    test_prev_across_reshuffle_loops();
+    test_loop_respect_not_same_before();
+    test_loop_respect_not_same_before_impossible();
 }
 
 #endif
