@@ -770,10 +770,28 @@ vlc_playlist_Unlock(vlc_playlist_t *playlist)
     vlc_player_Unlock(playlist->player);
 }
 
+static void
+vlc_playlist_NotifyCurrentState(vlc_playlist_t *playlist,
+                                vlc_playlist_listener_id *listener)
+{
+    PlaylistNotifyListener(playlist, listener, on_items_reset,
+                           playlist->items.data, playlist->items.size);
+    PlaylistNotifyListener(playlist, listener, on_playback_repeat_changed,
+                           playlist->repeat);
+    PlaylistNotifyListener(playlist, listener, on_playback_order_changed,
+                           playlist->order);
+    PlaylistNotifyListener(playlist, listener, on_current_index_changed,
+                           playlist->current);
+    PlaylistNotifyListener(playlist, listener, on_has_prev_changed,
+                           playlist->has_prev);
+    PlaylistNotifyListener(playlist, listener, on_has_next_changed,
+                           playlist->has_next);
+}
+
 vlc_playlist_listener_id *
 vlc_playlist_AddListener(vlc_playlist_t *playlist,
                          const struct vlc_playlist_callbacks *cbs,
-                         void *userdata)
+                         void *userdata, bool notify_current_state)
 {
     PlaylistAssertLocked(playlist);
 
@@ -784,6 +802,9 @@ vlc_playlist_AddListener(vlc_playlist_t *playlist,
     listener->cbs = cbs;
     listener->userdata = userdata;
     vlc_list_append(&listener->node, &playlist->listeners);
+
+    if (notify_current_state)
+        vlc_playlist_NotifyCurrentState(playlist, listener);
 
     return listener;
 }
@@ -2134,7 +2155,7 @@ test_items_added_callbacks(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     int ret = vlc_playlist_AppendOne(playlist, media[0]);
@@ -2232,7 +2253,7 @@ test_items_moved_callbacks(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     vlc_playlist_Move(playlist, 2, 3, 5);
@@ -2324,7 +2345,7 @@ test_items_removed_callbacks(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     vlc_playlist_RemoveOne(playlist, 4);
@@ -2415,7 +2436,7 @@ test_items_reset_callbacks(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     callback_ctx_reset(&ctx);
@@ -2461,7 +2482,7 @@ test_playback_repeat_changed_callbacks(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     vlc_playlist_SetPlaybackRepeat(playlist, VLC_PLAYLIST_PLAYBACK_REPEAT_ALL);
@@ -2492,7 +2513,7 @@ test_playback_order_changed_callbacks(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     vlc_playlist_SetPlaybackOrder(playlist, VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM);
@@ -2506,6 +2527,65 @@ test_playback_order_changed_callbacks(void)
 
     callback_ctx_destroy(&ctx);
     vlc_playlist_RemoveListener(playlist, listener);
+    vlc_playlist_Delete(playlist);
+}
+
+static void
+test_callbacks_on_add_listener(void)
+{
+    vlc_playlist_t *playlist = vlc_playlist_New(NULL);
+    assert(playlist);
+
+    input_item_t *media[10];
+    CreateDummyMediaArray(media, 10);
+
+    /* initial playlist with 10 items */
+    int ret = vlc_playlist_Append(playlist, media, 10);
+    assert(ret == VLC_SUCCESS);
+
+    vlc_playlist_SetPlaybackRepeat(playlist, VLC_PLAYLIST_PLAYBACK_REPEAT_ALL);
+    vlc_playlist_SetPlaybackOrder(playlist, VLC_PLAYLIST_PLAYBACK_ORDER_NORMAL);
+
+    ret = vlc_playlist_GoTo(playlist, 5);
+    assert(ret == VLC_SUCCESS);
+
+    struct vlc_playlist_callbacks cbs = {
+        .on_items_reset = callback_on_items_reset,
+        .on_playback_repeat_changed = callback_on_playback_repeat_changed,
+        .on_playback_order_changed = callback_on_playback_order_changed,
+        .on_current_index_changed = callback_on_current_index_changed,
+        .on_has_prev_changed = callback_on_has_prev_changed,
+        .on_has_next_changed = callback_on_has_next_changed,
+    };
+
+    struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
+    vlc_playlist_listener_id *listener =
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, true);
+    assert(listener);
+
+    assert(ctx.vec_items_reset.size == 1);
+    assert(ctx.vec_items_reset.data[0].count == 10);
+
+    assert(ctx.vec_playback_repeat_changed.size == 1);
+    assert(ctx.vec_playback_repeat_changed.data[0].repeat ==
+                                            VLC_PLAYLIST_PLAYBACK_REPEAT_ALL);
+
+    assert(ctx.vec_playback_order_changed.size == 1);
+    assert(ctx.vec_playback_order_changed.data[0].order ==
+                                            VLC_PLAYLIST_PLAYBACK_ORDER_NORMAL);
+
+    assert(ctx.vec_current_index_changed.size == 1);
+    assert(ctx.vec_current_index_changed.data[0].current == 5);
+
+    assert(ctx.vec_has_prev_changed.size == 1);
+    assert(ctx.vec_has_prev_changed.data[0].has_prev);
+
+    assert(ctx.vec_has_next_changed.size == 1);
+    assert(ctx.vec_has_next_changed.data[0].has_next);
+
+    callback_ctx_destroy(&ctx);
+    vlc_playlist_RemoveListener(playlist, listener);
+    DestroyMediaArray(media, 10);
     vlc_playlist_Delete(playlist);
 }
 
@@ -2559,7 +2639,7 @@ test_prev(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     playlist->current = 2; /* last item */
@@ -2635,7 +2715,7 @@ test_next(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     playlist->current = 0; /* first item */
@@ -2711,7 +2791,7 @@ test_goto(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     /* go to an item in the middle */
@@ -2832,7 +2912,7 @@ test_random(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     assert(!vlc_playlist_HasPrev(playlist));
@@ -2956,7 +3036,7 @@ test_request_insert(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     /* insert 5 items at index 10 (out-of-bounds) */
@@ -3001,7 +3081,7 @@ test_request_remove_with_matching_hint(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     vlc_playlist_item_t *items_to_remove[] = {
@@ -3053,7 +3133,7 @@ test_request_remove_without_hint(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     vlc_playlist_item_t *items_to_remove[] = {
@@ -3105,7 +3185,7 @@ test_request_remove_adapt(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     vlc_playlist_item_t *dummy = vlc_playlist_item_New(media[10]);
@@ -3177,7 +3257,7 @@ test_request_move_with_matching_hint(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     vlc_playlist_item_t *items_to_move[] = {
@@ -3233,7 +3313,7 @@ test_request_move_without_hint(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     vlc_playlist_item_t *items_to_move[] = {
@@ -3303,7 +3383,7 @@ test_request_move_adapt(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
 
     vlc_playlist_item_t *dummy = vlc_playlist_item_New(media[15]);
@@ -3407,11 +3487,8 @@ test_shuffle(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
-
-    /* on_items_reset is called once during AddListener() */
-    callback_ctx_reset(&ctx);
 
     playlist->current = 4;
     playlist->has_prev = true;
@@ -3499,11 +3576,8 @@ test_sort(void)
 
     struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
     vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist, &cbs, &ctx);
+            vlc_playlist_AddListener(playlist, &cbs, &ctx, false);
     assert(listener);
-
-    /* on_items_reset is called once during AddListener() */
-    callback_ctx_reset(&ctx);
 
     playlist->current = 0;
     playlist->has_prev = false;
@@ -3591,6 +3665,7 @@ int main(void)
     test_items_reset_callbacks();
     test_playback_repeat_changed_callbacks();
     test_playback_order_changed_callbacks();
+    test_callbacks_on_add_listener();
     test_index_of();
     test_prev();
     test_next();
