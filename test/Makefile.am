@@ -26,6 +26,7 @@ check_PROGRAMS = \
 	test_src_misc_variables \
 	test_src_input_stream \
 	test_src_input_stream_fifo \
+	test_src_input_player \
 	test_src_interface_dialog \
 	test_src_misc_bits \
 	test_src_misc_epg \
@@ -112,6 +113,8 @@ test_src_crypto_update_SOURCES = src/crypto/update.c
 test_src_crypto_update_LDADD = $(LIBVLCCORE) $(GCRYPT_LIBS)
 test_src_input_stream_SOURCES = src/input/stream.c
 test_src_input_stream_LDADD = $(LIBVLCCORE) $(LIBVLC)
+test_src_input_player_SOURCES = src/input/player.c
+test_src_input_player_LDADD = $(LIBVLCCORE) $(LIBVLC) $(LIBM)
 test_src_input_stream_net_SOURCES = src/input/stream.c
 test_src_input_stream_net_CFLAGS = $(AM_CFLAGS) -DTEST_NET
 test_src_input_stream_net_LDADD = $(LIBVLCCORE) $(LIBVLC)
