@@ -701,6 +701,31 @@ static const struct vlc_player_cbs player_callbacks = {
     .on_subitems_changed = on_player_subitems_detected,
 };
 
+#ifndef TEST_PLAYLIST
+static void
+PlaylistConfigureFromVariables(vlc_playlist_t *playlist, vlc_object_t *obj)
+{
+    bool random = var_InheritBool(obj, "random");
+    if (random)
+        playlist->order = VLC_PLAYLIST_PLAYBACK_ORDER_RANDOM;
+
+    /* repeat = repeat current */
+    bool repeat = var_InheritBool(obj, "repeat");
+    if (repeat)
+        playlist->repeat = VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT;
+    else
+    {
+        /* loop = repeat all */
+        bool loop = var_InheritBool(obj, "loop");
+        if (loop)
+        {
+            playlist->repeat = VLC_PLAYLIST_PLAYBACK_REPEAT_ALL;
+            randomizer_SetLoop(&playlist->randomizer, true);
+        }
+     }
+}
+#endif /* TEST_PLAYLIST */
+
 vlc_playlist_t *
 vlc_playlist_New(vlc_object_t *parent)
 {
@@ -737,6 +762,11 @@ vlc_playlist_New(vlc_object_t *parent)
     vlc_list_init(&playlist->listeners);
     playlist->repeat = VLC_PLAYLIST_PLAYBACK_REPEAT_NONE;
     playlist->order = VLC_PLAYLIST_PLAYBACK_ORDER_NORMAL;
+
+#ifndef TEST_PLAYLIST
+    /* variables are not initialized in tests */
+    PlaylistConfigureFromVariables(playlist, parent);
+#endif
 
     return playlist;
 }
