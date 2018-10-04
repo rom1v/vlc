@@ -1128,7 +1128,7 @@ static es_out_pgrm_t *EsOutProgramAdd( es_out_t *out, int i_group )
 
     /* Update "program" variable */
     if( EsOutIsProgramVisible( out, i_group ) )
-        input_SendEventProgramAdd( p_input, i_group, NULL );
+        input_SendEventProgramAdd( p_input, i_group, "" );
 
     if( i_group == p_sys->i_group_id || ( !p_sys->p_pgrm && p_sys->i_group_id == 0 ) )
         EsOutProgramSelect( out, p_pgrm );
