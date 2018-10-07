@@ -364,13 +364,13 @@ vlc_player_input_Delete(struct vlc_player_input *input)
             vlc_player_track_Delete(vec->data[track_idx]);
     }
 
-    vlc_vector_clear(&input->program_vector);
-    vlc_vector_clear(&input->video_track_vector);
-    vlc_vector_clear(&input->audio_track_vector);
-    vlc_vector_clear(&input->spu_track_vector);
+    vlc_vector_destroy(&input->program_vector);
+    vlc_vector_destroy(&input->video_track_vector);
+    vlc_vector_destroy(&input->audio_track_vector);
+    vlc_vector_destroy(&input->spu_track_vector);
 
     vlc_player_input_CleanTitles(input);
-    vlc_vector_clear(&input->title_vector);
+    vlc_vector_destroy(&input->title_vector);
 
     free(input);
 }
