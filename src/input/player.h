@@ -20,6 +20,13 @@
 
 #include <vlc_player.h>
 
+enum vlc_player_media_ended_action {
+    VLC_PLAYER_MEDIA_ENDED_CONTINUE,
+    VLC_PLAYER_MEDIA_ENDED_PAUSE,
+    VLC_PLAYER_MEDIA_ENDED_STOP,
+    VLC_PLAYER_MEDIA_ENDED_EXIT,
+};
+
 /**
  * Assert that the player mutex is locked.
  *
@@ -28,3 +35,10 @@
  */
 void
 vlc_player_assert_locked(vlc_player_t *player);
+
+void
+vlc_player_SetMediaEndedAction(vlc_player_t *player,
+                               enum vlc_player_media_ended_action action);
+
+void
+vlc_player_SetStartPaused(vlc_player_t *player, bool start_paused);
