@@ -97,11 +97,11 @@ extern "C" {
  * next items (which depend on the playback order and repeat mode) are
  * available.
  *
- * When a user requests to insert, move or remove items, before the core
- * playlist lock is successfully acquired, another client may have changed the
- * list. Therefore, vlc_playlist_Request*() functions are exposed to resolve
- * potential conflicts and apply the changes. The actual changes applied are
- * notified through the callbacks
+ * When a user requests to insert, move or remove items, or to set the current
+ * item, before the core playlist lock is successfully acquired, another client
+ * may have changed the list. Therefore, vlc_playlist_Request*() functions are
+ * exposed to resolve potential conflicts and apply the changes. The actual
+ * changes applied are notified through the callbacks
  */
 
 /* forward declarations */
@@ -691,6 +691,30 @@ vlc_playlist_Next(vlc_playlist_t *playlist);
  */
 VLC_API int
 vlc_playlist_GoTo(vlc_playlist_t *playlist, ssize_t index);
+
+/**
+ * Go to a given item.
+ *
+ * If the index is known, use vlc_playlist_GoTo() instead.
+ *
+ * This is an helper to apply a desynchronized "go to" request, i.e. the
+ * playlist content may have changed since the request had been submitted.
+ * This is typically the case for user requests (e.g. from UI), because the
+ * playlist lock has to be acquired *after* the user requested the change.
+ *
+ * For optimization purpose, it is possible to pass an `index_hint`, which is
+ * the expected index of the first item of the slice (as known by the client).
+ * Hopefully, the index should often match, since conflicts are expected to be
+ * rare. Pass -1 not to pass any hint.
+ *
+ * \param playlist   the playlist, locked
+ * \param item       the item to go to (NULL for none)
+ * \param index_hint the expected index of the item (-1 for none)
+ * \return VLC_SUCCESS on success, another value on error
+ */
+VLC_API int
+vlc_playlist_RequestGoTo(vlc_playlist_t *playlist, vlc_playlist_item_t *item,
+                         ssize_t index_hint);
 
 /**
  * Return the player owned by the playlist.
