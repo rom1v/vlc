@@ -985,14 +985,12 @@ vlc_player_input_HandleDeadEvent(struct vlc_player_input *input)
     vlc_player_t *player = input->player;
 
     input->started = false;
+    vlc_player_input_CloseAsync(input);
 
     /* XXX: for now, play only one input at a time */
     /* Handle next items */
     if (unlikely(input != player->input))
-    {
-        vlc_player_input_CloseAsync(input);
         return;
-    }
 
     if (input->state != VLC_PLAYER_STATE_STOPPED)
         player->error_count++;
@@ -1010,8 +1008,6 @@ vlc_player_input_HandleDeadEvent(struct vlc_player_input *input)
 
         vlc_player_input_Start(player->input);
     }
-
-    vlc_player_input_CloseAsync(input);
 }
 
 static void
