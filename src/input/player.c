@@ -958,6 +958,27 @@ vlc_player_CancelWaitError(vlc_player_t *player)
     }
 }
 
+static bool
+vlc_player_WaitRetryDelay(vlc_player_t *player)
+{
+    if (player->error_count)
+    {
+        /* Delay the next opening in case of error to avoid busy loops */
+        vlc_tick_t delay = RETRY_TIMEOUT_BASE;
+        for (unsigned i = 1; i < player->error_count
+          && delay < RETRY_TIMEOUT_MAX; ++i)
+            delay *= 2; /* Wait 100, 200, 400, 800, 1600 and finally 3200ms */
+        delay += vlc_tick_now();
+
+        while (player->error_count > 0
+            && vlc_cond_timedwait(&player->start_delay_cond, &player->lock,
+                                  delay) == 0);
+        if (player->error_count == 0)
+            return false; /* canceled */
+    }
+    return true;
+}
+
 static void
 vlc_player_input_HandleDeadEvent(struct vlc_player_input *input)
 {
@@ -978,24 +999,7 @@ vlc_player_input_HandleDeadEvent(struct vlc_player_input *input)
     else
         player->error_count = 0;
 
-    bool start_next = true;
-    if (player->error_count)
-    {
-        /* Delay the next opening in case of error to avoid busy loops */
-        vlc_tick_t delay = RETRY_TIMEOUT_BASE;
-        for (unsigned i = 1; i < player->error_count
-          && delay < RETRY_TIMEOUT_MAX; ++i)
-            delay *= 2; /* Wait 100, 200, 400, 800, 1600 and finally 3200ms */
-        delay += vlc_tick_now();
-
-        while (player->error_count > 0
-            && vlc_cond_timedwait(&player->start_delay_cond, &player->lock,
-                                  delay) == 0);
-        if (player->error_count == 0)
-            start_next = false; /* canceled */
-    }
-
-    if (start_next)
+    if (vlc_player_WaitRetryDelay(player))
     {
         player->input = NULL;
         if (vlc_player_OpenNextMedia(player) != VLC_SUCCESS)
