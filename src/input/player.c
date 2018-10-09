@@ -25,6 +25,7 @@
 #include <vlc_common.h>
 #include "player.h"
 #include <vlc_aout.h>
+#include <vlc_interface.h>
 #include <vlc_renderer_discovery.h>
 #include <vlc_list.h>
 #include <vlc_vector.h>
@@ -116,6 +117,9 @@ struct vlc_player_t
     struct vlc_common_members obj;
     vlc_mutex_t lock;
     vlc_cond_t start_delay_cond;
+
+    enum vlc_player_media_ended_action media_ended_action;
+    bool start_paused;
 
     const struct vlc_player_media_provider *media_provider;
     void *media_provider_data;
@@ -510,6 +514,21 @@ vlc_player_input_Start(struct vlc_player_input *input)
     input->started = true;
     input->state = VLC_PLAYER_STATE_STARTED;
     return ret;
+}
+
+void
+vlc_player_SetMediaEndedAction(vlc_player_t *player,
+                               enum vlc_player_media_ended_action action)
+{
+    vlc_player_assert_locked(player);
+    player->media_ended_action = action;
+}
+
+void
+vlc_player_SetStartPaused(vlc_player_t *player, bool start_paused)
+{
+    vlc_player_assert_locked(player);
+    player->start_paused = start_paused;
 }
 
 static void
@@ -1151,16 +1170,29 @@ vlc_player_input_HandleDeadEvent(struct vlc_player_input *input)
     else
         player->error_count = 0;
 
-    if (vlc_player_WaitRetryDelay(player))
+    switch (player->media_ended_action)
     {
-        player->input = NULL;
-        if (vlc_player_OpenNextMedia(player) != VLC_SUCCESS)
-            return;
+        case VLC_PLAYER_MEDIA_ENDED_STOP:
+            vlc_player_Stop(player);
+            break;
+        case VLC_PLAYER_MEDIA_ENDED_EXIT:
+            libvlc_Quit(player->obj.libvlc);
+            break;
+        case VLC_PLAYER_MEDIA_ENDED_PAUSE:
+            /* do nothing here */
+            break;
+        case VLC_PLAYER_MEDIA_ENDED_CONTINUE:
+            if (!vlc_player_WaitRetryDelay(player))
+                break;
+            player->input = NULL;
+            if (vlc_player_OpenNextMedia(player) != VLC_SUCCESS)
+                return;
 
-        vlc_player_SendEvent(player, on_current_media_changed,
-                             player->media);
+            vlc_player_SendEvent(player, on_current_media_changed,
+                                 player->media);
 
-        vlc_player_input_Start(player->input);
+            vlc_player_input_Start(player->input);
+            break;
     }
 }
 
@@ -1442,6 +1474,8 @@ vlc_player_New(vlc_object_t *parent,
 
     vlc_list_init(&player->listeners);
     vlc_list_init(&player->destructor.inputs);
+    player->media_ended_action = VLC_PLAYER_MEDIA_ENDED_CONTINUE;
+    player->start_paused = false;
     player->renderer = NULL;
     player->media_provider = media_provider;
     player->media_provider_data = media_provider_data;
@@ -1681,6 +1715,9 @@ vlc_player_Start(vlc_player_t *player)
             return VLC_EGENERIC;
     }
     assert(!player->input->started);
+
+    if (player->start_paused)
+        vlc_player_Pause(player);
 
     return vlc_player_input_Start(player->input);
 }
