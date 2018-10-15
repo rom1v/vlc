@@ -18,6 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 
+#ifndef VLC_PLAYER_INTERNAL_H
+#define VLC_PLAYER_INTERNAL_H
+
 #include <vlc_player.h>
 
 enum vlc_player_media_stopped_action {
@@ -39,3 +42,5 @@ vlc_player_assert_locked(vlc_player_t *player);
 void
 vlc_player_SetMediaStoppedAction(vlc_player_t *player,
                                  enum vlc_player_media_stopped_action action);
+
+#endif
