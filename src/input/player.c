@@ -49,7 +49,6 @@ static_assert(VLC_PLAYER_TITLE_MENU == INPUT_TITLE_MENU &&
               VLC_PLAYER_TITLE_INTERACTIVE == INPUT_TITLE_INTERACTIVE,
               "player/input title flag mismatch");
 
-
 #define GAPLESS 0 /* TODO */
 
 typedef struct VLC_VECTOR(struct vlc_player_program *)
@@ -102,6 +101,7 @@ struct vlc_player_input
     vlc_player_track_vector video_track_vector;
     vlc_player_track_vector audio_track_vector;
     vlc_player_track_vector spu_track_vector;
+    struct vlc_player_track *teletext_menu;
 
     struct vlc_player_title_list *titles;
 
@@ -156,7 +156,7 @@ struct vlc_player_t
 };
 
 #define vlc_player_SendEvent(player, event, ...) do { \
-    struct vlc_player_listener_id *listener; \
+    vlc_player_listener_id *listener; \
     vlc_list_foreach(listener, &player->listeners, node) \
     { \
         if (listener->cbs->event) \
@@ -513,6 +513,7 @@ vlc_player_input_New(vlc_player_t *player, input_item_t *item)
     vlc_vector_init(&input->video_track_vector);
     vlc_vector_init(&input->audio_track_vector);
     vlc_vector_init(&input->spu_track_vector);
+    input->teletext_menu = NULL;
 
     input->titles = NULL;
     input->title_selected = input->chapter_selected = 0;
@@ -542,6 +543,7 @@ vlc_player_input_Delete(struct vlc_player_input *input)
     assert(input->video_track_vector.size == 0);
     assert(input->audio_track_vector.size == 0);
     assert(input->spu_track_vector.size == 0);
+    assert(input->teletext_menu == NULL);
 
     vlc_vector_destroy(&input->program_vector);
     vlc_vector_destroy(&input->video_track_vector);
@@ -1688,14 +1690,14 @@ vlc_player_CondWait(vlc_player_t *player, vlc_cond_t *cond)
     vlc_cond_wait(cond, &player->lock);
 }
 
-struct vlc_player_listener_id *
+vlc_player_listener_id *
 vlc_player_AddListener(vlc_player_t *player,
                        const struct vlc_player_cbs *cbs, void *cbs_data)
 {
     assert(cbs);
     vlc_player_assert_locked(player);
 
-    struct vlc_player_listener_id *listener = malloc(sizeof(*listener));
+    vlc_player_listener_id *listener = malloc(sizeof(*listener));
     if (!listener)
         return NULL;
 
@@ -1709,7 +1711,7 @@ vlc_player_AddListener(vlc_player_t *player,
 
 void
 vlc_player_RemoveListener(vlc_player_t *player,
-                          struct vlc_player_listener_id *id)
+                          vlc_player_listener_id *id)
 {
     assert(id);
     vlc_player_assert_locked(player);
@@ -2231,12 +2233,15 @@ vlc_player_aout_EnableFilter(vlc_player_t *player, const char *name, bool add)
 bool
 vlc_player_vout_IsFullscreen(vlc_player_t *player)
 {
+    vlc_player_assert_locked(player);
     return var_GetBool(player, "fullscreen");
 }
 
 void
 vlc_player_vout_SetFullscreen(vlc_player_t *player, bool enabled)
 {
+    vlc_player_assert_locked(player);
+
     var_SetBool(player, "fullscreen", enabled);
 
     vout_thread_t **vouts;
@@ -2247,4 +2252,6 @@ vlc_player_vout_SetFullscreen(vlc_player_t *player, bool enabled)
         vlc_object_release(vouts[i]);
     }
     free(vouts);
+
+    vlc_player_SendEvent(player, on_vout_fullscreen_changed, enabled);
 }

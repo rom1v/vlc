@@ -840,6 +840,7 @@ vlc_player_SelectTitleIdx
 vlc_player_SelectTrack
 vlc_player_SetAudioDelay
 vlc_player_SetCurrentMedia
+vlc_player_SetMediaStoppedAction
 vlc_player_SetRenderer
 vlc_player_SetStartPaused
 vlc_player_SetSubtitleDelay

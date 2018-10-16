@@ -30,9 +30,8 @@
  * VLC Player API
  * @brief
 @dot
-digraph player_state {
-subgraph state {
-  label="State";
+digraph player_states {
+  label="Player states";
   new [style="invis"];
   idle [label="Idle" URL="@ref VLC_PLAYER_STATE_IDLE"];
   started [label="Started" URL="@ref VLC_PLAYER_STATE_STARTED"];
@@ -51,13 +50,15 @@ subgraph state {
   stopping -> stopped [style="dashed" label=<<i>internal transition</i>>];
   stopped -> started [label="vlc_player_Start()" URL="@ref vlc_player_Start" fontcolor="darkgreen"];
 }
-}
 @enddot
  * @{
  * @file
  * VLC Player API
  */
 
+/**
+ * Player opaque structure.
+ */
 typedef struct vlc_player_t vlc_player_t;
 
 /**
@@ -66,7 +67,7 @@ typedef struct vlc_player_t vlc_player_t;
  * This opaque structure is returned by vlc_player_AddListener() and can be
  * used to remove the listener via vlc_player_RemoveListener().
  */
-struct vlc_player_listener_id;
+typedef struct vlc_player_listener_id vlc_player_listener_id;
 
 /**
  * Player program structure.
@@ -187,6 +188,13 @@ enum vlc_player_seek_whence
     VLC_PLAYER_SEEK_RELATIVE,
 };
 
+enum vlc_player_media_stopped_action {
+    VLC_PLAYER_MEDIA_STOPPED_CONTINUE,
+    VLC_PLAYER_MEDIA_STOPPED_PAUSE,
+    VLC_PLAYER_MEDIA_STOPPED_STOP,
+    VLC_PLAYER_MEDIA_STOPPED_EXIT,
+};
+
 #define VLC_PLAYER_CAP_SEEK (1<<0)
 #define VLC_PLAYER_CAP_PAUSE (1<<1)
 #define VLC_PLAYER_CAP_CHANGE_RATE (1<<2)
@@ -239,6 +247,9 @@ struct vlc_player_cbs
     void (*on_track_selection_changed)(vlc_player_t *player,
         vlc_es_id_t *unselected_id, vlc_es_id_t *selected_id, void *data);
 
+    void (*on_teletext_menu_changed)(vlc_player_t *player,
+        bool has_teletext_menu, void *data);
+
     void (*on_program_list_changed)(vlc_player_t *player,
         enum vlc_player_list_action action,
         const struct vlc_player_program *prgm, void *data);
@@ -272,9 +283,6 @@ struct vlc_player_cbs
     void (*on_stats_changed)(vlc_player_t *player,
         const struct input_stats_t *stats, void *data);
 
-    void (*on_vout_list_changed)(vlc_player_t *player,
-        enum vlc_player_list_action action, vout_thread_t *vout, void *data);
-
     void (*on_media_meta_changed)(vlc_player_t *player,
         input_item_t *media, void *data);
 
@@ -283,6 +291,12 @@ struct vlc_player_cbs
 
     void (*on_subitems_changed)(vlc_player_t *player,
         input_item_node_t *subitems, void *data);
+
+    void (*on_vout_list_changed)(vlc_player_t *player,
+        enum vlc_player_list_action action, vout_thread_t *vout, void *data);
+
+    void (*on_vout_fullscreen_changed)(vlc_player_t *player,
+        bool is_fullscreen, void *data);
 
     void (*on_aout_volume_changed)(vlc_player_t *player,
         audio_output_t *aout, float volume, void *data);
@@ -373,7 +387,7 @@ vlc_player_CondWait(vlc_player_t *player, vlc_cond_t *cond);
  * @param cbs_data opaque pointer used by the callbacks
  * @return a valid listener id, or NULL in case of error
  */
-VLC_API struct vlc_player_listener_id *
+VLC_API vlc_player_listener_id *
 vlc_player_AddListener(vlc_player_t *player,
                        const struct vlc_player_cbs *cbs, void *cbs_data);
 
@@ -385,7 +399,7 @@ vlc_player_AddListener(vlc_player_t *player,
  */
 VLC_API void
 vlc_player_RemoveListener(vlc_player_t *player,
-                          struct vlc_player_listener_id *id);
+                          vlc_player_listener_id *id);
 
 /**
  * Set the current media for playback.
@@ -454,6 +468,10 @@ vlc_player_Start(vlc_player_t *player);
  */
 VLC_API void
 vlc_player_Stop(vlc_player_t *player);
+
+VLC_API void
+vlc_player_SetMediaStoppedAction(vlc_player_t *player,
+                                 enum vlc_player_media_stopped_action action);
 
 /**
  * Pause the playback.
@@ -725,7 +743,7 @@ vlc_player_GetAudioTrackAt(vlc_player_t *player, size_t index)
  * Get the spu track count (Helper).
  */
 static inline size_t
-vlc_player_GetSpuTrackCount(vlc_player_t *player)
+vlc_player_GetSubtitleTrackCount(vlc_player_t *player)
 {
     return vlc_player_GetTrackCount(player, SPU_ES);
 }
@@ -734,7 +752,7 @@ vlc_player_GetSpuTrackCount(vlc_player_t *player)
  * Get the spu track at a specific index (Helper).
  */
 static inline const struct vlc_player_track *
-vlc_player_GetSpuTrackAt(vlc_player_t *player, size_t index)
+vlc_player_GetSubtitleTrackAt(vlc_player_t *player, size_t index)
 {
     return vlc_player_GetTrackAt(player, SPU_ES, index);
 }
@@ -847,7 +865,7 @@ vlc_player_SelectDefaultAudioTrack(vlc_player_t *player, const char *lang)
  * Select the default spu track (Helper).
  */
 static inline void
-vlc_player_SelectDefaultSpuTrack(vlc_player_t *player, const char *lang)
+vlc_player_SelectDefaultSubtitleTrack(vlc_player_t *player, const char *lang)
 {
     vlc_player_SelectDefaultTrack(player, SPU_ES, lang);
 }
