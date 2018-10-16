@@ -1600,7 +1600,7 @@ REPORT_LIST
     assert(player);
 
     vlc_player_Lock(player);
-    struct vlc_player_listener_id *listener =
+    vlc_player_listener_id *listener =
         vlc_player_AddListener(player, &cbs, &ctx);
     assert(listener);
 
