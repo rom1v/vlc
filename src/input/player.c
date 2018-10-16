@@ -109,6 +109,10 @@ struct vlc_player_input
     size_t chapter_selected;
 
     struct vlc_list node;
+
+    bool teletext_enabled;
+    bool teletext_transparent;
+    unsigned teletext_page;
 };
 
 struct vlc_player_t
@@ -517,6 +521,9 @@ vlc_player_input_New(vlc_player_t *player, input_item_t *item)
 
     input->titles = NULL;
     input->title_selected = input->chapter_selected = 0;
+
+    input->teletext_enabled = input->teletext_transparent = false;
+    input->teletext_page = 0;
 
     input->thread = input_Create(player, input_thread_events, input, item,
                                  NULL, player->resource, player->renderer);
@@ -1098,19 +1105,148 @@ vlc_player_SelectDefaultTrack(vlc_player_t *player,
 }
 
 static void
+vlc_player_input_HandleTeletextMenu(struct vlc_player_input *input,
+                                    const struct vlc_input_event_es *ev)
+{
+    vlc_player_t *player = input->player;
+    switch (ev->action)
+    {
+        case VLC_INPUT_ES_ADDED:
+            if (input->teletext_menu)
+            {
+                msg_Warn(player, "Can't handle more than one teletext menu "
+                         "track. Using the last one.");
+                vlc_player_track_Delete(input->teletext_menu);
+            }
+            input->teletext_menu = vlc_player_track_New(ev->id, ev->title,
+                                                        ev->fmt);
+            if (!input->teletext_menu)
+                return;
+
+            vlc_player_SendEvent(player, on_teletext_menu_changed, true);
+            break;
+        case VLC_INPUT_ES_DELETED:
+        {
+            if (input->teletext_menu && input->teletext_menu->id == ev->id)
+            {
+                assert(!input->teletext_enabled);
+
+                vlc_player_track_Delete(input->teletext_menu);
+                input->teletext_menu = NULL;
+                vlc_player_SendEvent(player, on_teletext_menu_changed, false);
+            }
+            break;
+        }
+        case VLC_INPUT_ES_UPDATED:
+            break;
+        case VLC_INPUT_ES_SELECTED:
+        case VLC_INPUT_ES_UNSELECTED:
+            if (input->teletext_menu->id == ev->id)
+            {
+                input->teletext_enabled = ev->action == VLC_INPUT_ES_SELECTED;
+                vlc_player_SendEvent(player, on_teletext_enabled_changed,
+                                     input->teletext_enabled);
+            }
+            break;
+        default:
+            vlc_assert_unreachable();
+    }
+}
+
+void
+vlc_player_SetTeletextEnabled(vlc_player_t *player, bool enabled)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    if (!input || !input->teletext_menu)
+        return;
+    if (enabled)
+        vlc_player_SelectTrack(player, input->teletext_menu->id);
+    else
+        vlc_player_UnselectTrack(player, input->teletext_menu->id);
+}
+
+void
+vlc_player_SelectTeletextPage(vlc_player_t *player, unsigned page)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    if (!input || !input->teletext_menu)
+        return;
+
+    input_ControlPush(input->thread, INPUT_CONTROL_SET_VBI_PAGE,
+        &(input_control_param_t) {
+            .vbi_page.id = input->teletext_menu->id,
+            .vbi_page.page = page,
+    });
+}
+
+void
+vlc_player_SetTeletextTransparency(vlc_player_t *player, bool enabled)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    if (!input || !input->teletext_menu)
+        return;
+
+    input_ControlPush(input->thread, INPUT_CONTROL_SET_VBI_TRANSPARENCY,
+        &(input_control_param_t) {
+            .vbi_transparency.id = input->teletext_menu->id,
+            .vbi_transparency.enabled = enabled,
+    });
+}
+
+bool
+vlc_player_HasTeletextMenu(vlc_player_t *player)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    return input && input->teletext_menu;
+}
+
+bool
+vlc_player_IsTeletextEnabled(vlc_player_t *player)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    if (input && input->teletext_enabled)
+    {
+        assert(input->teletext_menu);
+        return true;
+    }
+    return false;
+}
+
+unsigned
+vlc_player_GetTeletextPage(vlc_player_t *player)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    return vlc_player_IsTeletextEnabled(player) ? input->teletext_page : 0;
+}
+
+bool
+vlc_player_IsTeletextTransparent(vlc_player_t *player)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    return vlc_player_IsTeletextEnabled(player) && input->teletext_transparent;
+}
+
+static void
 vlc_player_input_HandleEsEvent(struct vlc_player_input *input,
                                const struct vlc_input_event_es *ev)
 {
     assert(ev->id && ev->title && ev->fmt);
 
-    vlc_player_t *player = input->player;
-    struct vlc_player_track *track;
+    if (ev->fmt->i_cat == SPU_ES && ev->fmt->i_codec == VLC_CODEC_TELETEXT
+     && (ev->fmt->subs.teletext.i_magazine == 1
+      || ev->fmt->subs.teletext.i_magazine == -1))
+    {
+        vlc_player_input_HandleTeletextMenu(input, ev);
+        return;
+    }
+
     vlc_player_track_vector *vec =
         vlc_player_input_GetTrackVector(input, ev->fmt->i_cat);
-
     if (!vec)
         return; /* UNKNOWN_ES or DATA_ES not handled */
 
+    vlc_player_t *player = input->player;
+    struct vlc_player_track *track;
     switch (ev->action)
     {
         case VLC_INPUT_ES_ADDED:
@@ -1500,6 +1636,16 @@ input_thread_events(input_thread_t *input_thread,
         case INPUT_EVENT_DEAD:
             assert(!input->started);
             vlc_player_destructor_AddJoinableInput(player, input);
+            break;
+        case INPUT_EVENT_VBI_PAGE:
+            input->teletext_page = event->vbi_page < 999 ? event->vbi_page : 100;
+            vlc_player_SendEvent(player, on_teletext_page_changed,
+                                 input->teletext_page);
+            break;
+        case INPUT_EVENT_VBI_TRANSPARENCY:
+            input->teletext_transparent = event->vbi_transparent;
+            vlc_player_SendEvent(player, on_teletext_transparency_changed,
+                                 input->teletext_transparent);
             break;
         default:
             break;

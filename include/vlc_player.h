@@ -200,6 +200,12 @@ enum vlc_player_media_stopped_action {
 #define VLC_PLAYER_CAP_CHANGE_RATE (1<<2)
 #define VLC_PLAYER_CAP_REWIND (1<<3)
 
+#define VLC_PLAYER_TELETEXT_KEY_RED ('r' << 16)
+#define VLC_PLAYER_TELETEXT_KEY_GREEN ('g' << 16)
+#define VLC_PLAYER_TELETEXT_KEY_YELLOW ('g' << 16)
+#define VLC_PLAYER_TELETEXT_KEY_BLUE ('b' << 16)
+#define VLC_PLAYER_TELETEXT_KEY_INDEX ('i' << 16)
+
 /**
  * Callbacks to get the state of the input.
  *
@@ -249,6 +255,15 @@ struct vlc_player_cbs
 
     void (*on_teletext_menu_changed)(vlc_player_t *player,
         bool has_teletext_menu, void *data);
+
+    void (*on_teletext_enabled_changed)(vlc_player_t *player,
+        bool enabled, void *data);
+
+    void (*on_teletext_page_changed)(vlc_player_t *player,
+        unsigned new_page, void *data);
+
+    void (*on_teletext_transparency_changed)(vlc_player_t *player,
+        bool enabled, void *data);
 
     void (*on_program_list_changed)(vlc_player_t *player,
         enum vlc_player_list_action action,
@@ -919,6 +934,27 @@ vlc_player_GetProgram(vlc_player_t *player, int id);
  */
 VLC_API void
 vlc_player_SelectProgram(vlc_player_t *player, int id);
+
+VLC_API bool
+vlc_player_HasTeletextMenu(vlc_player_t *player);
+
+VLC_API void
+vlc_player_SetTeletextEnabled(vlc_player_t *player, bool enabled);
+
+VLC_API bool
+vlc_player_IsTeletextEnabled(vlc_player_t *player);
+
+VLC_API void
+vlc_player_SelectTeletextPage(vlc_player_t *player, unsigned page);
+
+VLC_API unsigned
+vlc_player_GetTeletextPage(vlc_player_t *player);
+
+VLC_API void
+vlc_player_SetTeletextTransparency(vlc_player_t *player, bool enabled);
+
+VLC_API bool
+vlc_player_IsTeletextTransparent(vlc_player_t *player);
 
 VLC_API struct vlc_player_title_list *
 vlc_player_GetTitleList(vlc_player_t *player);
