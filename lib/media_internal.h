@@ -27,6 +27,7 @@
 
 #include <vlc/libvlc.h>
 #include <vlc/libvlc_media.h>
+#include "libvlc_internal.h"
 
 #include <vlc_common.h>
 #include <vlc_input.h>
