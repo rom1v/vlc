@@ -18,6 +18,7 @@ pkginclude_HEADERS = \
 	../include/vlc/libvlc_media_list.h \
 	../include/vlc/libvlc_media_list_player.h \
 	../include/vlc/libvlc_media_player.h \
+	../include/vlc/libvlc_playlist.h \
 	../include/vlc/libvlc_renderer_discoverer.h \
 	../include/vlc/vlc.h
 
@@ -50,7 +51,8 @@ libvlc_la_SOURCES = \
 	media_list_path.h \
 	media_list_player.c \
 	media_library.c \
-	media_discoverer.c
+	media_discoverer.c \
+	playlist_new.c
 EXTRA_DIST = libvlc.pc.in libvlc.sym ../include/vlc/libvlc_version.h.in
 
 libvlc_la_LIBADD = ../src/libvlccore.la ../compat/libcompat.la $(LIBM)
