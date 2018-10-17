@@ -43,13 +43,17 @@
 # define LIBVLC_API
 #endif
 
-#ifdef __LIBVLC__
+#if defined(__GNUC__)
+# define LIBVLC_MUST_USE __attribute__ ((warn_unused_result))
 /* Avoid unhelpful warnings from libvlc with our deprecated APIs */
-#   define LIBVLC_DEPRECATED
-#elif defined(__GNUC__) && \
+# if !defined(__LIBVLC__) && \
       (__GNUC__ > 3 || __GNUC__ == 3 && __GNUC_MINOR__ > 0)
-# define LIBVLC_DEPRECATED __attribute__((deprecated))
+#   define LIBVLC_DEPRECATED __attribute__((deprecated))
+# else
+#   define LIBVLC_DEPRECATED
+# endif
 #else
+# define LIBVLC_MUST_USE
 # define LIBVLC_DEPRECATED
 #endif
 
