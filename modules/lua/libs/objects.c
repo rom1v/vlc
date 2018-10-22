@@ -33,6 +33,8 @@
 
 #include <vlc_common.h>
 #include <vlc_vout.h>
+#include <vlc_playlist.h>
+#include <vlc_player.h>
 
 #include "../vlc.h"
 #include "../libs.h"
@@ -66,25 +68,21 @@ static int vlclua_get_libvlc( lua_State *L )
 
 static int vlclua_get_playlist( lua_State *L )
 {
-    playlist_t *p_playlist = vlclua_get_playlist_internal( L );
-    if( p_playlist )
-    {
-        vlc_object_hold( p_playlist );
-        vlclua_push_vlc_object( L, p_playlist );
-    }
-    else lua_pushnil( L );
+    vlc_playlist_t *playlist = vlclua_get_playlist_internal(L);
+    if (playlist)
+        lua_pushlightuserdata(L, playlist);
+    else
+        lua_pushnil(L);
     return 1;
 }
 
-static int vlclua_get_input( lua_State *L )
+static int vlclua_get_player( lua_State *L )
 {
-    input_thread_t *p_input = vlclua_get_input_internal( L );
-    if( p_input )
-    {
-        /* NOTE: p_input is already held by vlclua_get_input_internal() */
-        vlclua_push_vlc_object( L, p_input );
-    }
-    else lua_pushnil( L );
+    vlc_player_t *player = vlclua_get_player_internal(L);
+    if (player)
+        lua_pushlightuserdata(L, player);
+    else
+        lua_pushnil(L);
     return 1;
 }
 
@@ -107,43 +105,33 @@ int vlclua_push_vlc_object( lua_State *L, vlc_object_t *p_obj )
     lua_setmetatable( L, -2 );
     return 1;
 }
+
 static int vlclua_get_vout( lua_State *L )
 {
-    input_thread_t *p_input = vlclua_get_input_internal( L );
-    if( p_input )
-    {
-        vout_thread_t *p_vout = input_GetVout( p_input );
-        vlc_object_release( p_input );
-        if(p_vout)
-        {
-            vlclua_push_vlc_object( L, (vlc_object_t *) p_vout );
-            return 1;
-        }
-    }
-    lua_pushnil( L );
+    vout_thread_t *vout = vlclua_get_vout_internal(L);
+    if (vout)
+        vlclua_push_vlc_object(L, (vlc_object_t *) vout);
+    else
+        lua_pushnil(L);
     return 1;
 }
+
 static int vlclua_get_aout( lua_State *L )
 {
-    playlist_t *p_playlist = vlclua_get_playlist_internal( L );
-    if( p_playlist != NULL )
-    {
-        audio_output_t *p_aout = playlist_GetAout( p_playlist );
-        if( p_aout != NULL )
-        {
-            vlclua_push_vlc_object( L, (vlc_object_t *)p_aout );
-            return 1;
-        }
-    }
-    lua_pushnil( L );
+    audio_output_t *aout = vlclua_get_aout_internal(L);
+    if (aout)
+        vlclua_push_vlc_object(L, (vlc_object_t *) aout);
+    else
+        lua_pushnil(L);
     return 1;
 }
+
 /*****************************************************************************
  *
  *****************************************************************************/
 static const luaL_Reg vlclua_object_reg[] = {
-    { "input", vlclua_get_input },
     { "playlist", vlclua_get_playlist },
+    { "player", vlclua_get_player },
     { "libvlc", vlclua_get_libvlc },
     { "find", vlclua_object_find },
     { "vout", vlclua_get_vout},
