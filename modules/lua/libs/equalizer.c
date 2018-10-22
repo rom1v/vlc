@@ -36,6 +36,8 @@
 #include <vlc_aout.h>
 #include <vlc_input.h>
 #include <vlc_charset.h>
+#include <vlc_playlist_new.h>
+#include <vlc_player.h>
 
 #include "input.h"
 #include "../libs.h"
@@ -57,10 +59,19 @@
 /*****************************************************************************
 * Get the preamp level
 *****************************************************************************/
+static audio_output_t *get_aout(lua_State *L)
+{
+    vlc_playlist_t *playlist = vlclua_get_playlist_internal(L);
+
+    vlc_player_t *player = vlc_playlist_GetPlayer(playlist);
+    audio_output_t *aout = vlc_player_aout_Hold(player);
+
+    return aout;
+}
+
 static int vlclua_preamp_get( lua_State *L )
 {
-    playlist_t *p_playlist = vlclua_get_playlist_internal( L );
-    audio_output_t *p_aout = playlist_GetAout( p_playlist );
+    audio_output_t *p_aout = get_aout(L);
     if( p_aout == NULL )
         return 0;
 
@@ -84,8 +95,7 @@ static int vlclua_preamp_get( lua_State *L )
 *****************************************************************************/
 static int vlclua_preamp_set( lua_State *L )
 {
-    playlist_t *p_playlist = vlclua_get_playlist_internal( L );
-    audio_output_t *p_aout = playlist_GetAout( p_playlist );
+    audio_output_t *p_aout = get_aout(L);
     if( p_aout == NULL )
         return 0;
 
@@ -124,8 +134,7 @@ static int vlclua_equalizer_get( lua_State *L )
 {
     const unsigned bands = 10;
 
-    playlist_t *p_playlist = vlclua_get_playlist_internal( L );
-    audio_output_t *p_aout = playlist_GetAout( p_playlist );
+    audio_output_t *p_aout = get_aout(L);
     if( p_aout == NULL )
         return 0;
 
@@ -190,8 +199,7 @@ static int vlclua_equalizer_set( lua_State *L )
     if( bandid < 0 || bandid > 9)
         return 0;
 
-    playlist_t *p_playlist = vlclua_get_playlist_internal( L );
-    audio_output_t *p_aout = playlist_GetAout( p_playlist );
+    audio_output_t *p_aout = get_aout(L);
     if( p_aout == NULL )
         return 0;
 
@@ -247,8 +255,7 @@ static int vlclua_equalizer_setpreset( lua_State *L )
     if( presetid >= NB_PRESETS || presetid < 0 )
         return 0;
 
-    playlist_t *p_playlist = vlclua_get_playlist_internal( L );
-    audio_output_t *p_aout = playlist_GetAout( p_playlist );
+    audio_output_t *p_aout = get_aout(L);
     if( p_aout == NULL )
         return 0;
 
@@ -267,11 +274,15 @@ static int vlclua_equalizer_setpreset( lua_State *L )
 /****************************************************************************
 * Enable/disable Equalizer
 *****************************************************************************/
-static int vlclua_equalizer_enable ( lua_State *L )
+static int vlclua_equalizer_enable(lua_State *L)
 {
-    playlist_t *p_playlist = vlclua_get_playlist_internal( L );
-    bool state = luaL_checkboolean ( L , 1 );
-    playlist_EnableAudioFilter( p_playlist, "equalizer", state );
+    bool state = luaL_checkboolean(L , 1);
+    audio_output_t *aout = get_aout(L);
+    if (aout)
+    {
+        aout_EnableFilter(aout, "equalizer", state);
+        vlc_object_release (aout);
+    }
     return 0;
 }
 /*****************************************************************************
