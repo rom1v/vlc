@@ -218,13 +218,15 @@ vlc_playlist_Clear(vlc_playlist_t *playlist)
 }
 
 static int
-vlc_playlist_MediaToItems(input_item_t *const media[], size_t count,
-                          vlc_playlist_item_t *items[])
+vlc_playlist_MediaToItems(vlc_playlist_t *playlist, input_item_t *const media[],
+                          size_t count, vlc_playlist_item_t *items[])
 {
+    vlc_playlist_AssertLocked(playlist);
     size_t i;
     for (i = 0; i < count; ++i)
     {
-        items[i] = vlc_playlist_item_New(media[i]);
+        uint64_t id = playlist->idgen++;
+        items[i] = vlc_playlist_item_New(media[i], id);
         if (unlikely(!items[i]))
             break;
     }
@@ -250,7 +252,7 @@ vlc_playlist_Insert(vlc_playlist_t *playlist, size_t index,
         return VLC_ENOMEM;
 
     /* create playlist items in place */
-    int ret = vlc_playlist_MediaToItems(media, count,
+    int ret = vlc_playlist_MediaToItems(playlist, media, count,
                                         &playlist->items.data[index]);
     if (ret != VLC_SUCCESS)
     {
@@ -307,7 +309,8 @@ vlc_playlist_Replace(vlc_playlist_t *playlist, size_t index,
     vlc_playlist_AssertLocked(playlist);
     assert(index < playlist->items.size);
 
-    vlc_playlist_item_t *item = vlc_playlist_item_New(media);
+    uint64_t id = playlist->idgen++;
+    vlc_playlist_item_t *item = vlc_playlist_item_New(media, id);
     if (!item)
         return VLC_ENOMEM;
 
@@ -347,7 +350,7 @@ vlc_playlist_Expand(vlc_playlist_t *playlist, size_t index,
                 return VLC_ENOMEM;
 
             /* create playlist items in place */
-            ret = vlc_playlist_MediaToItems(&media[1], count - 1,
+            ret = vlc_playlist_MediaToItems(playlist, &media[1], count - 1,
                                             &playlist->items.data[index + 1]);
             if (ret != VLC_SUCCESS)
             {

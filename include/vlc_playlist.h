@@ -318,6 +318,12 @@ vlc_playlist_item_Release(vlc_playlist_item_t *);
 VLC_API input_item_t *
 vlc_playlist_item_GetMedia(vlc_playlist_item_t *);
 
+/**
+ * Return a unique id for the playlist item instance.
+ */
+VLC_API uint64_t
+vlc_playlist_item_GetId(vlc_playlist_item_t *);
+
 /* Playlist */
 
 /**
