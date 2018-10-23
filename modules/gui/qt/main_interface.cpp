@@ -44,7 +44,6 @@
 #include "dialogs/firstrun.hpp"                 // First Run
 #include "dialogs/playlist.hpp"                 // PlaylistDialog
 
-#include "components/playlist/standardpanel.hpp"
 #include "components/video_overlay.hpp"
 
 #include "menus.hpp"                            // Menu creation

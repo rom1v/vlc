@@ -27,10 +27,6 @@
 #endif
 
 #include "components/playlist/playlist.hpp"
-#include "components/playlist/standardpanel.hpp"  /* MainView */
-#include "components/playlist/selector.hpp"       /* PLSelector */
-#include "components/playlist/playlist_model.hpp" /* PLModel */
-#include "components/interface_widgets.hpp"       /* CoverArtLabel */
 #include "components/playlist_new/playlist_model.hpp"
 #include <vlc_playlist_new.h>
 

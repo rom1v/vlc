@@ -42,21 +42,8 @@
 #include <QSplitterHandle>
 #include <QMouseEvent>
 
-#include <QtQuickWidgets/QQuickWidget>
-
-#include <vlc_playlist_new.h>
-#include "components/playlist_new/playlist_model.hpp"
-
-
-class StandardPLPanel;
-class LocationBar;
-class QSignalMapper;
-class SearchLineEdit;
-class QModelIndex;
-class QStackedWidget;
-class PLSelector;
 class VideoOverlay;
-
+class QQuickWidget;
 
 class PlaylistWidget : public QWidget
 {

@@ -137,21 +137,8 @@ libqt_plugin_la_SOURCES = \
 	gui/qt/components/mediacenter/mlgenremodel.hpp \
 	gui/qt/components/mediacenter/navigation_history.cpp \
 	gui/qt/components/mediacenter/navigation_history.hpp \
-	gui/qt/components/playlist/views.cpp \
-	gui/qt/components/playlist/views.hpp \
-	gui/qt/components/playlist/vlc_model.cpp \
-	gui/qt/components/playlist/vlc_model.hpp \
-	gui/qt/components/playlist/playlist_model.cpp \
-	gui/qt/components/playlist/playlist_model.hpp \
-	gui/qt/components/playlist/playlist_item.cpp \
-	gui/qt/components/playlist/playlist_item.hpp \
-	gui/qt/components/playlist/standardpanel.cpp \
-	gui/qt/components/playlist/standardpanel.hpp \
 	gui/qt/components/playlist/playlist.cpp \
 	gui/qt/components/playlist/playlist.hpp \
-	gui/qt/components/playlist/selector.cpp \
-	gui/qt/components/playlist/selector.hpp \
-	gui/qt/components/playlist/sorting.h \
 	gui/qt/components/playlist_new/media.hpp \
 	gui/qt/components/playlist_new/playlist_common.cpp \
 	gui/qt/components/playlist_new/playlist_common.hpp \
@@ -176,7 +163,6 @@ libqt_plugin_la_SOURCES = \
 	gui/qt/util/registry.cpp gui/qt/util/registry.hpp \
 	gui/qt/util/qmenuview.cpp gui/qt/util/qmenuview.hpp \
 	gui/qt/util/qt_dirs.cpp gui/qt/util/qt_dirs.hpp \
-	gui/qt/util/pictureflow.cpp gui/qt/util/pictureflow.hpp \
 	gui/qt/util/validators.cpp gui/qt/util/validators.hpp \
 	gui/qt/util/buttons/BrowseButton.cpp \
 	gui/qt/util/buttons/BrowseButton.hpp \
@@ -275,12 +261,7 @@ nodist_libqt_plugin_la_SOURCES = \
 	gui/qt/components/mediacenter/mlartistmodel.moc.cpp \
 	gui/qt/components/mediacenter/mlgenremodel.moc.cpp \
 	gui/qt/components/mediacenter/navigation_history.moc.cpp \
-	gui/qt/components/playlist/views.moc.cpp \
-	gui/qt/components/playlist/vlc_model.moc.cpp \
-	gui/qt/components/playlist/playlist_model.moc.cpp \
 	gui/qt/components/playlist/playlist.moc.cpp \
-	gui/qt/components/playlist/standardpanel.moc.cpp \
-	gui/qt/components/playlist/selector.moc.cpp \
 	gui/qt/components/playlist_new/playlist_common.moc.cpp \
 	gui/qt/components/playlist_new/playlist_model.moc.cpp \
 	gui/qt/components/playlist_new/playlist_controler.moc.cpp \
@@ -294,7 +275,6 @@ nodist_libqt_plugin_la_SOURCES = \
 	gui/qt/util/searchlineedit.moc.cpp \
 	gui/qt/util/qmenuview.moc.cpp \
 	gui/qt/util/qvlcapp.moc.cpp \
-	gui/qt/util/pictureflow.moc.cpp \
 	gui/qt/util/vlc_var_choice_model.moc.cpp \
 	gui/qt/util/vlc_var_observer.moc.cpp \
 	gui/qt/util/validators.moc.cpp \
