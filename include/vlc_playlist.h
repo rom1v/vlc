@@ -664,6 +664,16 @@ VLC_API ssize_t
 vlc_playlist_IndexOfMedia(vlc_playlist_t *playlist, const input_item_t *media);
 
 /**
+ * Return the index of a given item id.
+ *
+ * \param playlist the playlist, locked
+ * \param id       the id to locate
+ * \return the index of the playlist item having the id (-1 if not found)
+ */
+VLC_API ssize_t
+vlc_playlist_IndexOfId(vlc_playlist_t *playlist, uint64_t id);
+
+/**
  * Return the playback "repeat" mode.
  *
  * \param playlist the playlist, locked
