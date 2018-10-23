@@ -889,6 +889,7 @@ vlc_player_vout_SetWallpaperModeEnabled
 vlc_playlist_item_Hold
 vlc_playlist_item_Release
 vlc_playlist_item_GetMedia
+vlc_playlist_item_GetId
 vlc_playlist_New
 vlc_playlist_Delete
 vlc_playlist_Lock
