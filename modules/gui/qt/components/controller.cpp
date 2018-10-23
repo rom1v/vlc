@@ -40,8 +40,6 @@
 #include "util/input_slider.hpp"                         /* SeekSlider */
 #include "util/customwidgets.hpp"                       /* qEventToKey */
 
-#include "adapters/seekpoints.hpp"
-
 #include <QToolButton>
 #include <QHBoxLayout>
 #include <QRegion>
