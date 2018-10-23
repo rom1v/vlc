@@ -205,6 +205,18 @@ vlc_playlist_IndexOfMedia(vlc_playlist_t *playlist, const input_item_t *media)
     return -1;
 }
 
+ssize_t
+vlc_playlist_IndexOfId(vlc_playlist_t *playlist, uint64_t id)
+{
+    vlc_playlist_AssertLocked(playlist);
+
+    playlist_item_vector_t *items = &playlist->items;
+    for (size_t i = 0; i < items->size; ++i)
+        if (items->data[i]->id == id)
+            return i;
+    return -1;
+}
+
 void
 vlc_playlist_Clear(vlc_playlist_t *playlist)
 {
