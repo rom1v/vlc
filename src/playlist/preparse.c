@@ -30,19 +30,22 @@
 #include "libvlc.h" /* for vlc_MetadataRequest() */
 
 static void
-vlc_playlist_CollectChildren(playlist_item_vector_t *dest,
+vlc_playlist_CollectChildren(vlc_playlist_t *playlist,
+                             playlist_item_vector_t *dest,
                              input_item_node_t *node)
 {
+    vlc_playlist_AssertLocked(playlist);
     for (int i = 0; i < node->i_children; ++i)
     {
         input_item_node_t *child = node->pp_children[i];
-        vlc_playlist_item_t *item = vlc_playlist_item_New(child->p_item);
+        uint64_t id = playlist->idgen++;
+        vlc_playlist_item_t *item = vlc_playlist_item_New(child->p_item, id);
         if (item)
         {
             if (!vlc_vector_push(dest, item))
                 vlc_playlist_item_Release(item);
         }
-        vlc_playlist_CollectChildren(dest, child);
+        vlc_playlist_CollectChildren(playlist, dest, child);
     }
 }
 
@@ -54,7 +57,7 @@ vlc_playlist_ExpandItem(vlc_playlist_t *playlist, size_t index,
     vlc_playlist_RemoveOne(playlist, index);
 
     playlist_item_vector_t flatten = VLC_VECTOR_INITIALIZER;
-    vlc_playlist_CollectChildren(&flatten, node);
+    vlc_playlist_CollectChildren(playlist, &flatten, node);
 
     if (vlc_vector_insert_all(&playlist->items, index, flatten.data,
                               flatten.size))
