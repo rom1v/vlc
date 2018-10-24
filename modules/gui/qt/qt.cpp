@@ -649,13 +649,13 @@ static void *Thread( void *obj )
             known_type = false;
         }
 
-        var_Create( THEPL, "qt4-iface", VLC_VAR_ADDRESS );
-        var_Create( THEPL, "window", VLC_VAR_STRING );
+        var_Create( p_sys->p_player, "qt4-iface", VLC_VAR_ADDRESS );
+        var_Create( p_sys->p_player, "window", VLC_VAR_STRING );
 
         if( known_type )
         {
-            var_SetAddress( THEPL, "qt4-iface", p_intf );
-            var_SetString( THEPL, "window", "qt,any" );
+            var_SetAddress( p_sys->p_player, "qt4-iface", p_intf );
+            var_SetString( p_sys->p_player, "window", "qt,any" );
         }
     }
 
