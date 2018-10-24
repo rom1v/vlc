@@ -44,7 +44,6 @@
 #include "components/playlist_new/playlist_controler.hpp"
 #include "recents.hpp"                            /* Recent Items */
 #include "extensions_manager.hpp"                 /* Extensions menu */
-#include "util/qmenuview.hpp"                     /* Simple Playlist menu */
 #include "components/extended_panels.hpp"
 #include "util/vlc_var_choice_model.hpp"
 
