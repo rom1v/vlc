@@ -31,7 +31,6 @@
 
 #include "main_interface.hpp"
 #include "input_manager.hpp"                    // Creation
-#include "actions_manager.hpp"                  // killInstance
 #include "managers/renderer_manager.hpp"
 
 #include "util/customwidgets.hpp"               // qtEventToVLCKey, QVLCStackedWidget
@@ -276,9 +275,6 @@ MainInterface::~MainInterface()
 
     if( videoWidget )
         releaseVideoSlot();
-
-    /* Be sure to kill the actionsManager... Only used in the MI and control */
-    ActionsManager::killInstance();
 
     /* Delete the FSC controller */
     delete fullscreenControls;
