@@ -145,7 +145,7 @@ ExtendedDialog::ExtendedDialog( intf_thread_t *_p_intf )
             move ( 450 , 0 );
     }
 
-    CONNECT( THEMIM->getIM(), playingStatusChanged( int ), this, changedItem( int ) );
+    connect( THEMIM, &InputManager::playingStateChanged, this, &ExtendedDialog::changedItem );
 }
 
 ExtendedDialog::~ExtendedDialog()
@@ -164,9 +164,9 @@ int ExtendedDialog::currentTab()
     return mainTabW->currentIndex();
 }
 
-void ExtendedDialog::changedItem( int i_status )
+void ExtendedDialog::changedItem( InputManager::PlayingState i_status )
 {
-    if( i_status != END_S ) return;
+    if( i_status != InputManager::PLAYING_STATE_STOPPED ) return;
     syncW->clean();
     videoEffect->clean();
 }

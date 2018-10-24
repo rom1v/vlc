@@ -560,7 +560,7 @@ WidgetListing::WidgetListing( intf_thread_t *p_intf, QWidget *_parent )
             widgetItem->setText( qtr("Playback Buttons") );
             break;
         case ASPECT_RATIO_COMBOBOX:
-            widget = new AspectRatioComboBox( p_intf );
+            widget = new AspectRatioComboBox( p_intf, THEMIM->getAspectRatio() );
             widgetItem->setText( qtr("Aspect ratio selector") );
             break;
         case SPEED_LABEL:

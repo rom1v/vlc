@@ -28,6 +28,7 @@
 
 #include "components/extended_panels.hpp"
 #include "util/singleton.hpp"
+#include "input_manager.hpp"
 
 class QTabWidget;
 
@@ -55,7 +56,7 @@ private:
     QPushButton *m_applyButton;
     QHash<QString, QVariant> m_hashConfigs[2];
 private slots:
-    void changedItem( int );
+    void changedItem(InputManager::PlayingState );
     void currentTabChanged( int );
     void saveConfig();
     void putAudioConfig( const QString& name, const QVariant value );
