@@ -522,6 +522,7 @@ static inline void qRegisterMetaTypes()
     // register all types used by signal/slots
     qRegisterMetaType<size_t>("size_t");
     qRegisterMetaType<ssize_t>("ssize_t");
+    qRegisterMetaType<vlc_tick_t>("vlc_tick_t");
     qRegisterMetaType<vlc::playlist::PlaylistItem>("PlaylistItem");
     qRegisterMetaType<QVector<vlc::playlist::PlaylistItem>>("QVector<PlaylistItem>");
     qRegisterMetaType<enum vlc_playlist_playback_order>("vlc_playlist_playback_order");
