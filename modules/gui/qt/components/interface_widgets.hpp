@@ -259,7 +259,7 @@ private:
     int lastValue;
 
 public slots:
-    void activateOnState();
+    void activateOnState(InputManager::PlayingState state);
 
 private slots:
     void updateRate( int );

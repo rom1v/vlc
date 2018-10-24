@@ -71,6 +71,7 @@
 #include <assert.h>
 
 #include <vlc_vout_window.h>
+#include <vlc_player.h>
 
 /**********************************************************************
  * Video Widget. A simple frame on which video is drawn
@@ -433,9 +434,9 @@ BackgroundWidget::BackgroundWidget( intf_thread_t *_p_i )
     CONNECT( fadeAnimation, valueChanged( const QVariant & ),
              this, update() );
 
-    CONNECT( THEMIM->getIM(), artChanged( QString ),
+    CONNECT( THEMIM, artChanged( QString ),
              this, updateArt( const QString& ) );
-    CONNECT( THEMIM->getIM(), nameChanged( const QString& ),
+    CONNECT( THEMIM, nameChanged( const QString& ),
              this, titleUpdated( const QString & ) );
 }
 
@@ -667,13 +668,12 @@ SpeedLabel::SpeedLabel( intf_thread_t *_p_intf, QWidget *parent )
     speedControlMenu->addAction( widgetAction );
 
     /* Change the SpeedRate in the Label */
-    CONNECT( THEMIM->getIM(), rateChanged( float ), this, setRate( float ) );
+    connect( THEMIM, &InputManager::rateChanged, this, &SpeedLabel::setRate );
 
-    DCONNECT( THEMIM, inputChanged( bool ),
-              speedControl, activateOnState() );
+    connect( THEMIM, &InputManager::playingStateChanged, speedControl, &SpeedControlWidget::activateOnState );
 
     setContentsMargins(4, 0, 4, 0);
-    setRate( var_InheritFloat( THEPL, "rate" ) );
+    setRate( THEMIM->getRate() );
 }
 
 SpeedLabel::~SpeedLabel()
@@ -723,7 +723,8 @@ SpeedControlWidget::SpeedControlWidget( intf_thread_t *_p_i, QWidget *_parent )
     speedSlider->setPageStep( 1 );
     speedSlider->setTickInterval( 17 );
 
-    CONNECT( speedSlider, valueChanged( int ), this, updateRate( int ) );
+    connect( speedSlider, &QSlider::valueChanged, this, &SpeedControlWidget::updateRate );
+    connect( THEMIM, &InputManager::rateChanged, this, &SpeedControlWidget::updateControls);
 
     QToolButton *normalSpeedButton = new QToolButton( this );
     normalSpeedButton->setMaximumSize( QSize( 26, 16 ) );
@@ -731,49 +732,38 @@ SpeedControlWidget::SpeedControlWidget( intf_thread_t *_p_i, QWidget *_parent )
     normalSpeedButton->setText( "1x" );
     normalSpeedButton->setToolTip( qtr( "Revert to normal play speed" ) );
 
-    CONNECT( normalSpeedButton, clicked(), this, resetRate() );
+    connect( normalSpeedButton, &QToolButton::clicked, this, &SpeedControlWidget::resetRate );
 
     QToolButton *slowerButton = new QToolButton( this );
     slowerButton->setMaximumSize( QSize( 26, 16 ) );
     slowerButton->setAutoRaise( true );
     slowerButton->setToolTip( tooltipL[SLOWER_BUTTON] );
     slowerButton->setIcon( QIcon( iconL[SLOWER_BUTTON] ) );
-    CONNECT( slowerButton, clicked(), THEMIM->getIM(), slower() );
+    connect( slowerButton, &QToolButton::clicked, THEMIM, &InputManager::slower);
 
     QToolButton *fasterButton = new QToolButton( this );
     fasterButton->setMaximumSize( QSize( 26, 16 ) );
     fasterButton->setAutoRaise( true );
     fasterButton->setToolTip( tooltipL[FASTER_BUTTON] );
     fasterButton->setIcon( QIcon( iconL[FASTER_BUTTON] ) );
-    CONNECT( fasterButton, clicked(), THEMIM->getIM(), faster() );
-
-/*    spinBox = new QDoubleSpinBox();
-    spinBox->setDecimals( 2 );
-    spinBox->setMaximum( 32 );
-    spinBox->setMinimum( 0.03F );
-    spinBox->setSingleStep( 0.10F );
-    spinBox->setAlignment( Qt::AlignRight );
-
-    CONNECT( spinBox, valueChanged( double ), this, updateSpinBoxRate( double ) ); */
+    connect( fasterButton, &QToolButton::clicked, THEMIM, &InputManager::faster );
 
     QGridLayout* speedControlLayout = new QGridLayout( this );
     speedControlLayout->addWidget( speedSlider, 0, 0, 1, 3 );
     speedControlLayout->addWidget( slowerButton, 1, 0 );
     speedControlLayout->addWidget( normalSpeedButton, 1, 1, 1, 1, Qt::AlignRight );
     speedControlLayout->addWidget( fasterButton, 1, 2, 1, 1, Qt::AlignRight );
-    //speedControlLayout->addWidget( spinBox );
     speedControlLayout->setContentsMargins( 0, 0, 0, 0 );
     speedControlLayout->setSpacing( 0 );
 
     lastValue = 0;
 
-    activateOnState();
+    activateOnState( THEMIM->getPlayingState() );
 }
 
-void SpeedControlWidget::activateOnState()
+void SpeedControlWidget::activateOnState( InputManager::PlayingState state )
 {
-    speedSlider->setEnabled( THEMIM->getIM()->hasInput() );
-    //spinBox->setEnabled( THEMIM->getIM()->hasInput() );
+    speedSlider->setEnabled( state == InputManager::PLAYING_STATE_PLAYING || state == InputManager::PLAYING_STATE_PAUSED );
 }
 
 void SpeedControlWidget::updateControls( float rate )
@@ -808,27 +798,26 @@ void SpeedControlWidget::updateRate( int sliderValue )
     lastValue = sliderValue;
 
     double speed = pow( 2, (double)sliderValue / 17 );
-    int rate = INPUT_RATE_DEFAULT / speed;
 
-    THEMIM->getIM()->setRate(rate);
+    THEMIM->setRate(speed);
     //spinBox->setValue( var_InheritFloat( THEPL, "rate" ) );
 }
 
 void SpeedControlWidget::updateSpinBoxRate( double r )
 {
-    var_SetFloat( THEPL, "rate", r );
+    THEMIM->setRate(r);
 }
 
 void SpeedControlWidget::resetRate()
 {
-    THEMIM->getIM()->setRate( INPUT_RATE_DEFAULT );
+    THEMIM->normalRate();
 }
 
 CoverArtLabel::CoverArtLabel( QWidget *parent, intf_thread_t *_p_i )
     : QLabel( parent ), p_intf( _p_i ), p_item( NULL )
 {
     setContextMenuPolicy( Qt::ActionsContextMenu );
-    CONNECT( THEMIM->getIM(), artChanged( input_item_t * ),
+    CONNECT( THEMIM, artChanged( input_item_t * ),
              this, showArtUpdate( input_item_t * ) );
 
     setMinimumHeight( 128 );
@@ -844,7 +833,7 @@ CoverArtLabel::CoverArtLabel( QWidget *parent, intf_thread_t *_p_i )
     CONNECT( action, triggered(), this, setArtFromFile() );
     addAction( action );
 
-    p_item = THEMIM->currentInputItem();
+    p_item = THEMIM->getInput();
     if( p_item )
     {
         input_item_Hold( p_item );
@@ -892,13 +881,13 @@ void CoverArtLabel::showArtUpdate( input_item_t *_p_item )
         return;
 
     QString url;
-    if ( _p_item ) url = THEMIM->getIM()->decodeArtURL( _p_item );
+    if ( _p_item ) url = THEMIM->decodeArtURL( _p_item );
     showArtUpdate( url );
 }
 
 void CoverArtLabel::askForUpdate()
 {
-    THEMIM->getIM()->requestArtUpdate( p_item, true );
+    THEMIM->requestArtUpdate( p_item, true );
 }
 
 void CoverArtLabel::setArtFromFile()
@@ -912,7 +901,7 @@ void CoverArtLabel::setArtFromFile()
     if( fileUrl.isEmpty() )
         return;
 
-    THEMIM->getIM()->setArt( p_item, fileUrl.toString() );
+    THEMIM->setArt( p_item, fileUrl.toString() );
 }
 
 void CoverArtLabel::clear()
@@ -953,16 +942,16 @@ TimeLabel::TimeLabel( intf_thread_t *_p_intf, TimeLabel::Display _displayType  )
     }
     setAlignment( Qt::AlignRight | Qt::AlignVCenter );
 
-    CONNECT( THEMIM->getIM(), seekRequested( float ),
+    CONNECT( THEMIM, seekRequested( float ),
              this, setDisplayPosition( float ) );
 
-    CONNECT( THEMIM->getIM(), positionUpdated( float, vlc_tick_t, int ),
+    CONNECT( THEMIM, positionUpdated( float, vlc_tick_t, int ),
               this, setDisplayPosition( float, vlc_tick_t, int ) );
 
     connect( this, SIGNAL( broadcastRemainingTime( bool ) ),
-         THEMIM->getIM(), SIGNAL( remainingTimeChanged( bool ) ) );
+         THEMIM, SIGNAL( remainingTimeChanged( bool ) ) );
 
-    CONNECT( THEMIM->getIM(), remainingTimeChanged( bool ),
+    CONNECT( THEMIM, remainingTimeChanged( bool ),
               this, setRemainingTime( bool ) );
 
     setStyleSheet( "QLabel { padding-left: 4px; padding-right: 4px; }" );
