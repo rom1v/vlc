@@ -99,8 +99,6 @@ public:
                                     QString *selectedFilter = NULL );
 
 protected:
-    QSignalMapper *menusMapper;
-    QSignalMapper *menusUpdateMapper;
     void customEvent( QEvent *);
 
 private:
@@ -173,9 +171,7 @@ public slots:
     void loadSubtitlesFile();
 
     void quit();
-private slots:
-    void menuAction( QObject *);
-    void menuUpdateAction( QObject * );
+
 signals:
     void  toolBarConfUpdated();
     void releaseMouseEvents();
