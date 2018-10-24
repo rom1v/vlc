@@ -74,11 +74,12 @@ RendererMenu::RendererMenu( QMenu *parent, intf_thread_t *p_intf_ )
     addAction( action );
     group->addAction(action);
 
-    char *psz_renderer = var_InheritString( THEPL, "sout" );
-    if ( psz_renderer == NULL )
-        action->setChecked( true );
-    else
-        free( psz_renderer );
+    //FIXME sout
+    //char *psz_renderer = var_InheritString( THEPL, "sout" );
+    //if ( psz_renderer == NULL )
+    //    action->setChecked( true );
+    //else
+    //    free( psz_renderer );
 
     addSeparator();
 
