@@ -596,7 +596,8 @@ void DialogsProvider::openAPlaylist()
             msg_Warn( p_intf, "unable to load playlist '%s'", qtu( url ) );
             continue;
         }
-        playlist_Import( THEPL, psz_path );
+        //FIXME implement playlist_Import
+        //playlist_Import( THEPL, psz_path );
         free( psz_path );
     }
 }
@@ -667,8 +668,9 @@ void DialogsProvider::savePlayingToPlaylist()
 
     if ( psz_selected_module )
     {
-        playlist_Export( THEPL, qtu( toNativeSeparators( file ) ),
-                         psz_selected_module );
+        //FIXME implement playlist_Export
+        //playlist_Export( THEPL, qtu( toNativeSeparators( file ) ),
+        //                 psz_selected_module );
         getSettings()->setValue( "last-playlist-ext", psz_last_playlist_ext );
     }
 }
