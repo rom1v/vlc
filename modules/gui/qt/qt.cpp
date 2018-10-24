@@ -694,8 +694,8 @@ static void *Thread( void *obj )
     msg_Dbg( p_intf, "QApp exec() finished" );
     if (p_mi != NULL)
     {
-        var_Destroy( THEPL, "window" );
-        var_Destroy( THEPL, "qt4-iface" );
+        var_Destroy( p_sys->p_player, "window" );
+        var_Destroy( p_sys->p_player, "qt4-iface" );
 
         QMutexLocker locker (&lock);
         active = false;

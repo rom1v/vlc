@@ -53,7 +53,7 @@ private:
     UINT taskbar_wmsg;
 
 private slots:
-    void changeThumbbarButtons( int );
+    void changeThumbbarButtons(InputManager::PlayingState );
     void playlistItemAppended( int itemId, int parentId );
     void playlistItemRemoved( int itemId );
     virtual void reloadPrefs() Q_DECL_OVERRIDE;

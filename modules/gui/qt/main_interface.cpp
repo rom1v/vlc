@@ -165,7 +165,7 @@ MainInterface::MainInterface( intf_thread_t *_p_intf ) : QVLCMW( _p_intf )
      * Menu Bar *
      ************/
     VLCMenuBar::createMenuBar( this, p_intf );
-    CONNECT( THEMIM->getIM(), voutListChanged( vout_thread_t **, int ),
+    CONNECT( THEMIM, voutListChanged( vout_thread_t **, int ),
              THEDP, destroyPopupMenu() );
 
     createMainWidget( settings );
@@ -190,12 +190,12 @@ MainInterface::MainInterface( intf_thread_t *_p_intf ) : QVLCMW( _p_intf )
      * Those connects are different because options can impeach them to trigger.
      **/
     /* Main Interface statusbar */
-    CONNECT( THEMIM->getIM(), nameChanged( const QString& ),
+    CONNECT( THEMIM, nameChanged( const QString& ),
              this, setName( const QString& ) );
     /* and title of the Main Interface*/
     if( var_InheritBool( p_intf, "qt-name-in-title" ) )
     {
-        CONNECT( THEMIM->getIM(), nameChanged( const QString& ),
+        CONNECT( THEMIM, nameChanged( const QString& ),
                  this, setVLCWindowsTitle( const QString& ) );
     }
     CONNECT( THEMIM, inputChanged( bool ), this, onInputChanged( bool ) );
@@ -341,7 +341,6 @@ void MainInterface::recreateToolbars()
         fullscreenControls = new FullscreenControllerWidget( p_intf, this );
         CONNECT( fullscreenControls, keyPressed( QKeyEvent * ),
                  this, handleKeyPress( QKeyEvent * ) );
-        THEMIM->requestVoutUpdate();
     }
 
     setMinimalView( b_minimalView );
@@ -389,7 +388,7 @@ void MainInterface::createResumePanel( QWidget *w )
 
     CONNECT( resumeTimer, timeout(), this, hideResumePanel() );
     CONNECT( cancel, clicked(), this, hideResumePanel() );
-    CONNECT( THEMIM->getIM(), resumePlayback(vlc_tick_t), this, showResumePanel(vlc_tick_t) );
+    CONNECT( THEMIM, resumePlayback(vlc_tick_t), this, showResumePanel(vlc_tick_t) );
     BUTTONACT( ok, resumePlayback() );
 
     w->layout()->addWidget( resumePanel );
@@ -427,8 +426,8 @@ void MainInterface::hideResumePanel()
 
 void MainInterface::resumePlayback()
 {
-    if( THEMIM->getIM()->hasInput() ) {
-        var_SetInteger( THEMIM->getInput(), "time", i_resumeTime );
+    if( THEMIM->hasInput() ) {
+        THEMIM->jumpToTime( i_resumeTime );
     }
     hideResumePanel();
 }
@@ -440,7 +439,7 @@ void MainInterface::onInputChanged( bool hasInput )
     int autoRaise = var_InheritInteger( p_intf, "qt-auto-raise" );
     if ( autoRaise == MainInterface::RAISE_NEVER )
         return;
-    if( THEMIM->getIM()->hasVideo() == true )
+    if( THEMIM->hasVideoOutput() == true )
     {
         if( ( autoRaise & MainInterface::RAISE_VIDEO ) == 0 )
             return;
@@ -586,8 +585,8 @@ inline void MainInterface::createStatusBar()
          elapsed time.*/
     CONNECT( timeLabel, doubleClicked(), THEDP, gotoTimeDialog() );
 
-    CONNECT( THEMIM->getIM(), encryptionChanged( bool ),
-             this, showCryptedLabel( bool ) );
+    connect( THEMIM, &InputManager::isEncryptedChanged,
+             this, &MainInterface::showCryptedLabel );
 
     /* This shouldn't be necessary, but for somehow reason, the statusBarr
        starts at height of 20px and when a text is shown it needs more space.
@@ -649,7 +648,7 @@ inline void MainInterface::showTab( QWidget *widget, bool video_closing )
         stackWidgetsSizes[stackCentralOldWidget] = stackCentralW->size();
 
     /* If we are playing video, embedded */
-    if( !video_closing && videoWidget && THEMIM->getIM()->hasVideo() )
+    if( !video_closing && videoWidget && THEMIM->hasVideoOutput() )
     {
         /* Video -> Playlist */
         if( videoWidget == stackCentralOldWidget && widget == playlistWidget )
@@ -696,7 +695,7 @@ inline void MainInterface::showTab( QWidget *widget, bool video_closing )
 #endif
 
     /* This part is done later, to account for the new pl size */
-    if( !video_closing && videoWidget && THEMIM->getIM()->hasVideo() &&
+    if( !video_closing && videoWidget && THEMIM->hasVideoOutput() &&
         videoWidget == stackCentralOldWidget && widget == playlistWidget )
     {
         playlistWidget->videoOverlay->setVideo( videoWidget );
@@ -1082,7 +1081,7 @@ void MainInterface::dockPlaylist( bool p_docked )
            native window back and forth.
            For Wayland, this is mandatory since reparenting is not implemented.
            For X11 or Windows, this is just an optimization. */
-        if ( videoWidget && THEMIM->getIM()->hasVideo() )
+        if ( videoWidget && THEMIM->hasVideoOutput() )
             showTab(videoWidget);
         else
             showTab(bgWidget);
@@ -1094,7 +1093,7 @@ void MainInterface::dockPlaylist( bool p_docked )
     }
     else /* Previously undocked */
     {
-        playlistVisible = dialog->isVisible() && !( videoWidget && THEMIM->getIM()->hasVideo() );
+        playlistVisible = dialog->isVisible() && !( videoWidget && THEMIM->hasVideoOutput() );
         dialog->hide();
         playlistWidget = dialog->exportPlaylistWidget();
         stackCentralW->addWidget( playlistWidget );
@@ -1301,11 +1300,11 @@ void MainInterface::createSystray()
              this, handleSystrayClick( QSystemTrayIcon::ActivationReason ) );
 
     /* Connects on nameChanged() */
-    CONNECT( THEMIM->getIM(), nameChanged( const QString& ),
-             this, updateSystrayTooltipName( const QString& ) );
+    connect( THEMIM, &InputManager::nameChanged,
+             this, &MainInterface::updateSystrayTooltipName );
     /* Connect PLAY_STATUS on the systray */
-    CONNECT( THEMIM->getIM(), playingStatusChanged( int ),
-             this, updateSystrayTooltipStatus( int ) );
+    connect( THEMIM, &InputManager::playingStateChanged,
+             this, &MainInterface::updateSystrayTooltipStatus );
 }
 
 void MainInterface::toggleUpdateSystrayMenuWhenVisible()
@@ -1436,14 +1435,14 @@ void MainInterface::updateSystrayTooltipName( const QString& name )
  * Updates the status of the systray Icon tooltip.
  * Doesn't check if the systray exists, check before you call it.
  **/
-void MainInterface::updateSystrayTooltipStatus( int i_status )
+void MainInterface::updateSystrayTooltipStatus( InputManager::PlayingState i_status )
 {
     switch( i_status )
     {
-    case PLAYING_S:
+    case InputManager::PLAYING_STATE_PLAYING:
         sysTray->setToolTip( input_name );
         break;
-    case PAUSE_S:
+    case InputManager::PLAYING_STATE_PAUSED:
         sysTray->setToolTip( input_name + " - " + qtr( "Paused") );
         break;
     default:
@@ -1486,19 +1485,19 @@ void MainInterface::changeEvent(QEvent *event)
         {
             b_hasPausedWhenMinimized = false;
 
-            if( THEMIM->getIM()->playingStatus() == PLAYING_S &&
-                THEMIM->getIM()->hasVideo() && !THEMIM->getIM()->hasVisualisation() &&
+            if( THEMIM->getPlayingState() == InputManager::PLAYING_STATE_PLAYING &&
+                THEMIM->hasVideoOutput() && !THEMIM->hasAudioVisualization() &&
                 b_pauseOnMinimize )
             {
                 b_hasPausedWhenMinimized = true;
-                THEMIM->pause();
+                THEMPL->pause();
             }
         }
         else if( oldState & Qt::WindowMinimized && !( newState & Qt::WindowMinimized ) )
         {
             if( b_hasPausedWhenMinimized )
             {
-                THEMIM->play();
+                THEMPL->play();
             }
         }
     }
@@ -1532,10 +1531,9 @@ void MainInterface::dropEventPlay( QDropEvent *event, bool b_play )
     const QMimeData *mimeData = event->mimeData();
 
     /* D&D of a subtitles file, add it on the fly */
-    if( mimeData->urls().count() == 1 && THEMIM->getIM()->hasInput() )
+    if( mimeData->urls().count() == 1 && THEMIM->hasInput() )
     {
-        if( !input_AddSlave( THEMIM->getInput(), SLAVE_TYPE_SPU,
-                 qtu( mimeData->urls()[0].toString() ), true, true, true ) )
+        if( !THEMIM->AddAssociatedMedia(SPU_ES, mimeData->urls()[0].toString(), true, true, true) )
         {
             event->accept();
             return;
@@ -1705,7 +1703,7 @@ void MainInterface::emitBoss()
 }
 void MainInterface::setBoss()
 {
-    THEMIM->pause();
+    THEMPL->pause();
     if( sysTray )
     {
         hide();

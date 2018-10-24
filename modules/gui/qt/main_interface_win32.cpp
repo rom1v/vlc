@@ -205,14 +205,14 @@ void MainInterfaceWin32::createTaskBarButtons()
             msg_Err( p_intf, "%s failed with error %08lx",
                      "ThumbBarAddButtons", hr );
     }
-    CONNECT( THEMIM->getIM(), playingStatusChanged( int ),
-             this, changeThumbbarButtons( int ) );
-    CONNECT( THEMIM, playlistItemAppended( int, int ),
-            this, playlistItemAppended( int, int ) );
-    CONNECT( THEMIM, playlistItemRemoved( int ),
-            this, playlistItemRemoved( int ) );
-    if( THEMIM->getIM()->playingStatus() == PLAYING_S )
-        changeThumbbarButtons( THEMIM->getIM()->playingStatus() );
+    connect( THEMIM, &InputManager::playingStateChanged,
+             this, &MainInterfaceWin32::changeThumbbarButtons);
+    connect( THEMIM, &InputManager::playlistItemAppended,
+            this, &MainInterfaceWin32::playlistItemAppended );
+    connect( THEMIM, &InputManager::playlistItemRemoved,
+            this, &MainInterfaceWin32::playlistItemRemoved );
+    if( THEMIM->getPlayingState() == InputManager::PLAYING_STATE_PLAYING )
+        changeThumbbarButtons( THEMIM->getPlayingState() );
 }
 
 bool MainInterfaceWin32::nativeEvent(const QByteArray &, void *message, long *result)
@@ -284,7 +284,7 @@ bool MainInterfaceWin32::winEvent ( MSG * msg, long * result )
                     THEMIM->stop();
                     break;
                 case APPCOMMAND_MEDIA_RECORD:
-                    THEAM->record();
+                    THEMIM->toggleRecord();
                     break;
                 case APPCOMMAND_VOLUME_DOWN:
                     THEAM->AudioDown();
@@ -293,13 +293,13 @@ bool MainInterfaceWin32::winEvent ( MSG * msg, long * result )
                     THEAM->AudioUp();
                     break;
                 case APPCOMMAND_VOLUME_MUTE:
-                    THEAM->toggleMuteAudio();
+                    THEMIM->toggleMuted();
                     break;
                 case APPCOMMAND_MEDIA_FAST_FORWARD:
-                    THEMIM->getIM()->faster();
+                    THEMIM->faster();
                     break;
                 case APPCOMMAND_MEDIA_REWIND:
-                    THEMIM->getIM()->slower();
+                    THEMIM->slower();
                     break;
                 case APPCOMMAND_HELP:
                     THEDP->mediaInfoDialog();
@@ -322,7 +322,7 @@ void MainInterfaceWin32::setVideoFullScreen( bool fs )
 {
     MainInterface::setVideoFullScreen( fs );
     if( !fs )
-        changeThumbbarButtons( THEMIM->getIM()->playingStatus() );
+        changeThumbbarButtons( THEMIM->getPlayingState() );
 }
 
 void MainInterfaceWin32::toggleUpdateSystrayMenuWhenVisible()
@@ -397,15 +397,15 @@ void MainInterfaceWin32::reloadPrefs()
 
 void MainInterfaceWin32::playlistItemAppended( int, int )
 {
-    changeThumbbarButtons( THEMIM->getIM()->playingStatus() );
+    changeThumbbarButtons( THEMIM->getPlayingState() );
 }
 
 void MainInterfaceWin32::playlistItemRemoved( int )
 {
-    changeThumbbarButtons( THEMIM->getIM()->playingStatus() );
+    changeThumbbarButtons( THEMIM->getPlayingState() );
 }
 
-void MainInterfaceWin32::changeThumbbarButtons( int i_status )
+void MainInterfaceWin32::changeThumbbarButtons( InputManager::PlayingState i_status )
 {
     if( p_taskbl == NULL )
         return;
@@ -434,15 +434,15 @@ void MainInterfaceWin32::changeThumbbarButtons( int i_status )
 
     switch( i_status )
     {
-        case OPENING_S:
-        case PLAYING_S:
+        case InputManager::PLAYING_STATE_PLAYING:
             {
                 thbButtons[1].iBitmap = 1;
                 break;
             }
-        case END_S:
-        case PAUSE_S:
-        case ERROR_S:
+        case InputManager::PLAYING_STATE_STARTED:
+        case InputManager::PLAYING_STATE_PAUSED:
+        case InputManager::PLAYING_STATE_STOPPING:
+        case InputManager::PLAYING_STATE_STOPPED:
             {
                 thbButtons[1].iBitmap = 2;
                 break;
@@ -457,7 +457,7 @@ void MainInterfaceWin32::changeThumbbarButtons( int i_status )
         msg_Err( p_intf, "ThumbBarUpdateButtons failed with error %08lx", hr );
 
     // If a video is playing, let the vout handle the thumbnail.
-    if( !videoWidget || !THEMIM->getIM()->hasVideo() )
+    if( !videoWidget || !THEMIM->hasVideoOutput() )
     {
         hr = p_taskbl->SetThumbnailClip(WinId(this), NULL);
         if(S_OK != hr)

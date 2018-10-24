@@ -28,6 +28,7 @@
 #include "qt.hpp"
 
 #include "util/qvlcframe.hpp"
+#include "input_manager.hpp"
 
 #include <QSystemTrayIcon>
 #include <QStackedWidget>
@@ -231,7 +232,7 @@ protected slots:
     void setVLCWindowsTitle( const QString& title = "" );
     void handleSystrayClick( QSystemTrayIcon::ActivationReason );
     void updateSystrayTooltipName( const QString& );
-    void updateSystrayTooltipStatus( int );
+    void updateSystrayTooltipStatus( InputManager::PlayingState );
     void showCryptedLabel( bool );
 
     void handleKeyPress( QKeyEvent * );
