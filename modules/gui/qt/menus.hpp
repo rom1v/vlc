@@ -32,38 +32,8 @@
 #include <QObject>
 #include <QMenu>
 #include <QVector>
-
-class MenuItemData : public QObject
-{
-    Q_OBJECT
-
-public:
-    MenuItemData( QObject* parent, vlc_object_t *_p_obj, int _i_type,
-                  vlc_value_t _val, const char *_var ) : QObject( parent )
-    {
-        p_obj = _p_obj;
-        if( p_obj )
-            vlc_object_hold( p_obj );
-        i_val_type = _i_type;
-        val = _val;
-        psz_var = strdup( _var );
-    }
-    virtual ~MenuItemData()
-    {
-        free( psz_var );
-        if( ( i_val_type & VLC_VAR_TYPE) == VLC_VAR_STRING )
-            free( val.psz_string );
-        if( p_obj )
-            vlc_object_release( p_obj );
-    }
-
-    vlc_object_t *p_obj;
-    vlc_value_t val;
-    char *psz_var;
-
-private:
-    int i_val_type;
-};
+#include <QAbstractListModel>
+#include <QMetaProperty>
 
 class VLCMenuBar : public QObject
 {
@@ -84,18 +54,6 @@ public:
     static void updateSystrayMenu( MainInterface *, intf_thread_t  *,
                                    bool b_force_visible = false);
 
-    /* Actions */
-    static void DoAction( QObject * );
-    enum actionflag {
-        ACTION_NONE = 0x0,
-        ACTION_ALWAYS_ENABLED = 0x1,
-        ACTION_MANAGED = 0x2, /* managed using EnableStatic(bool)? */
-        ACTION_NO_CLEANUP = 0x4,
-        ACTION_STATIC = 0x6, /* legacy shortcut */
-        ACTION_DELETE_ON_REBUILD = 0x8
-    };
-    Q_DECLARE_FLAGS(actionflags, actionflag)
-
     static RendererMenu *rendererMenu;
 
 private:
@@ -115,7 +73,7 @@ private:
     static QMenu *NavigMenu( intf_thread_t *p_intf, QWidget *parent ) {
         return NavigMenu( p_intf, new QMenu( parent ) );
     }
-    static QMenu *RebuildNavigMenu( intf_thread_t *, QMenu *, bool b_keep = false );
+    static QMenu *RebuildNavigMenu(intf_thread_t *, QMenu *);
 
     static QMenu *VideoMenu( intf_thread_t *, QMenu * );
     static QMenu *VideoMenu( intf_thread_t *p_intf, QWidget *parent ) {
@@ -135,54 +93,17 @@ private:
 
     /* Popups Menus */
     static void PopupMenuStaticEntries( QMenu *menu );
-    static void PopupMenuPlaylistEntries( QMenu *menu, intf_thread_t *p_intf,
-                                          input_thread_t *p_input );
+    static void PopupMenuPlaylistEntries( QMenu *menu, intf_thread_t *p_intf );
     static void PopupMenuPlaylistControlEntries( QMenu *menu, intf_thread_t *p_intf );
     static void PopupMenuControlEntries( QMenu *menu, intf_thread_t *p_intf, bool b = true );
-
-    /* Generic automenu methods */
-    static QMenu * Populate( QMenu *current,
-                             QVector<const char*>&, QVector<vlc_object_t *>& );
-
-    static void CreateAndConnect( QMenu *, const char *, const QString&,
-                                  const QString&, int, vlc_object_t *,
-                                  vlc_value_t, int, bool c = false );
-    static void UpdateItem( QMenu *, const char *, vlc_object_t *, bool );
-    static int CreateChoicesMenu( QMenu *,const char *, vlc_object_t * );
-    static void EnableStaticEntries( QMenu *, bool );
 
     /* recentMRL menu */
     static QMenu *recentsMenu;
 
-    static void updateAudioDevice( intf_thread_t *, audio_output_t *, QMenu* );
+    static void updateAudioDevice(intf_thread_t *, QMenu* );
 
 public slots:
     static void updateRecents( intf_thread_t * );
-};
-Q_DECLARE_OPERATORS_FOR_FLAGS(VLCMenuBar::actionflags)
-
-class MenuFunc : public QObject
-{
-    Q_OBJECT
-
-public:
-    MenuFunc( QMenu *_menu, int _id ) : QObject( (QObject *)_menu ),
-                                        menu( _menu ), id( _id ){}
-
-    void doFunc( intf_thread_t *p_intf)
-    {
-        switch( id )
-        {
-            case 1: VLCMenuBar::AudioMenu( p_intf, menu ); break;
-            case 2: VLCMenuBar::VideoMenu( p_intf, menu ); break;
-            case 3: VLCMenuBar::RebuildNavigMenu( p_intf, menu ); break;
-            case 4: VLCMenuBar::ViewMenu( p_intf, menu ); break;
-            case 5: VLCMenuBar::SubtitleMenu( p_intf, menu ); break;
-        }
-    }
-private:
-    QMenu *menu;
-    int id;
 };
 
 #endif
