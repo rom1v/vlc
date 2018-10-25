@@ -134,6 +134,10 @@ libqt_plugin_la_SOURCES = \
 	gui/qt/components/mediacenter/mlartistmodel.hpp \
 	gui/qt/components/mediacenter/mlgenremodel.cpp \
 	gui/qt/components/mediacenter/mlgenremodel.hpp \
+	gui/qt/components/mediacenter/mlvideo.hpp \
+	gui/qt/components/mediacenter/mlvideo.cpp \
+	gui/qt/components/mediacenter/mlvideomodel.cpp \
+	gui/qt/components/mediacenter/mlvideomodel.hpp \
 	gui/qt/components/mediacenter/navigation_history.cpp \
 	gui/qt/components/mediacenter/navigation_history.hpp \
 	gui/qt/components/playlist/playlist.cpp \
@@ -259,6 +263,8 @@ nodist_libqt_plugin_la_SOURCES = \
 	gui/qt/components/mediacenter/mlalbumtrackmodel.moc.cpp \
 	gui/qt/components/mediacenter/mlartistmodel.moc.cpp \
 	gui/qt/components/mediacenter/mlgenremodel.moc.cpp \
+	gui/qt/components/mediacenter/mlvideomodel.moc.cpp \
+	gui/qt/components/mediacenter/mlvideo.moc.cpp \
 	gui/qt/components/mediacenter/navigation_history.moc.cpp \
 	gui/qt/components/playlist/playlist.moc.cpp \
 	gui/qt/components/playlist/qml_main_context.moc.cpp \

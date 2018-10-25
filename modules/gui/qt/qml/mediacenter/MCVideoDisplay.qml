@@ -21,7 +21,157 @@
  *****************************************************************************/
 
 import QtQuick 2.0
+import QtQuick.Controls 2.0
+import QtQml.Models 2.2
 
-Rectangle {
-    color: "red"
+import org.videolan.medialib 0.1
+
+import "qrc:///utils/" as Utils
+import "qrc:///style/"
+
+Utils.NavigableFocusScope {
+    id: root
+
+    property alias model: delegateModel.model
+
+    Utils.SelectableDelegateModel {
+        id: delegateModel
+        model: MLVideoModel {
+            ml: medialib
+        }
+
+        delegate: Package {
+            id: element
+            Utils.GridItem {
+                Package.name: "grid"
+                image: model.thumbnail || VLCStyle.noArtCover
+                title: model.title || qsTr("Unknown title")
+                selected: element.DelegateModel.inSelected || view.currentItem.currentIndex === index
+                shiftX: view.currentItem.shiftX(model.index)
+
+                onItemClicked : {
+                    delegateModel.updateSelection( modifier , view.currentItem.currentIndex, index)
+                    view.currentItem.currentIndex = index
+                    view.currentItem.forceActiveFocus()
+                }
+                onPlayClicked: medialib.addAndPlay( model.id )
+                onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
+            }
+
+            Utils.ListItem {
+                Package.name: "list"
+                width: root.width
+                height: VLCStyle.icon_normal
+
+                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, this.activeFocus)
+
+                cover: Image {
+                    id: cover_obj
+                    fillMode: Image.PreserveAspectFit
+                    source: model.thumbnail || VLCStyle.noArtCover
+                }
+                line1: (model.title || qsTr("Unknown title"))+" ["+model.duration+"]"
+
+                onItemClicked : {
+                    delegateModel.updateSelection( modifier, view.currentItem.currentIndex, index )
+                    view.currentItem.currentIndex = index
+                    this.forceActiveFocus()
+                }
+                onPlayClicked: medialib.addAndPlay( model.id )
+                onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
+            }
+        }
+        function actionAtIndex(index) {
+            var list = []
+            for (var i = 0; i < delegateModel.selectedGroup.count; i++)
+                list.push(delegateModel.selectedGroup.get(i).model.id)
+            medialib.addAndPlay( list )
+        }
+    }
+    Component {
+        id: gridComponent
+
+        Utils.KeyNavigableGridView {
+            id: gridView_id
+
+            model: delegateModel.parts.grid
+            modelCount: delegateModel.items.count
+
+            focus: true
+
+            cellWidth: VLCStyle.cover_normal + VLCStyle.margin_small
+            cellHeight: VLCStyle.cover_normal + VLCStyle.fontHeight_normal + VLCStyle.margin_small
+
+            onSelectAll: delegateModel.selectAll()
+            onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onActionAtIndex: delegateModel.actionAtIndex(index)
+
+            onActionLeft: root.actionLeft(index)
+            onActionRight: root.actionRight(index)
+            onActionDown: root.actionDown(index)
+            onActionUp: root.actionUp(index)
+            onActionCancel: root.actionCancel(index)
+        }
+    }
+
+    Component {
+        id: listComponent
+        /* ListView */
+        Utils.KeyNavigableListView {
+            id: listView_id
+
+            model: delegateModel.parts.list
+            modelCount: delegateModel.items.count
+
+            focus: true
+            spacing: VLCStyle.margin_xxxsmall
+
+            onSelectAll: delegateModel.selectAll()
+            onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onActionAtIndex: delegateModel.actionAtIndex(index)
+
+            onActionLeft: root.actionLeft(index)
+            onActionRight: root.actionRight(index)
+            onActionDown: root.actionDown(index)
+            onActionUp: root.actionUp(index)
+            onActionCancel: root.actionCancel(index)
+        }
+    }
+
+    StackView {
+        id: view
+
+        anchors.fill: parent
+        focus: true
+
+        initialItem: medialib.gridView ? gridComponent : listComponent
+
+        replaceEnter: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 0
+                to:1
+                duration: 500
+            }
+        }
+
+        replaceExit: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 1
+                to:0
+                duration: 500
+            }
+        }
+
+        Connections {
+            target: medialib
+            onGridViewChanged: {
+                if (medialib.gridView)
+                    view.replace(gridComponent)
+                else
+                    view.replace(listComponent)
+            }
+        }
+    }
 }

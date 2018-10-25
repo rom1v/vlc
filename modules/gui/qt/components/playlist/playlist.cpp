@@ -38,6 +38,7 @@
 #include "components/mediacenter/mlartistmodel.hpp"
 #include "components/mediacenter/mlalbumtrackmodel.hpp"
 #include "components/mediacenter/mlgenremodel.hpp"
+#include "components/mediacenter/mlvideomodel.hpp"
 
 #include "components/mediacenter/navigation_history.hpp"
 
@@ -87,11 +88,13 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
         qmlRegisterType<MLArtistModel>( "org.videolan.medialib", 0, 1, "MLArtistModel" );
         qmlRegisterType<MLAlbumTrackModel>( "org.videolan.medialib", 0, 1, "MLAlbumTrackModel" );
         qmlRegisterType<MLGenreModel>( "org.videolan.medialib", 0, 1, "MLGenreModel" );
+        qmlRegisterType<MLVideoModel>( "org.videolan.medialib", 0, 1, "MLVideoModel" );
         //expose base object, they aren't instanciable from QML side
         qmlRegisterType<MLAlbum>();
         qmlRegisterType<MLArtist>();
         qmlRegisterType<MLAlbumTrack>();
         qmlRegisterType<MLGenre>();
+        qmlRegisterType<MLVideo>();
 
 
         qmlRegisterUncreatableType<NavigationHistory>("org.videolan.medialib", 0, 1, "History", "Type of global variable history" );
