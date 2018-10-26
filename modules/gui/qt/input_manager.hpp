@@ -37,40 +37,16 @@
 
 #include <QObject>
 #include <QEvent>
-class QSignalMapper;
+#include <QAbstractListModel>
+#include <vlc_cxx_helpers.hpp>
 
-enum { NORMAL,    /* loop: 0, repeat: 0 */
-       REPEAT_ONE,/* loop: 0, repeat: 1 */
-       REPEAT_ALL,/* loop: 1, repeat: 0 */
-};
+class QSignalMapper;
 
 class IMEvent : public QEvent
 {
 public:
     enum event_types {
-        PositionUpdate = QEvent::User + IMEventTypeOffset + 1,
-        ItemChanged,
-        ItemStateChanged,
-        ItemTitleChanged,
-        ItemRateChanged,
-        ItemEsChanged,
-        ItemTeletextChanged,
-        InterfaceVoutUpdate,
-        StatisticsUpdate,
-        MetaChanged, /* 10 */
-        InfoChanged,
-        SynchroChanged,
-        CachingEvent,
-        BookmarksChanged,
-        RecordingEvent,
-        ProgramChanged,
-        RandomChanged,
-        LoopOrRepeatChanged,
-        EPGEvent,
-        CapabilitiesChanged, /* 20 */
-    /*    SignalChanged, */
-
-        FullscreenControlToggle = QEvent::User + IMEventTypeOffset + 50,
+        FullscreenControlToggle = QEvent::User + IMEventTypeOffset + 1,
         FullscreenControlShow,
         FullscreenControlHide,
         FullscreenControlPlanHide,
@@ -89,257 +65,407 @@ public:
             input_item_Release( p_item );
     }
 
-    input_item_t *item() const { return p_item; };
+    input_item_t *item() const { return p_item; }
 
 private:
     input_item_t *p_item;
 };
 
-class PLEvent : public QEvent
-{
-public:
-    enum PLEventTypes
-    {
-        PLItemAppended = QEvent::User + PLEventTypeOffset + 1,
-        PLItemRemoved,
-        LeafToParent,
-        PLEmpty
-    };
-
-    PLEvent( PLEventTypes t, int i, int p = 0 )
-        : QEvent( (QEvent::Type)(t) ), i_item(i), i_parent(p) {}
-    int getItemId() const { return i_item; };
-    int getParentId() const { return i_parent; };
-
-private:
-    /* Needed for "playlist-item*" and "leaf-to-parent" callbacks
-     * !! Can be a input_item_t->i_id or a playlist_item_t->i_id */
-    int i_item;
-    // Needed for "playlist-item-append" callback, notably
-    int i_parent;
-};
-
-class MainInputManager;
-
-class InputManager : public QObject
+class InputManagerPrivate;
+class InputManager : public QObject, public Singleton<InputManager>
 {
     Q_OBJECT
-    friend class MainInputManager;
+    friend class Singleton<InputManager>;
+    friend class VLCMenuBar;
 
 public:
-    InputManager( MainInputManager *, intf_thread_t * );
-    virtual ~InputManager();
+    enum ABLoopState {
+        ABLOOP_STATE_NONE= VLC_PLAYER_ABLOOP_NONE,
+        ABLOOP_STATE_A = VLC_PLAYER_ABLOOP_A,
+        ABLOOP_STATE_B = VLC_PLAYER_ABLOOP_B
+    };
+    Q_ENUM(ABLoopState)
 
-    void delInput();
-    bool hasInput() const { return p_input != NULL; }
+    enum PlayingState
+    {
+        PLAYING_STATE_STARTED = VLC_PLAYER_STATE_STARTED,
+        PLAYING_STATE_PLAYING = VLC_PLAYER_STATE_PLAYING,
+        PLAYING_STATE_PAUSED = VLC_PLAYER_STATE_PAUSED,
+        PLAYING_STATE_STOPPING = VLC_PLAYER_STATE_STOPPING,
+        PLAYING_STATE_STOPPED = VLC_PLAYER_STATE_STOPPED
+    };
+    Q_ENUM(PlayingState)
 
-    int playingStatus() const;
-    bool hasAudio();
-    bool hasVideo() { return hasInput() && b_video; }
-    bool hasVisualisation();
+    enum PlaybackRepeat
+    {
+        PLAYBACK_REPEAT_NONE = VLC_PLAYLIST_PLAYBACK_REPEAT_NONE,
+        PLAYBACK_REPEAT_CURRENT = VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT,
+        PLAYBACK_REPEAT_ALL = VLC_PLAYLIST_PLAYBACK_REPEAT_ALL
+    };
+    Q_ENUM(PlaybackRepeat)
+
+    enum MediaStopAction
+    {
+        MEDIA_STOPPED_CONTINUE = VLC_PLAYER_MEDIA_STOPPED_CONTINUE,
+        MEDIA_STOPPED_PAUSE = VLC_PLAYER_MEDIA_STOPPED_PAUSE,
+        MEDIA_STOPPED_STOP = VLC_PLAYER_MEDIA_STOPPED_STOP,
+        MEDIA_STOPPED_EXIT = VLC_PLAYER_MEDIA_STOPPED_EXIT
+    };
+    Q_ENUM(MediaStopAction)
+
+    //playback
+    Q_PROPERTY(PlayingState playingState READ getPlayingState NOTIFY playingStateChanged)
+    Q_PROPERTY(bool isPlaying READ hasInput NOTIFY inputChanged)
+    Q_PROPERTY(QString name READ getName NOTIFY nameChanged)
+    Q_PROPERTY(float buffering READ getBuffering  NOTIFY bufferingChanged)
+    Q_PROPERTY(float rate READ getRate WRITE setRate NOTIFY rateChanged)
+
+    Q_PROPERTY(vlc_tick_t time READ getTime WRITE setTime NOTIFY timeChanged)
+    Q_PROPERTY(float position READ getPosition WRITE setPosition NOTIFY positionChanged)
+    Q_PROPERTY(vlc_tick_t length READ getLength NOTIFY lengthChanged)
+
+    Q_PROPERTY(bool seekable READ isSeekable NOTIFY seekableChanged)
+    Q_PROPERTY(bool rewindable READ isRewindable NOTIFY rewindableChanged)
+    Q_PROPERTY(bool pausable READ isPausable NOTIFY pausableChanged)
+    Q_PROPERTY(bool recordable READ isRecordable NOTIFY recordableChanged)
+    Q_PROPERTY(bool ratechangable READ isRateChangable NOTIFY rateChangableChanged)
+
+    //playlist
+    Q_PROPERTY(bool hasNext READ hasNext NOTIFY hasNextChanged)
+    Q_PROPERTY(bool hasPrev READ hasPrev NOTIFY hasPrevChanged)
+    Q_PROPERTY(bool random READ isRandom WRITE setRandom NOTIFY randomChanged )
+    Q_PROPERTY(PlaybackRepeat repeatMode READ getRepeatMode WRITE setRepeatMode NOTIFY repeatModeChanged)
+    Q_PROPERTY(MediaStopAction mediaStopAction READ getMediaStopAction WRITE setMediaStopAction NOTIFY mediaStopActionChanged)
+
+    //tracks
+    Q_PROPERTY(QAbstractListModel* videoTracks READ getVideoTracks CONSTANT)
+    Q_PROPERTY(QAbstractListModel* audioTracks READ getAudioTracks CONSTANT)
+    Q_PROPERTY(QAbstractListModel* subtitleTracks READ getSubtitleTracks CONSTANT)
+
+    Q_PROPERTY(vlc_tick_t audioDelay READ getAudioDelay WRITE setAudioDelay NOTIFY audioDelayChanged)
+    Q_PROPERTY(vlc_tick_t subtitleDelay READ getSubtitleDelay WRITE setSubtitleDelay NOTIFY subtitleDelayChanged)
+    Q_PROPERTY(float subtitleFPS READ getSubtitleFPS WRITE setSubtitleFPS NOTIFY subtitleFPSChanged)
+
+    //title/chapters/menu
+    Q_PROPERTY(QAbstractListModel* titles READ getTitles CONSTANT)
+    Q_PROPERTY(QAbstractListModel* chapters READ getChapters CONSTANT)
+
+    Q_PROPERTY(bool hasTitles READ hasTitles NOTIFY hasTitlesChanged)
+    Q_PROPERTY(bool hasChapters READ hasChapters NOTIFY hasChaptersChanged)
+    Q_PROPERTY(bool hasMenu READ hasMenu NOTIFY hasMenuChanged)
+
+    //programs
+    Q_PROPERTY(QAbstractListModel* programs READ getPrograms CONSTANT)
+    Q_PROPERTY(bool isEncrypted READ isEncrypted NOTIFY isEncryptedChanged)
+
+    //teletext
+    Q_PROPERTY(bool teletextEnabled READ isTeletextEnabled WRITE enableTeletext NOTIFY teletextEnabledChanged)
+    Q_PROPERTY(bool isTeletextAvailable READ isTeletextAvailable  NOTIFY teletextAvailableChanged)
+    Q_PROPERTY(int teletextPage READ getTeletextPage WRITE setTeletextPage NOTIFY teletextPageChanged)
+    Q_PROPERTY(bool teletextTransparency READ getTeletextTransparency WRITE setTeletextTransparency NOTIFY teletextTransparencyChanged)
+
+    //vout properties
+    Q_PROPERTY(bool hasVideoOutput READ hasVideoOutput NOTIFY hasVideoOutputChanged)
+    Q_PROPERTY(QAbstractListModel* zoom READ getZoom CONSTANT)
+    Q_PROPERTY(QAbstractListModel* aspectRatio READ getAspectRatio CONSTANT)
+    Q_PROPERTY(QAbstractListModel* crop READ getCrop CONSTANT)
+    Q_PROPERTY(QAbstractListModel* deinterlace READ getDeinterlace CONSTANT)
+    Q_PROPERTY(QAbstractListModel* deinterlaceMode READ getDeinterlaceMode CONSTANT)
+    Q_PROPERTY(bool fullscreen READ isFullscreen WRITE setFullscreen NOTIFY fullscreenChanged)
+    Q_PROPERTY(bool wallpaperMode READ getWallpaperMode WRITE setWallpaperMode NOTIFY wallpaperModeChanged)
+    Q_PROPERTY(bool autoscale READ getAutoscale WRITE setAutoscale NOTIFY autoscaleChanged)
+
+    //aout properties
+    Q_PROPERTY(float volume READ getVolume WRITE setVolume NOTIFY volumeChanged)
+    Q_PROPERTY(bool muted READ isMuted WRITE setMuted NOTIFY soundMuteChanged)
+    Q_PROPERTY(QAbstractListModel* audioStereoMode READ getAudioStereoMode CONSTANT)
+    Q_PROPERTY(QAbstractListModel* audioVisualization READ getAudioVisualizations CONSTANT)
+    Q_PROPERTY(bool hasAudioVisualization READ hasAudioVisualization NOTIFY hasAudioVisualizationChanged)
+
+    //misc
+    Q_PROPERTY(bool recording READ isRecording WRITE setRecording NOTIFY recordingChanged)
+    Q_PROPERTY(ABLoopState ABloopState READ getABloopState WRITE setABloopState NOTIFY ABLoopStateChanged)
+    Q_PROPERTY(vlc_tick_t ABLoopA READ getABLoopA NOTIFY ABLoopAChanged)
+    Q_PROPERTY(vlc_tick_t ABLoopB READ getABLoopB NOTIFY ABLoopBChanged)
+
+    /* exposed actions */
+public slots:
+    //playback
+    Q_INVOKABLE void play();
+    Q_INVOKABLE void pause();
+    Q_INVOKABLE void stop();
+    Q_INVOKABLE void next();
+    Q_INVOKABLE void prev();
+    Q_INVOKABLE void prevOrReset();
+    Q_INVOKABLE void togglePlayPause();
+
+    Q_INVOKABLE void reverse();
+    Q_INVOKABLE void slower();
+    Q_INVOKABLE void faster();
+    Q_INVOKABLE void littlefaster();
+    Q_INVOKABLE void littleslower();
+    Q_INVOKABLE void normalRate();
+
+    Q_INVOKABLE void jumpFwd();
+    Q_INVOKABLE void jumpBwd();
+    Q_INVOKABLE void jumpToTime( vlc_tick_t i_time );
+    Q_INVOKABLE void jumpToPos( float );
+    Q_INVOKABLE void frameNext();
+
+    //playlist
+    Q_INVOKABLE void toggleRandom();
+    Q_INVOKABLE void toggleRepeatMode();
+    Q_INVOKABLE void activatePlayQuit( bool );
+
+    //title/chapters/menu
+    Q_INVOKABLE void sectionNext();
+    Q_INVOKABLE void sectionPrev();
+    Q_INVOKABLE void sectionMenu();
+
+    Q_INVOKABLE void chapterNext();
+    Q_INVOKABLE void chapterPrev();
+    Q_INVOKABLE void titleNext();
+    Q_INVOKABLE void titlePrev();
+
+    //programs
+    Q_INVOKABLE void changeProgram( int );
+
+    //vout properties
+    Q_INVOKABLE void toggleFullscreen();
+
+    //aout properties
+    Q_INVOKABLE void setVolumeUp();
+    Q_INVOKABLE void setVolumeDown();
+    Q_INVOKABLE void toggleMuted();
+
+    //misc
+    Q_INVOKABLE void toggleABloopState();
+    Q_INVOKABLE void snapshot();
+    Q_INVOKABLE void toggleRecord();
+
+public:
+    template<typename T>
+    inline static void* holdAsVlcObject(T* obj){
+        return vlc_object_hold(obj);
+    }
+    template<typename T>
+    inline static void releaseAsVlcObject(T* obj)
+    {
+        return vlc_object_release(obj);
+    }
+
+    typedef vlc_shared_data_ptr_type(vout_thread_t,
+                                     InputManager::holdAsVlcObject<vout_thread_t>,
+                                     InputManager::releaseAsVlcObject<vout_thread_t>) VoutPtr;
+    typedef vlc_shared_data_ptr_type(audio_output_t,
+                                     InputManager::holdAsVlcObject<audio_output_t>,
+                                     InputManager::releaseAsVlcObject<audio_output_t>) AoutPtr;
+    typedef QVector<VoutPtr> VoutPtrList;
+
+
+public:
+    input_item_t *getInput();
+
+    VoutPtr getVout();
+    VoutPtrList getVouts() const;
+    InputManager::AoutPtr getAout();
+    int AddAssociatedMedia(enum es_format_category_e cat, const QString& uri, bool select, bool notify, bool check_ext);
+
+    bool isPlaylistEmpty();
+
     void requestArtUpdate( input_item_t *p_item, bool b_forced );
     void setArt( input_item_t *p_item, QString fileUrl );
-
-    QString getName() { return oldName; }
     static const QString decodeArtURL( input_item_t *p_item );
 
-private:
-    intf_thread_t  *p_intf;
-    MainInputManager* p_mim;
-    input_thread_t *p_input;
-    vlc_object_t   *p_input_vbi;
-    input_item_t   *p_item;
-    int             i_old_playing_status;
-    QString         oldName;
-    QString         lastURI;
-    QString         artUrl;
-    float           f_rate;
-    float           f_cache;
-    bool            b_video;
-    vlc_tick_t      timeA, timeB;
-
-    void customEvent( QEvent * );
-
-    void addCallbacks();
-    void delCallbacks();
-
-    void UpdateRate();
-    void UpdateName();
-    void UpdateStatus();
-    void UpdateNavigation();
-    void UpdateCapabilities();
-    void UpdatePosition();
-    void UpdateTeletext();
-    void UpdateArt();
-    void UpdateInfo();
-    void UpdateMeta();
-    void UpdateMeta(input_item_t *);
-    void UpdateVout();
-    void UpdateStats();
-    void UpdateCaching();
-    void UpdateRecord();
-    void UpdateProgramEvent();
-    void UpdateEPG();
-
-    void setInput( input_thread_t * );
-
+    //getter/setters binded to a Q_PROPERTY
 public slots:
-    void inputChangedHandler(); ///< Our controlled input changed
-    void sliderUpdate( float ); ///< User dragged the slider. We get new pos
-    /* SpeedRate Rate Management */
-    void reverse();
-    void slower();
-    void faster();
-    void littlefaster();
-    void littleslower();
-    void normalRate();
-    void setRate( int );
-    /* Jumping */
-    void jumpFwd();
-    void jumpBwd();
-    /* Menus */
-    void sectionNext();
-    void sectionPrev();
-    void sectionMenu();
-    /* Program */
-    void changeProgram( int );
-    /* Teletext */
-    void telexSetPage( int );          ///< Goto teletext page
-    void telexSetTransparency( bool ); ///< Transparency on teletext background
-    void activateTeletext( bool );     ///< Toggle buttons after click
-    /* A to B Loop */
-    void setAtoB();
+    //playback
+    PlayingState getPlayingState() const;
+    bool hasInput() const;
+    QString getName() const;
+    float getBuffering() const;
+    float getRate() const;
+    void setRate( float );
+    vlc_tick_t getTime() const;
+    void setTime(vlc_tick_t);
+    float getPosition() const;
+    void setPosition(float);
+    vlc_tick_t getLength() const;
+    bool isSeekable() const;
+    bool isRewindable() const;
+    bool isPausable() const;
+    bool isRecordable() const;
+    bool isRateChangable() const;
 
-private slots:
-    void AtoBLoop( float, vlc_tick_t, int );
+    //playlist
+    bool hasNext() const;
+    bool hasPrev() const;
+    bool isRandom() const;
+    void setRandom( bool );
+    PlaybackRepeat getRepeatMode() const;
+    void setRepeatMode( InputManager::PlaybackRepeat mode );
+    MediaStopAction getMediaStopAction() const;
+    void setMediaStopAction(MediaStopAction );
+
+    //tracks
+    QAbstractListModel* getVideoTracks();
+    QAbstractListModel* getAudioTracks();
+    QAbstractListModel* getSubtitleTracks();
+
+    vlc_tick_t getAudioDelay() const;
+    void setAudioDelay( vlc_tick_t );
+    vlc_tick_t getSubtitleDelay() const;
+    void setSubtitleDelay( vlc_tick_t );
+    float getSubtitleFPS( ) const;
+    void setSubtitleFPS( float );
+
+    //title/chapters/menu
+    QAbstractListModel* getTitles();
+    QAbstractListModel* getChapters();
+    bool hasTitles() const;
+    bool hasChapters() const;
+    bool hasMenu()  const;
+
+    //programs
+    QAbstractListModel* getPrograms();
+    bool isEncrypted() const;
+
+    //teletext
+    bool isTeletextEnabled() const;
+    void enableTeletext(bool enable);
+    bool isTeletextAvailable() const;
+    int getTeletextPage() const;
+    void setTeletextPage(int page);
+    bool getTeletextTransparency() const;
+    void setTeletextTransparency( bool transparent );
+
+    //vout properties
+    bool hasVideoOutput() const;
+    QAbstractListModel* getZoom();
+    QAbstractListModel* getAspectRatio();
+    QAbstractListModel* getCrop();
+    QAbstractListModel* getDeinterlace();
+    QAbstractListModel* getDeinterlaceMode();
+    bool isFullscreen() const;
+    void setFullscreen( bool );
+    bool getWallpaperMode() const;
+    void setWallpaperMode( bool );
+    bool getAutoscale() const;
+    void setAutoscale( bool );
+
+    //aout properties
+    float getVolume() const;
+    void setVolume( float volume );
+    bool isMuted() const;
+    void setMuted( bool muted );
+    QAbstractListModel* getAudioStereoMode();
+    QAbstractListModel* getAudioVisualizations();
+    bool hasAudioVisualization() const;
+
+
+    //misc
+    bool isRecording() const;
+    void setRecording(bool record);
+    void setABloopState(ABLoopState);
+    ABLoopState getABloopState() const;
+    vlc_tick_t getABLoopA() const;
+    vlc_tick_t getABLoopB() const;
 
 signals:
-    /// Send new position, new time and new length
-    void positionUpdated( float , vlc_tick_t, int );
-    void remainingTimeChanged( bool );
-    void seekRequested( float pos );
-    void rateChanged( float );
+    //playback
+    void playingStateChanged( PlayingState );
+    void inputChanged( bool );
     void nameChanged( const QString& );
-    /// Used to signal whether we should show navigation buttons
-    void titleChanged( bool );
-    void chapterChanged( bool );
-    void inputCanSeek( bool );
-    /// You can resume playback
+    void bufferingChanged( float );
+    void rateChanged( float );
+
+    void timeChanged( vlc_tick_t );
+    void positionChanged( float );
+    void lengthChanged( vlc_tick_t );
+    void positionUpdated( float , vlc_tick_t, int );
+    void seekRequested( float pos ); //not exposed through Q_PROPERTY
+
+    void remainingTimeChanged( bool );  //FIXME
+
+    void seekableChanged( bool );
+    void rewindableChanged( bool );
+    void pausableChanged( bool );
+    void recordableChanged( bool );
+    void rateChangableChanged( bool );
+
+    //playlist
+    void hasNextChanged( bool );
+    void hasPrevChanged( bool );
+    void randomChanged( bool );
+    void repeatModeChanged( InputManager::PlaybackRepeat );
+    void mediaStopActionChanged( MediaStopAction );
+
+    void playlistItemAppended( int itemId, int parentId );//fixme
+    void playlistItemRemoved( int itemId );//fixme
+    void playlistNotEmpty( bool ); //fixme
+
+    //tracks
+    void audioDelayChanged(vlc_tick_t);
+    void subtitleDelayChanged(vlc_tick_t);
+    void subtitleFPSChanged(float);
+
+    //title/chapters/menu
+    void hasTitlesChanged( bool );
+    void hasChaptersChanged( bool );
+    void hasMenuChanged( bool );
+
+    //program
+    void isEncryptedChanged( bool );
+
+    //teletext
+    void teletextEnabledChanged(bool);
+    void teletextAvailableChanged(bool);
+    void teletextPageChanged(int);
+    void teletextTransparencyChanged(bool);
+
+    //vout properties
+    void hasVideoOutputChanged( bool );
+    void fullscreenChanged( bool );
+    void wallpaperModeChanged( bool );
+    void autoscaleChanged( bool );
+    void voutListChanged( vout_thread_t **pp_vout, int i_vout );
+
+    //aout properties
+    void volumeChanged( float );
+    void soundMuteChanged( bool );
+    void hasAudioVisualizationChanged( bool );
+
+    //misc
+    void recordingChanged( bool );
+    void ABLoopStateChanged(ABLoopState);
+    void ABLoopAChanged(vlc_tick_t);
+    void ABLoopBChanged(vlc_tick_t);
+
+    // Other signals
+
+    // You can resume playback
     void resumePlayback( vlc_tick_t );
-    /// Statistics are updated
-    void statisticsUpdated( input_item_t* );
+    // Statistics are updated
+    void statisticsUpdated( const input_stats_t& stats );
     void infoChanged( input_item_t* );
     void currentMetaChanged( input_item_t* );
     void metaChanged( input_item_t *);
     void artChanged( QString ); /* current item art ( same as item == NULL ) */
     void artChanged( input_item_t * );
-    /// Play/pause status
-    void playingStatusChanged( int );
-    void recordingStateChanged( bool );
-    /// Teletext
-    void teletextPossible( bool );
-    void teletextActivated( bool );
-    void teletextTransparencyActivated( bool );
-    void newTelexPageSet( int );
-    /// Advanced buttons
-    void AtoBchanged( bool, bool );
-    /// Vout
-    void voutChanged( bool );
-    void voutListChanged( vout_thread_t **pp_vout, int i_vout );
-    /// Other
-    void synchroChanged();
+
     void bookmarksChanged();
-    void cachingChanged( float );
-    /// Program Event changes
-    void encryptionChanged( bool );
+    // Program Event changes
     void epgChanged();
-};
-
-class MainInputManager : public QObject, public Singleton<MainInputManager>
-{
-    Q_OBJECT
-    friend class Singleton<MainInputManager>;
-    friend class VLCMenuBar;
-
-public:
-    input_thread_t *getInput() { return p_input; }
-    InputManager *getIM() { return im; }
-    inline input_item_t *currentInputItem()
-    {
-        return ( p_input ? input_GetItem( p_input ) : NULL );
-    }
-
-    vout_thread_t* getVout();
-    QVector<vout_thread_t*> getVouts() const;
-    audio_output_t *getAout();
-
-    bool getPlayExitState();
-    bool hasEmptyPlaylist();
-
-    void requestVoutUpdate() { return im->UpdateVout(); }
-    // Probe for initial input. Doing this from the constructor would cause
-    // the getInstance to call itself recursively from the inputChangedHandler
-    void probeCurrentInput();
-
-protected:
-    QSignalMapper *menusAudioMapper;
-
-private:
-    MainInputManager( intf_thread_t * );
-    virtual ~MainInputManager();
-
-    void customEvent( QEvent * );
-
-    InputManager            *im;
-    input_thread_t          *p_input;
-    intf_thread_t           *p_intf;
-    QVLCBool random, repeat, loop;
-    QVLCFloat volume;
-    QVLCBool mute;
-
-private:
-    static int ItemChanged( vlc_object_t *, const char *,
-                            vlc_value_t, vlc_value_t, void * );
-    static int LeafToParent( vlc_object_t *, const char *,
-                            vlc_value_t, vlc_value_t, void * );
-    static int PLItemChanged( vlc_object_t *, const char *,
-                            vlc_value_t, vlc_value_t, void * );
-    static int PLItemAppended( vlc_object_t *, const char *,
-                            vlc_value_t, vlc_value_t, void * );
-    static int PLItemRemoved( vlc_object_t *, const char *,
-                            vlc_value_t, vlc_value_t, void * );
-
-public slots:
-    void togglePlayPause();
-    void play();
-    void pause();
-    void toggleRandom();
-    void stop();
-    void next();
-    void prev();
-    void prevOrReset();
-    void activatePlayQuit( bool );
-
-    void loopRepeatLoopStatus();
-    void changeFullscreen( bool );
 
 private slots:
-    void notifyRandom( bool );
-    void notifyRepeatLoop( bool );
-    void notifyVolume( float );
-    void notifyMute( bool );
     void menusUpdateAudio( const QString& );
 
-signals:
-    void inputChanged( bool );
-    void volumeChanged( float );
-    void soundMuteChanged( bool );
-    void playlistItemAppended( int itemId, int parentId );
-    void playlistItemRemoved( int itemId );
-    void playlistNotEmpty( bool );
-    void randomChanged( bool );
-    void repeatLoopChanged( int );
-    void leafBecameParent( int );
+private:
+    InputManager( intf_thread_t * );
+    virtual ~InputManager();
+    Q_DECLARE_PRIVATE(InputManager)
+    QScopedPointer<InputManagerPrivate> d_ptr;
+    QSignalMapper *menusAudioMapper; //used by VLCMenuBar
 };
 
 #endif

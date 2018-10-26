@@ -31,7 +31,8 @@
 
 #include <vlc_common.h>
 #include <vlc_interface.h> /* intf_thread_t */
-#include <vlc_playlist_legacy.h>  /* playlist_t */
+#include <vlc_playlist.h>  /* playlist_t */
+#include <vlc_player.h>  /* vlc_player_t */
 
 #include <qconfig.h>
 
@@ -63,6 +64,7 @@ enum{
     NOTIFICATION_ALWAYS = 2,
 };
 
+class InputManager;
 struct intf_sys_t
 {
     vlc_thread_t thread;
@@ -77,6 +79,9 @@ struct intf_sys_t
     unsigned voutWindowType; /* Type of vout_window_t provided */
     bool b_isDialogProvider; /* Qt mode or Skins mode */
     playlist_t *p_playlist;  /* playlist */
+    vlc_player_t *p_player; /* player */
+
+    InputManager* p_mainPlayerControler;
 #ifdef _WIN32
     bool disable_volume_keys;
 #endif
@@ -107,9 +112,30 @@ struct vlc_playlist_locker {
         playlist_t* p_playlist;
 };
 
+/**
+ * This class may be used for scope-bound locking/unlocking
+ * of a player_t*. As hinted, the player is locked when
+ * the object is created, and unlocked when the object is
+ * destroyed.
+ */
+struct vlc_player_locker {
+    vlc_player_locker( vlc_player_t* p_player )
+        : p_player( p_player )
+    {
+        vlc_player_Lock( p_player );
+    }
+
+    ~vlc_player_locker()
+    {
+        vlc_player_Unlock( p_player );
+    }
+
+    private:
+        vlc_player_t* p_player;
+};
+
 #define THEDP DialogsProvider::getInstance()
-#define THEMIM MainInputManager::getInstance( p_intf )
-#define THEAM ActionsManager::getInstance( p_intf )
+#define THEMIM p_intf->p_sys->p_mainPlayerControler
 
 #define qfu( i ) QString::fromUtf8( i )
 #define qfue( i ) QString::fromUtf8( i ).replace( "&", "&&" ) /* for actions/buttons */

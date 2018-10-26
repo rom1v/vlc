@@ -453,6 +453,7 @@ static int Open( vlc_object_t *p_this, bool isDialogProvider )
         p_sys->p_playlist = pl_Get( (intf_thread_t *)p_intf->obj.parent );
     else
         p_sys->p_playlist = pl_Get( p_intf );
+    p_sys->p_player = vlc_playlist_GetPlayer( vlc_intf_GetMainPlaylist( p_intf ) );
 
     /* */
     vlc_sem_init (&ready, 0);
@@ -609,8 +610,7 @@ static void *Thread( void *obj )
 
     /* Initialize the Dialog Provider and the Main Input Manager */
     DialogsProvider::getInstance( p_intf );
-    MainInputManager* mim = MainInputManager::getInstance( p_intf );
-    mim->probeCurrentInput();
+    p_sys->p_mainPlayerControler = new InputManager(p_intf);
 
 #ifdef UPDATE_CHECK
     /* Checking for VLC updates */
@@ -734,10 +734,8 @@ static void *Thread( void *obj )
 
     /* */
     delete p_sys->pl_model;
-
-    /* Destroy the MainInputManager */
-    MainInputManager::killInstance();
-
+    /* Destroy the main InputManager */
+    delete p_sys->p_mainPlayerControler;
     /* Delete the configuration. Application has to be deleted after that. */
     delete p_sys->mainSettings;
 
