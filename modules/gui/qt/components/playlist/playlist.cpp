@@ -48,12 +48,15 @@
 
 #include "input_manager.hpp"                      /* art signal */
 #include "main_interface.hpp"                     /* DropEvent TODO remove this*/
+#include "qml_main_context.hpp"
 
 #include <QMenu>
 #include <QSignalMapper>
 #include <QSlider>
 #include <QStackedWidget>
 #include <QtQml/QQmlContext>
+
+using  namespace vlc::playlist;
 
 /**********************************************************************
  * Playlist Widget. The embedded playlist
@@ -95,11 +98,14 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
         NavigationHistory* navigation_history = new NavigationHistory(this);
         rootCtx->setContextProperty( "history", navigation_history );
 
-        vlc_playlist_t *raw_playlist = vlc_intf_GetMainPlaylist(p_intf);
-        if (!raw_playlist) throw std::bad_alloc();
-        auto *playlistModel = new vlc::playlist::PlaylistModel(raw_playlist, this);
+        //auto mainplaylistptr = new PlaylistPtr(p_intf->p_sys->p_playlist, mediacenterView);
+        //qRegisterMetaType<PlaylistPtr>();
+        qRegisterMetaType<PlaylistPtr>();
+        qmlRegisterType<PlaylistListModel>( "org.videolan.vlc", 0, 1, "PlaylistListModel" );
+        qmlRegisterType<PlaylistControlerModel>( "org.videolan.vlc", 0, 1, "PlaylistControlerModel" );
 
-        rootCtx->setContextProperty( "playlist", playlistModel);
+        QmlMainContext* mainCtx = new QmlMainContext(_p_i, this);
+        rootCtx->setContextProperty( "mainctx", mainCtx);
 
         mediacenterView->setSource( QUrl ( QStringLiteral("qrc:/qml/MainInterface.qml") ) );
         mediacenterView->setResizeMode( QQuickWidget::SizeRootObjectToView );

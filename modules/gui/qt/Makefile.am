@@ -139,6 +139,8 @@ libqt_plugin_la_SOURCES = \
 	gui/qt/components/mediacenter/navigation_history.hpp \
 	gui/qt/components/playlist/playlist.cpp \
 	gui/qt/components/playlist/playlist.hpp \
+	gui/qt/components/playlist/qml_main_context.cpp \
+	gui/qt/components/playlist/qml_main_context.hpp \
 	gui/qt/components/playlist_new/media.hpp \
 	gui/qt/components/playlist_new/playlist_common.cpp \
 	gui/qt/components/playlist_new/playlist_common.hpp \
@@ -262,6 +264,7 @@ nodist_libqt_plugin_la_SOURCES = \
 	gui/qt/components/mediacenter/mlgenremodel.moc.cpp \
 	gui/qt/components/mediacenter/navigation_history.moc.cpp \
 	gui/qt/components/playlist/playlist.moc.cpp \
+	gui/qt/components/playlist/qml_main_context.moc.cpp \
 	gui/qt/components/playlist_new/playlist_common.moc.cpp \
 	gui/qt/components/playlist_new/playlist_model.moc.cpp \
 	gui/qt/components/playlist_new/playlist_controler.moc.cpp \
