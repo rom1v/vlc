@@ -41,6 +41,7 @@
 #include <vlc_playlist_new.h>
 #include <vlc_aout.h>
 
+#include "input.h"
 #include "../vlc.h"
 #include "../libs.h"
 
@@ -53,8 +54,7 @@ static int vlclua_volume_set( lua_State *L )
     if( i_volume < 0 )
         i_volume = 0;
 
-    vlc_playlist_t *playlist = vlclua_get_playlist_internal(L);
-    vlc_player_t *player = vlc_playlist_GetPlayer(playlist);
+    vlc_player_t *player = vlclua_get_player_internal(L);
     float volume = i_volume / (float) AOUT_VOLUME_DEFAULT;
     int i_ret = vlc_player_aout_SetVolume(player, volume);
 
@@ -63,8 +63,7 @@ static int vlclua_volume_set( lua_State *L )
 
 static int vlclua_volume_get( lua_State *L )
 {
-    vlc_playlist_t *playlist = vlclua_get_playlist_internal(L);
-    vlc_player_t *player = vlc_playlist_GetPlayer(playlist);
+    vlc_player_t *player = vlclua_get_player_internal(L);
     float volume = vlc_player_aout_GetVolume(player);
     long i_volume = lroundf(volume * AOUT_VOLUME_DEFAULT);
     lua_pushnumber( L, i_volume );
@@ -73,8 +72,7 @@ static int vlclua_volume_get( lua_State *L )
 
 static int vlclua_volume_up( lua_State *L )
 {
-    vlc_playlist_t *playlist = vlclua_get_playlist_internal(L);
-    vlc_player_t *player = vlc_playlist_GetPlayer(playlist);
+    vlc_player_t *player = vlclua_get_player_internal(L);
 
     int steps = luaL_optinteger(L, 1, 1);
 
@@ -87,8 +85,7 @@ static int vlclua_volume_up( lua_State *L )
 
 static int vlclua_volume_down( lua_State *L )
 {
-    vlc_playlist_t *playlist = vlclua_get_playlist_internal(L);
-    vlc_player_t *player = vlc_playlist_GetPlayer(playlist);
+    vlc_player_t *player = vlclua_get_player_internal(L);
 
     int steps = luaL_optinteger(L, 1, 1);
 

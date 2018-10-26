@@ -61,9 +61,7 @@
 *****************************************************************************/
 static audio_output_t *get_aout(lua_State *L)
 {
-    vlc_playlist_t *playlist = vlclua_get_playlist_internal(L);
-
-    vlc_player_t *player = vlc_playlist_GetPlayer(playlist);
+    vlc_player_t *player = vlclua_get_player_internal(L);
     audio_output_t *aout = vlc_player_aout_Hold(player);
 
     return aout;

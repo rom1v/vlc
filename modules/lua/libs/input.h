@@ -26,6 +26,6 @@
 
 #include "../vlc.h"
 
-input_thread_t * vlclua_get_input_internal( lua_State * );
+vlc_player_t *vlclua_get_player_internal(lua_State *);
 
 #endif

@@ -39,6 +39,12 @@
 #include "../libs.h"
 #include "input.h"
 
+static vout_thread_t *get_vout(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+    return vlc_player_vout_Hold(player);
+}
+
 /*****************************************************************************
  * OSD
  *****************************************************************************/
