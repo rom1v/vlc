@@ -493,6 +493,7 @@ libqt_plugin_la_RES = \
 	gui/qt/pixmaps/lock.svg \
 	gui/qt/qml/MainInterface.qml \
 	gui/qt/qml/BannerSources.qml \
+	gui/qt/qml/utils/DNDLabel.qml \
 	gui/qt/qml/utils/ToolTipArea.qml \
 	gui/qt/qml/utils/ExpandGridView.qml \
 	gui/qt/qml/utils/GridItem.qml \
