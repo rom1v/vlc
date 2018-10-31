@@ -23,7 +23,6 @@
 
 import QtQuick 2.0
 import QtQuick.Controls 2.0
-import QtQuick.Controls 1.4 as QC14
 import QtQml.Models 2.2
 import QtQuick.Layouts 1.3
 
@@ -129,13 +128,14 @@ Item {
         }
     }
 
-    QC14.SplitView {
+    RowLayout {
         anchors.fill: parent
         Utils.KeyNavigableListView {
-            id: artistList
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
+            Layout.preferredWidth: parent.width / 4
+            Layout.preferredHeight: parent.height
             Layout.minimumWidth: 250
+
+            id: artistList
             spacing: 2
             model: artistModel.parts.list
             modelCount: artistModel.items.count
@@ -147,6 +147,8 @@ Item {
         StackLayout {
             id: albumStackLayout
             currentIndex: (currentArtistIndex === -1) ? 0 : 1
+            Layout.preferredWidth: parent.width / 4
+            Layout.preferredHeight: parent.height
 
             Utils.KeyNavigableGridView {
                 id: artistGridView
