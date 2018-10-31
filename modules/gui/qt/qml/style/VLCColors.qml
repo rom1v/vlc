@@ -30,20 +30,14 @@ Item {
 
     function getBgColor(selected, hovered, focus)
     {
+        if (focus)
+            return bgHover
         if ( selected )
-        {
-            if (focus) return bgHover
             return bgHoverInactive
-        }
         else if (hovered)
-        {
             return bgHoverInactive
-        }
         else
-        {
-            if (focus) return bg
             return bgInactive
-        }
     }
 
     property color text: activePalette.text;
