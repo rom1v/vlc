@@ -31,43 +31,50 @@ import org.videolan.medialib 0.1
 import "qrc:///utils/" as Utils
 import "qrc:///style/"
 
-Rectangle {
+FocusScope {
     id: root
     property var model: []
-    color: VLCStyle.colors.bg
+    //color: VLCStyle.colors.bg
+    implicitHeight: layout.height
 
-    RowLayout {
+    Row {
+        id: layout
         spacing: VLCStyle.margin_xsmall
-        anchors.fill: parent
+        width: parent.width
+        height: expand_infos_id.height
 
         /* A bigger cover for the album */
         Image {
             id: expand_cover_id
 
-            Layout.preferredHeight: VLCStyle.cover_large
-            Layout.preferredWidth: VLCStyle.cover_large
-            Layout.alignment: Qt.AlignTop
-            Layout.margins: VLCStyle.margin_small
+            height: VLCStyle.cover_large
+            width: VLCStyle.cover_large
+            anchors {
+                top: parent.top
+                margins: VLCStyle.margin_small
+            }
 
             source: model.cover || VLCStyle.noArtCover
         }
 
-        ColumnLayout {
+        Column {
             id: expand_infos_id
 
             spacing: VLCStyle.margin_xsmall
-            Layout.fillWidth:  true
+            width: root.width - x
 
             /* The title of the albums */
             // Needs a rectangle too prevent the tracks from overlapping the title when scrolled
             Rectangle {
                 id: expand_infos_titleRect_id
                 height: expand_infos_title_id.implicitHeight
-                Layout.fillWidth:  true
-                Layout.alignment: Qt.AlignLeft
-                Layout.topMargin: VLCStyle.margin_small
-                Layout.leftMargin: VLCStyle.margin_small
-                Layout.rightMargin: VLCStyle.margin_small
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    topMargin: VLCStyle.margin_small
+                    leftMargin: VLCStyle.margin_small
+                    rightMargin: VLCStyle.margin_small
+                }
                 color: "transparent"
                 Text {
                     id: expand_infos_title_id
@@ -80,11 +87,14 @@ Rectangle {
             Rectangle {
                 id: expand_infos_subtitleRect_id
                 height: expand_infos_subtitle_id.implicitHeight
-                Layout.fillWidth:  true
-                Layout.alignment: Qt.AlignLeft
-                Layout.leftMargin: VLCStyle.margin_small
-                Layout.rightMargin: VLCStyle.margin_small
-                Layout.topMargin: VLCStyle.margin_xxsmall
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    topMargin: VLCStyle.margin_xxsmall
+                    leftMargin: VLCStyle.margin_small
+                    rightMargin: VLCStyle.margin_small
+                }
+
                 color: "transparent"
                 Text {
                     id: expand_infos_subtitle_id
@@ -101,22 +111,29 @@ Rectangle {
             MusicTrackListDisplay {
                 id: expand_track_id
 
-                Layout.alignment: Qt.AlignLeft
-                Layout.leftMargin: VLCStyle.margin_small
-                Layout.rightMargin: VLCStyle.margin_small
-                Layout.topMargin: VLCStyle.margin_xsmall
-                Layout.bottomMargin: VLCStyle.margin_small
-                Layout.fillHeight: true
-                Layout.fillWidth: true
+                height: expand_track_id.contentHeight
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    topMargin: VLCStyle.margin_xxsmall
+                    leftMargin: VLCStyle.margin_small
+                    rightMargin: VLCStyle.margin_small
+                    bottomMargin: VLCStyle.margin_small
+                }
 
-                Layout.preferredHeight: expand_track_id.flickableItem.height
+                interactive: false
 
                 parentId : root.model.id
-
-                columnModel: ListModel {
-                    ListElement{ role: "title";    visible: true; title: qsTr("TITLE"); showSection: "" }
-                    ListElement{ role: "duration"; visible: true; title: qsTr("DURATION"); showSection: "" }
+                sortModel: ListModel {
+                    ListElement{ criteria: "track_number";  width:0.10; visible: true; text: qsTr("#"); showSection: "" }
+                    ListElement{ criteria: "title";         width:0.70; visible: true; text: qsTr("TITLE"); showSection: "" }
+                    ListElement{ criteria: "duration";      width:0.20; visible: true; text: qsTr("DURATION"); showSection: "" }
                 }
+            }
+
+            Item {
+                width: parent.width
+                height: 1
             }
         }
     }

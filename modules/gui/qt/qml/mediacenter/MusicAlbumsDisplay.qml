@@ -160,8 +160,9 @@ Item {
 
         expandDelegate:  Rectangle {
             id: expandDelegateId
-            height: VLCStyle.heightBar_xxlarge
+            height: albumDetail.implicitHeight
             width: root.width
+            color: VLCStyle.colors.bgAlt
             property int currentId: -1
             property alias model : albumDetail.model
 
