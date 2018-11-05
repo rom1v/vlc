@@ -21,8 +21,8 @@
  * 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 
-import QtQuick 2.0
-import QtQuick.Controls 2.0
+import QtQuick.Controls 2.4
+import QtQuick 2.9
 import QtQml.Models 2.2
 import QtQuick.Layouts 1.3
 
@@ -40,7 +40,13 @@ Item {
     }
 
     property int currentArtistIndex: -1
-
+    onCurrentArtistIndexChanged: {
+        if (currentArtistIndex == -1)
+            mainView.replace(artistGridComponent)
+        else
+            mainView.replace(albumComponent)
+    }
+    property var artistId: null
 
     Utils.SelectableDelegateModel {
         id: artistModel
@@ -54,7 +60,7 @@ Item {
                 height: VLCStyle.icon_normal
                 width: parent.width
 
-                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, artistViewLoader.activeFocus)
+                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, this.activeFocus)
 
                 cover: Image {
                     id: cover_obj
@@ -65,10 +71,11 @@ Item {
 
                 onItemClicked: {
                     currentArtistIndex = index
-                    albumDisplay.parentId = model.id
-
+                    //albumDisplay.parentId = model.id
+                    artistId = model.id
                     artistModel.updateSelection( modifier , artistList.currentIndex, index)
                     artistList.currentIndex = index
+                    artistList.forceActiveFocus()
                 }
 
                 onPlayClicked: {
@@ -89,13 +96,13 @@ Item {
                 title: model.name || "Unknown Artist"
                 selected: element.DelegateModel.inSelected
 
-                shiftX: ((model.index % artistGridView._colCount) + 1) *
-                        ((artistGridView.width - artistGridView._colCount * artistGridView.cellWidth) / (artistGridView._colCount + 1))
+                shiftX: ((index % mainView.currentItem._colCount) + 1) *
+                        ((mainView.currentItem.width - mainView.currentItem._colCount * mainView.currentItem.cellWidth) / (mainView.currentItem._colCount + 1))
 
                 onItemClicked: {
-                    artistModel.updateSelection( modifier , artistGridView.currentIndex, index)
-                    artistGridView.currentIndex = index
-                    this.forceActiveFocus()
+                    artistModel.updateSelection( modifier , mainView.currentItem.currentIndex, index)
+                    mainView.currentItem.currentIndex = index
+                    mainView.currentItem.focus = true
                 }
                 onPlayClicked: {
                     medialib.addAndPlay( model.id )
@@ -128,10 +135,49 @@ Item {
         }
     }
 
+
+    Component {
+        id: artistGridComponent
+        Utils.KeyNavigableGridView {
+            cellWidth: (VLCStyle.cover_normal) + VLCStyle.margin_small
+            cellHeight: (VLCStyle.cover_normal + VLCStyle.fontHeight_normal)  + VLCStyle.margin_small
+
+            model: artistModel.parts.grid
+            modelCount: artistModel.items.count
+
+            onSelectAll: artistModel.selectAll()
+            onSelectionUpdated: artistModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onActionLeft: artistList.focus = true
+        }
+    }
+
+    Component {
+        id: albumComponent
+        // Display selected artist albums
+        MusicAlbumsDisplay {
+            parentId: artistId
+
+            //placehoder header
+            header: Item {
+                height: VLCStyle.heightBar_xlarge
+            }
+
+            //banner will stay above the display MusicAlbumsDisplay
+            ArtistTopBanner {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                contentY: parent.contentY
+                artist: artistModel.items.get(currentArtistIndex).model
+            }
+
+            onActionLeft: artistList.focus = true
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         Utils.KeyNavigableListView {
-            Layout.preferredWidth: parent.width / 4
+            Layout.preferredWidth: parent.width * 0.25
             Layout.preferredHeight: parent.height
             Layout.minimumWidth: 250
 
@@ -142,51 +188,35 @@ Item {
 
             onSelectAll: artistModel.selectAll()
             onSelectionUpdated: artistModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onActionRight: {
+                console.log("artists on right")
+                //mainView.currentItem.forceActiveFocus()
+                mainView.focus = true
+            }
         }
 
-        StackLayout {
-            id: albumStackLayout
-            currentIndex: (currentArtistIndex === -1) ? 0 : 1
-            Layout.preferredWidth: parent.width / 4
+        StackView {
+            id: mainView
+            Layout.preferredWidth: parent.width * 0.75
             Layout.preferredHeight: parent.height
 
-            Utils.KeyNavigableGridView {
-                id: artistGridView
+            initialItem: artistGridComponent
 
-                focus: albumStackLayout.currentIndex === 0
-
-                cellWidth: (VLCStyle.cover_normal) + VLCStyle.margin_small
-                cellHeight: (VLCStyle.cover_normal + VLCStyle.fontHeight_normal)  + VLCStyle.margin_small
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-
-                model: artistModel.parts.grid
-                modelCount: artistModel.items.count
-
-                onSelectAll: artistModel.selectAll()
-                onSelectionUpdated: artistModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            replaceEnter: Transition {
+                PropertyAnimation {
+                    property: "opacity"
+                    from: 0
+                    to:1
+                    duration: 200
+                }
             }
 
-            // Display selected artist albums
-            MusicAlbumsDisplay {
-                id: albumDisplay
-
-                focus: albumStackLayout.currentIndex === 1
-
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-
-                //placehoder header
-                header: Item {
-                    height: VLCStyle.heightBar_xlarge
-                }
-
-                //banner will stay above the display MusicAlbumsDisplay
-                ArtistTopBanner {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    contentY: albumDisplay.contentY
-                    artist: artistModel.items.get(currentArtistIndex).model
+            replaceExit: Transition {
+                PropertyAnimation {
+                    property: "opacity"
+                    from: 1
+                    to:0
+                    duration: 200
                 }
             }
         }
