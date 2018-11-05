@@ -27,7 +27,8 @@
 namespace {
 
 enum Role {
-    TRACK_TITLE = Qt::UserRole + 1,
+    TRACK_ID = Qt::UserRole + 1,
+    TRACK_TITLE,
     TRACK_COVER,
     TRACK_NUMBER,
     TRACK_DISC_NUMBER,
@@ -65,6 +66,8 @@ QVariant MLAlbumTrackModel::data(const QModelIndex &index, int role) const
     switch (role)
     {
     // Tracks
+    case TRACK_ID:
+        return QVariant::fromValue( ml_track->getId() );
     case TRACK_TITLE :
         return QVariant::fromValue( ml_track->getTitle() );
     case TRACK_COVER :
@@ -87,6 +90,7 @@ QVariant MLAlbumTrackModel::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> MLAlbumTrackModel::roleNames() const
 {
     return {
+        { TRACK_ID, "id" },
         { TRACK_TITLE, "title" },
         { TRACK_COVER, "cover" },
         { TRACK_NUMBER, "track_number" },
