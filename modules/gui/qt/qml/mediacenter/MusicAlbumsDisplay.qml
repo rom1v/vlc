@@ -54,6 +54,11 @@ Item {
         gridView_id.expandIndex = -1
     }
 
+    //forwarded from subview
+    signal actionLeft( int index )
+    signal actionRight( int index )
+    signal actionCancel( int index )
+
     function _switchExpandItem(index) {
         if (gridView_id.expandIndex === index)
             gridView_id.expandIndex = -1
@@ -88,7 +93,7 @@ Item {
                     _switchExpandItem( index )
                     delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
                     gridView_id.currentIndex = index
-                    gridView_id.forceActiveFocus()
+                    this.forceActiveFocus()
                 }
                 onPlayClicked: medialib.addAndPlay( model.id )
                 onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
@@ -106,7 +111,7 @@ Item {
                     _switchExpandItem( index )
                     delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
                     gridView_id.currentIndex = index
-                    gridView_id.forceActiveFocus()
+                    this.forceActiveFocus()
                 }
                 onPlayClicked: medialib.addAndPlay( model.id )
                 onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
@@ -198,6 +203,10 @@ Item {
 
         onSelectAll: delegateModel.selectAll()
         onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+
+        onActionLeft: root.actionLeft(index)
+        onActionRight: root.actionRight(index)
+        onActionCancel: root.actionCancel(index)
     }
 
     /* ListView */
@@ -226,5 +235,8 @@ Item {
 
         onSelectAll: delegateModel.selectAll()
         onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+        onActionLeft: root.actionLeft(index)
+        onActionRight: root.actionRight(index)
+        onActionCancel: root.actionCancel(index)
     }
 }
