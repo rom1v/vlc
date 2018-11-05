@@ -79,7 +79,7 @@ Item {
                         cornerRadius: 25
                         spread: 0.2
                         glowRadius: VLCStyle.margin_xsmall
-                        color: VLCStyle.colors.bgHover
+                        color: VLCStyle.colors.getBgColor( selected, mouseArea.containsMouse, root.activeFocus )
                     }
                     Image {
                         id: cover
