@@ -902,6 +902,7 @@ vlc_player_WaitRetryDelay(vlc_player_t *player)
 {
     if (player->error_count)
     {
+        fprintf(stderr, "vlc_player_WaitRetryDelay: %u\n", player->error_count);
         /* Delay the next opening in case of error to avoid busy loops */
         vlc_tick_t delay = RETRY_TIMEOUT_BASE;
         for (unsigned i = 1; i < player->error_count
