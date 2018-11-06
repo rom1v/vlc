@@ -37,25 +37,105 @@ FocusScope {
     //color: VLCStyle.colors.bg
     implicitHeight: layout.height
 
+    signal actionUp()
+    signal actionDown()
+    signal actionLeft()
+    signal actionRight()
+    signal actionCancel()
+
+    Keys.onPressed: {
+        var newIndex = -1
+        if ( event.key === Qt.Key_Down || event.matches(StandardKey.MoveToNextLine) ||event.matches(StandardKey.SelectNextLine) )
+            actionDown()
+        else if ( event.key === Qt.Key_Up || event.matches(StandardKey.MoveToPreviousLine) ||event.matches(StandardKey.SelectPreviousLine) )
+            actionUp()
+        else if (event.key === Qt.Key_Right || event.matches(StandardKey.MoveToNextChar) )
+            actionRight()
+        else if (event.key === Qt.Key_Left || event.matches(StandardKey.MoveToPreviousChar) )
+            actionLeft()
+        else if ( event.matches(StandardKey.Back) || event.matches(StandardKey.Cancel))
+            actionCancel()
+        event.accepted = true
+    }
+
+
     Row {
         id: layout
         spacing: VLCStyle.margin_xsmall
         width: parent.width
-        height: expand_infos_id.height
+        height: Math.max(expand_infos_id.height, artAndControl.height)
 
-        /* A bigger cover for the album */
-        Image {
-            id: expand_cover_id
+        FocusScope {
+            id: artAndControl
+            //width: VLCStyle.cover_large + VLCStyle.margin_small * 2
+            //height: VLCStyle.cover_xsmall + VLCStyle.cover_large
+            width:  artAndControlLayout.implicitWidth
+            height:  artAndControlLayout.implicitHeight
 
-            height: VLCStyle.cover_large
-            width: VLCStyle.cover_large
-            anchors {
-                top: parent.top
-                margins: VLCStyle.margin_small
+            Column {
+                id: artAndControlLayout
+                anchors.margins: VLCStyle.margin_small
+                spacing: VLCStyle.margin_small
+
+                Item {
+                    //dummy item for margins
+                    width: parent.width
+                    height: 1
+                }
+
+                /* A bigger cover for the album */
+                Image {
+                    id: expand_cover_id
+                    height: VLCStyle.cover_large
+                    width: VLCStyle.cover_large
+                    source: model.cover || VLCStyle.noArtCover
+                }
+
+                RowLayout {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+
+                    Button {
+                        id: addButton
+                        Layout.preferredWidth: VLCStyle.icon_normal
+                        Layout.preferredHeight: VLCStyle.icon_normal
+                        Layout.alignment: Qt.AlignHCenter
+                        icon.source: "qrc:///buttons/playlist/playlist_add.svg"
+                        KeyNavigation.right: playButton
+                    }
+                    Button {
+                        id: playButton
+                        Layout.preferredWidth: VLCStyle.icon_normal
+                        Layout.preferredHeight: VLCStyle.icon_normal
+                        Layout.alignment: Qt.AlignHCenter
+                        icon.source: "qrc:///toolbar/play_b.svg"
+                        KeyNavigation.right: likeButton
+                    }
+                    Button {
+                        id: likeButton
+                        Layout.preferredWidth: VLCStyle.icon_normal
+                        Layout.preferredHeight: VLCStyle.icon_normal
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "…"
+                        font.bold: true
+
+                        Keys.onRightPressed: {
+                            expand_track_id.focus = true
+                            event.accepted = true
+                        }
+                    }
+                }
+
+                Item {
+                    //dummy item for margins
+                    width: parent.width
+                    height: 1
+                }
             }
-
-            source: model.cover || VLCStyle.noArtCover
         }
+
 
         Column {
             id: expand_infos_id
@@ -78,7 +158,7 @@ FocusScope {
                 color: "transparent"
                 Text {
                     id: expand_infos_title_id
-                    text: "<b>"+(model.title || "Unknown title")+"</b>"
+                    text: "<b>"+(model.title || qsTr("Unknown title") )+"</b>"
                     font.pixelSize: VLCStyle.fontSize_xxlarge
                     color: VLCStyle.colors.text
                 }
@@ -99,9 +179,9 @@ FocusScope {
                 Text {
                     id: expand_infos_subtitle_id
                     text: qsTr("By %1 - %2 - %3")
-                        .arg(model.main_artist || "Unknown title")
-                        .arg(model.release_year || "")
-                        .arg(model.duration || "")
+                    .arg(model.main_artist || qsTr("Unknown title"))
+                    .arg(model.release_year || "")
+                    .arg(model.duration || "")
                     font.pixelSize: VLCStyle.fontSize_large
                     color: VLCStyle.colors.text
                 }
@@ -129,12 +209,19 @@ FocusScope {
                     ListElement{ criteria: "title";         width:0.70; visible: true; text: qsTr("TITLE"); showSection: "" }
                     ListElement{ criteria: "duration";      width:0.20; visible: true; text: qsTr("DURATION"); showSection: "" }
                 }
+                focus: true
+
+                onActionLeft:  artAndControl.focus = true
+                onActionRight: root.actionRight()
+                onActionCancel: root.actionCancel()
             }
 
             Item {
+                //dummy item for margins
                 width: parent.width
                 height: 1
             }
         }
     }
+
 }
