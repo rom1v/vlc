@@ -107,6 +107,8 @@ FocusScope {
 
         highlightMoveVelocity: 1000
 
+        focus: true
+
         model : delegateModel.parts.list
         modelCount: delegateModel.items.count
 
