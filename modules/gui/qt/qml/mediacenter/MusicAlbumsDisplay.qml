@@ -31,18 +31,14 @@ import org.videolan.medialib 0.1
 import "qrc:///utils/" as Utils
 import "qrc:///style/"
 
-Item {
+FocusScope {
     id: root
 
     property var sortModel: ListModel {
-        ListElement { text: qsTr("Alphabetic asc");  criteria: "title"; desc: Qt.AscendingOrder}
-        ListElement { text: qsTr("Alphabetic desc"); criteria: "title"; desc: Qt.DescendingOrder }
-        ListElement { text: qsTr("Duration asc");    criteria: "duration"; desc: Qt.AscendingOrder}
-        ListElement { text: qsTr("Duration desc");   criteria: "duration"; desc: Qt.DescendingOrder }
-        ListElement { text: qsTr("Date asc");        criteria: "release_year"; desc: Qt.AscendingOrder }
-        ListElement { text: qsTr("Date desc");       criteria: "release_year"; desc: Qt.DescendingOrder}
-        ListElement { text: qsTr("Artist asc");      criteria: "main_artist"; desc: Qt.AscendingOrder }
-        ListElement { text: qsTr("Artist desc");     criteria: "main_artist"; desc: Qt.DescendingOrder }
+        ListElement { text: qsTr("Alphabetic");  criteria: "title";}
+        ListElement { text: qsTr("Duration");    criteria: "duration"; }
+        ListElement { text: qsTr("Date");        criteria: "release_year"; }
+        ListElement { text: qsTr("Artist");      criteria: "main_artist"; }
     }
 
     property alias model: delegateModel.model

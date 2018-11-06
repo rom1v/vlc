@@ -33,8 +33,7 @@ Item {
     id: viewLoader
     property alias model: delegateModel.model
     property var sortModel: ListModel {
-        ListElement { text: qsTr("Alphabetic asc");  criteria: "title"; desc: Qt.AscendingOrder}
-        ListElement { text: qsTr("Alphabetic desc"); criteria: "title"; desc: Qt.DescendingOrder }
+        ListElement { text: qsTr("Alphabetic"); criteria: "title" }
     }
 
     Utils.SelectableDelegateModel {

@@ -35,8 +35,7 @@ Item {
     id: artistViewLoader
     property alias model: artistModel.model
     property var sortModel: ListModel {
-        ListElement { text: qsTr("Alphabetic asc");  criteria: "title"; desc: Qt.AscendingOrder}
-        ListElement { text: qsTr("Alphabetic desc"); criteria: "title"; desc: Qt.DescendingOrder }
+        ListElement { text: qsTr("Alphabetic");  criteria: "title" }
     }
 
     property int currentArtistIndex: -1

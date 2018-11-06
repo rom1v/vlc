@@ -186,7 +186,7 @@ Rectangle {
                     model: stackView.currentItem.sortModel
                     onCurrentIndexChanged: {
                         var sorting = model.get(currentIndex);
-                        stackView.currentItem.model.sortByColumn(sorting.criteria, sorting.desc)
+                        stackView.currentItem.model.sortCriteria = sorting.criteria
                     }
                 }
             }
