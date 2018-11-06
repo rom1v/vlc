@@ -1,0 +1,12 @@
+module org.videolan.Utils
+
+DNDLabel 1.0 DNDLabel.qml
+ExpandGridView 1.0 ExpandGridView.qml
+GridItem 1.0 GridItem.qml
+KeyNavigableGridView 1.0 KeyNavigableGridView.qml
+KeyNavigableListView 1.0 KeyNavigableListView.qml
+KeyNavigableTableView 1.0 KeyNavigableTableView.qml
+ListItem 1.0 ListItem.qml
+MultiCoverPreview 1.0 MultiCoverPreview.qml
+SelectableDelegateModel 1.0 SelectableDelegateModel.qml
+ToolTipArea 1.0 ToolTipArea.qml

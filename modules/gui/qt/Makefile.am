@@ -501,6 +501,7 @@ libqt_plugin_la_RES = \
 	gui/qt/qml/utils/MultiCoverPreview.qml \
 	gui/qt/qml/utils/KeyNavigableGridView.qml \
 	gui/qt/qml/utils/KeyNavigableListView.qml \
+	gui/qt/qml/utils/KeyNavigableTableView.qml \
 	gui/qt/qml/utils/SelectableDelegateModel.qml \
 	gui/qt/qml/mediacenter/ArtistListView.qml \
 	gui/qt/qml/mediacenter/ArtistTopBanner.qml \
