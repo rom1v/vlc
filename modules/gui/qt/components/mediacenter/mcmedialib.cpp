@@ -92,6 +92,18 @@ void MCMediaLib::addToPlaylist(const MLParentId & itemId)
     }
 }
 
+void MCMediaLib::addToPlaylist(const QVariantList& itemIdList)
+{
+    printf("MCMediaLib::addToPlaylist\n");
+    for (const QVariant& varValue: itemIdList)
+    {
+        if (!varValue.canConvert<MLParentId>())
+            continue;
+        MLParentId itemId = varValue.value<MLParentId>();
+        addToPlaylist(itemId);
+    }
+}
+
 // A specific item has been asked to be played,
 // so it's added to the playlist and played
 void MCMediaLib::addAndPlay(const MLParentId & itemId )
@@ -116,6 +128,24 @@ void MCMediaLib::addAndPlay(const MLParentId & itemId )
             openMRLFromMedia(media, b_start);
             b_start = false;
         }
+    }
+}
+
+void MCMediaLib::addAndPlay(const QVariantList& itemIdList)
+{
+    printf("MCMediaLib::addAndPlay\n");
+    bool b_start = true;
+    for (const QVariant& varValue: itemIdList)
+    {
+        if (!varValue.canConvert<MLParentId>())
+            continue;
+        printf("MCMediaLib::converted\n");
+        MLParentId itemId = varValue.value<MLParentId>();
+        if (b_start)
+            addAndPlay(itemId);
+        else
+            addToPlaylist(itemId);
+        b_start = false;
     }
 }
 

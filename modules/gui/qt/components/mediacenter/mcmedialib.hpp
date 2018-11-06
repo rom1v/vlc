@@ -53,7 +53,11 @@ public:
     );
 
     Q_INVOKABLE void addToPlaylist(const MLParentId &itemId);
+    Q_INVOKABLE void addToPlaylist(const QVariantList& itemIdList);
+
     Q_INVOKABLE void addAndPlay(const MLParentId &itemId);
+    Q_INVOKABLE void addAndPlay(const QVariantList&itemIdList);
+
 
     vlc_medialibrary_t* vlcMl();
 
