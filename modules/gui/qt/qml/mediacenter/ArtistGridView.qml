@@ -24,6 +24,7 @@ GridView {
             albums: MLAlbumModel {
                 ml: medialib
                 parentId: model.id
+                maxItems: 4
             }
         }
         name: model.name || "Unknown Artist"

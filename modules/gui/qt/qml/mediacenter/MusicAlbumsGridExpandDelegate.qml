@@ -104,6 +104,7 @@ FocusScope {
                         Layout.alignment: Qt.AlignHCenter
                         icon.source: "qrc:///buttons/playlist/playlist_add.svg"
                         KeyNavigation.right: playButton
+                        focus: true
                     }
                     Button {
                         id: playButton

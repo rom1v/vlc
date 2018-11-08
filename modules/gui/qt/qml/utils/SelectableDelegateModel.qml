@@ -49,11 +49,12 @@ DelegateModel {
                 _delRange(oldIndex, newIndex - 1)
             }
         } else {
+
             var e = delegateModel.items.get(newIndex)
             if (e.inSelected) {
-                if ((keymodifiers & Qt.ControlModifier) == Qt.ControlModifier)
+                if ((keymodifiers & Qt.ControlModifier) == Qt.ControlModifier) {
                     e.inSelected = false
-                else {
+                } else {
                     selectedGroup.remove(0,selectedGroup.count) //clear
                 }
             } else {

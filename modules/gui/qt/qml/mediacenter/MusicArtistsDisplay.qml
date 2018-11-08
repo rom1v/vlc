@@ -95,13 +95,13 @@ Item {
                 title: model.name || "Unknown Artist"
                 selected: element.DelegateModel.inSelected
 
-                shiftX: ((index % mainView.currentItem._colCount) + 1) *
-                        ((mainView.currentItem.width - mainView.currentItem._colCount * mainView.currentItem.cellWidth) / (mainView.currentItem._colCount + 1))
+                //shiftX: ((index % mainView.currentItem._colCount) + 1) *
+                //        ((mainView.currentItem.width - mainView.currentItem._colCount * mainView.currentItem.cellWidth) / (mainView.currentItem._colCount + 1))
 
                 onItemClicked: {
-                    artistModel.updateSelection( modifier , mainView.currentItem.currentIndex, index)
-                    mainView.currentItem.currentIndex = index
-                    mainView.currentItem.focus = true
+                    artistModel.updateSelection( modifier , mainView.currentItem.bodyItem.currentIndex, index)
+                    mainView.currentItem.bodyItem.currentIndex = index
+                    mainView.currentItem.bodyItem.focus = true
                 }
                 onPlayClicked: {
                     medialib.addAndPlay( model.id )
@@ -121,6 +121,7 @@ Item {
                     albums: MLAlbumModel {
                         ml: medialib
                         parentId: model.id
+                        maxItems: 4
                     }
                 }
                 Component.onCompleted: {
@@ -153,23 +154,43 @@ Item {
     Component {
         id: albumComponent
         // Display selected artist albums
-        MusicAlbumsDisplay {
-            parentId: artistId
+        //fixme this isn't working properly for the moment
+        //Utils.BannerView {
+        //    id: albumsView
+        //    header: ArtistTopBanner {
+        //        anchors.left: parent.left
+        //        anchors.right: parent.right
+        //        contentY: albumsView.contentY
+        //        artist: artistModel.items.get(currentArtistIndex).model
+        //    }
+        //    headerReservedHeight: VLCStyle.heightBar_large
+        //
+        //    body: MusicAlbumsDisplay {
+        //        focus: true
+        //        parentId: artistId
+        //        onActionLeft: artistList.focus = true
+        //    }
+        //}
 
-            //placehoder header
-            header: Item {
-                height: VLCStyle.heightBar_xlarge
+        FocusScope {
+            ColumnLayout {
+                anchors.fill: parent
+                ArtistTopBanner {
+                    id: artistBanner
+                    Layout.fillWidth: true
+                    focus: false
+                    //contentY: albumsView.contentY
+                    contentY: 0
+                    artist: artistModel.items.get(currentArtistIndex).model
+                }
+                MusicAlbumsDisplay {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    focus: true
+                    parentId: artistId
+                    onActionLeft: artistList.focus = true
+                }
             }
-
-            //banner will stay above the display MusicAlbumsDisplay
-            ArtistTopBanner {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                contentY: parent.contentY
-                artist: artistModel.items.get(currentArtistIndex).model
-            }
-
-            onActionLeft: artistList.focus = true
         }
     }
 
@@ -191,6 +212,10 @@ Item {
                 console.log("artists on right")
                 //mainView.currentItem.forceActiveFocus()
                 mainView.focus = true
+            }
+            onActionAtIndex: {
+                currentArtistIndex = index
+                artistId = artistModel.items.get(index).model.id
             }
         }
 

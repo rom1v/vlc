@@ -42,28 +42,12 @@ FocusScope {
     }
 
     property alias model: delegateModel.model
-    onModelChanged: {
-        gridView_id.expandIndex = -1
-    }
     property alias parentId: delegateModel.parentId
-    onParentIdChanged: {
-        gridView_id.expandIndex = -1
-    }
 
     //forwarded from subview
     signal actionLeft( int index )
     signal actionRight( int index )
     signal actionCancel( int index )
-
-    function _switchExpandItem(index) {
-        if (gridView_id.expandIndex === index)
-            gridView_id.expandIndex = -1
-        else
-            gridView_id.expandIndex = index
-    }
-
-    property int contentY: 0
-    property alias header: gridView_id.header
 
     Utils.SelectableDelegateModel {
         id: delegateModel
@@ -82,14 +66,15 @@ FocusScope {
                 image: model.cover || VLCStyle.noArtCover
                 title: model.title || qsTr("Unknown title")
                 subtitle: model.main_artist || qsTr("Unknown artist")
-                selected: element.DelegateModel.inSelected
-                shiftX: ((model.index % gridView_id._colCount) + 1) * (gridView_id.rightSpace / (gridView_id._colCount + 1))
+                selected: element.DelegateModel.inSelected || view.currentItem.currentIndex === index
+                shiftX: view.currentItem.shiftX(model.index)
 
                 onItemClicked : {
-                    _switchExpandItem( index )
-                    delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
-                    gridView_id.currentIndex = index
-                    this.forceActiveFocus()
+                    view._switchExpandItem( index )
+                    delegateModel.updateSelection( modifier , view.currentItem.currentIndex, index)
+                    view.currentItem.currentIndex = index
+                    view.currentItem.forceActiveFocus()
+
                 }
                 onPlayClicked: medialib.addAndPlay( model.id )
                 onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
@@ -100,14 +85,14 @@ FocusScope {
                 image: model.cover || VLCStyle.noArtCover
                 title: model.title || qsTr("Unknown title")
                 subtitle: model.main_artist || qsTr("Unknown artist")
-                selected: element.DelegateModel.inSelected
-                shiftX: ((model.index % gridView_id._colCount) + 1) * (gridView_id.rightSpace / (gridView_id._colCount + 1))
+                selected: element.DelegateModel.inSelected || view.currentItem.currentIndex === index
+                shiftX: view.currentItem.shiftX(model.index)
 
                 onItemClicked : {
-                    _switchExpandItem( index )
-                    delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
-                    gridView_id.currentIndex = index
-                    this.forceActiveFocus()
+                    view._switchExpandItem( index )
+                    delegateModel.updateSelection( modifier , view.currentItem.currentIndex, index)
+                    view.currentItem.currentIndex = index
+                    view.currentItem.forceActiveFocus()
                 }
                 onPlayClicked: medialib.addAndPlay( model.id )
                 onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
@@ -129,9 +114,9 @@ FocusScope {
                 line2: model.main_artist || qsTr("Unknown artist")
 
                 onItemClicked : {
-                    delegateModel.updateSelection( modifier, listView_id.currentIndex, index )
-                    listView_id.currentIndex = index
-                    listView_id.forceActiveFocus()
+                    delegateModel.updateSelection( modifier, view.currentItem.currentIndex, index )
+                    view.currentItem.currentIndex = index
+                    this.forceActiveFocus()
                 }
                 onPlayClicked: medialib.addAndPlay( model.id )
                 onAddToPlaylistClicked : medialib.addToPlaylist( model.id )
@@ -139,101 +124,140 @@ FocusScope {
         }
     }
 
-    Utils.ExpandGridView {
-        id: gridView_id
+    Component {
+        id: gridComponent
 
-        anchors.fill: parent
+        Utils.ExpandGridView {
+            id: gridView_id
 
-        visible: medialib.gridView
-        enabled: medialib.gridView
-        focus: medialib.gridView
-        activeFocusOnTab:true
+            activeFocusOnTab:true
 
-        cellWidth: VLCStyle.cover_normal + VLCStyle.margin_small
-        cellHeight: VLCStyle.cover_normal + VLCStyle.fontHeight_normal * 2 + VLCStyle.margin_small
+            interactive: root.interactive
 
-        header: root.header
+            cellWidth: VLCStyle.cover_normal + VLCStyle.margin_small
+            cellHeight: VLCStyle.cover_normal + VLCStyle.fontHeight_normal * 2 + VLCStyle.margin_small
 
-        expandDelegate:  Rectangle {
-            id: expandDelegateId
-            height: albumDetail.implicitHeight
-            width: root.width
-            color: VLCStyle.colors.bgAlt
-            property int currentId: -1
-            property alias model : albumDetail.model
-
-            //this mouse area intecepts mouse events
-            MouseArea {
-                anchors.fill    : parent
-                propagateComposedEvents: false
-                onClicked: {}
-                onDoubleClicked: {}
-
+            expandDelegate:  Rectangle {
+                id: expandDelegateId
+                height: albumDetail.implicitHeight
+                width: root.width
+                color: VLCStyle.colors.bgAlt
+                property int currentId: -1
+                property alias model : albumDetail.model
 
                 MusicAlbumsGridExpandDelegate {
                     id: albumDetail
                     anchors.fill: parent
                     visible: true
+                    focus: true
                     model: delegateModel.items.get(gridView_id.expandIndex).model
+                    onActionCancel: {
+                        gridView_id.expandIndex = -1
+                    }
+                }
+
+                Connections {
+                    target: gridView_id
+                    onExpandIndexChanged: {
+                        if (gridView_id.expandIndex !== -1)
+                        {
+                            expandDelegateId.model = delegateModel.items.get(gridView_id.expandIndex).model
+                        }
+                    }
                 }
             }
-            Connections {
-                target: gridView_id
-                onExpandIndexChanged: {
-                    if (gridView_id.expandIndex !== -1)
-                        expandDelegateId.model = delegateModel.items.get(gridView_id.expandIndex).model
+
+            modelTop: delegateModel.parts.gridTop
+            modelBottom: delegateModel.parts.gridBottom
+            modelCount: delegateModel.items.count
+
+            onActionAtIndex: {
+                if (delegateModel.selectedGroup.count > 1) {
+                    var list = []
+                    for (var i = 0; i < delegateModel.selectedGroup.count; i++)
+                        list.push(delegateModel.selectedGroup.get(i).model.id)
+                    medialib.addAndPlay( list )
+                } else {
+                    view._switchExpandItem(index)
                 }
             }
+            onSelectAll: delegateModel.selectAll()
+            onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+
+            onActionLeft: root.actionLeft(index)
+            onActionRight: root.actionRight(index)
+            onActionCancel: root.actionCancel(index)
         }
-
-        modelTop: delegateModel.parts.gridTop
-        modelBottom: delegateModel.parts.gridBottom
-        modelCount: delegateModel.items.count
-
-        onContentYChanged:{
-            root.contentY = contentY
-        }
-
-        Keys.onReturnPressed: {
-            _switchExpandItem(currentIndex)
-        }
-
-        onSelectAll: delegateModel.selectAll()
-        onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
-
-        onActionLeft: root.actionLeft(index)
-        onActionRight: root.actionRight(index)
-        onActionCancel: root.actionCancel(index)
     }
 
-    /* ListView */
-    Utils.KeyNavigableListView {
-        id: listView_id
+    Component {
+        id: listComponent
+        /* ListView */
+        Utils.KeyNavigableListView {
+            id: listView_id
 
-        visible: !medialib.gridView
-        focus: !medialib.gridView
-        enabled: !medialib.gridView
+            interactive: root.interactive
 
-        header: root.header
+            spacing: VLCStyle.margin_xxxsmall
 
-        spacing: VLCStyle.margin_xxxsmall
+            model: delegateModel.parts.list
+            modelCount: delegateModel.items.count
+
+            onContentYChanged:{
+                root.contentY = contentY - originY
+            }
+
+            function shiftX(i) { return 0 }
+
+            onSelectAll: delegateModel.selectAll()
+            onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onActionLeft: root.actionLeft(index)
+            onActionRight: root.actionRight(index)
+            onActionCancel: root.actionCancel(index)
+        }
+    }
+
+    StackView {
+        id: view
+
         anchors.fill: parent
+        focus: true
 
-        model: delegateModel.parts.list
-        modelCount: delegateModel.items.count
+        initialItem: gridComponent
 
-        onContentYChanged:{
-            root.contentY = contentY - originY
+        replaceEnter: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 0
+                to:1
+                duration: 500
+            }
         }
 
-        //Keys.onReturnPressed: {
-        //    _switchExpandItem(currentIndex)
-        //}
+        replaceExit: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 1
+                to:0
+                duration: 500
+            }
+        }
 
-        onSelectAll: delegateModel.selectAll()
-        onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
-        onActionLeft: root.actionLeft(index)
-        onActionRight: root.actionRight(index)
-        onActionCancel: root.actionCancel(index)
+        Connections {
+            target: medialib
+            onGridViewChanged: {
+                if (medialib.gridView)
+                    view.replace(gridComponent)
+                else
+                    view.replace(listComponent)
+            }
+        }
+
+        function _switchExpandItem(index) {
+            if (view.currentItem.expandIndex === index)
+                view.currentItem.expandIndex = -1
+            else
+                view.currentItem.expandIndex = index
+        }
     }
 }

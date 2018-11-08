@@ -23,264 +23,33 @@
 import QtQuick 2.9
 import QtQuick.Controls 2.2
 
-Flickable {
+FocusScope {
     id: root
 
-    clip: true
-    ScrollBar.vertical: ScrollBar { }
-
-    //disable bound behaviors to avoid visual artifacts around the expand delegate
-    boundsBehavior: Flickable.StopAtBounds
-
-    /// expected width and height
+    /// cell Width
     property int cellWidth: 100
+    // cell Height
     property int cellHeight: 100
 
     //margin to apply
-    property int _marginBottom: cellHeight / 2
-    property int _marginTop: cellHeight / 3
+    property int marginBottom: root.cellHeight / 2
+    property int marginTop: root.cellHeight / 3
 
     //model to be rendered, model has to be passed twice, as they cannot be shared between views
     property alias modelTop: top.model
     property alias modelBottom: bottom.model
+    property int modelCount: 0
 
     property alias delegateTop: top.delegate
     property alias delegateBottom: bottom.delegate
 
-    property Component header: undefined
-    //property bool _headerActive: header !== undefined
-    property int _headerBottomY: header ? headerLoader.height : 0
-    property bool _headerVisible:  header && contentY < headerLoader.height
-
-    property int modelCount: 0
-
-    // number of elements per row, for internal computation
-    property int _colCount: Math.floor(width / cellWidth)
-    property int topContentY: contentY
-    property int bottomContentY: contentY + height
-    //available space on the right
-    property int rightSpace: width - (_colCount * cellWidth)
+    property int currentIndex: 0
 
     /// the id of the item to be expanded
     property int expandIndex: -1
-    property int _oldExpandIndex: -1
-    property bool _expandActive: expandIndex !== -1
-
     //delegate to display the extended item
     property Component expandDelegate: Item{}
 
-    function _rowOfIndex( index ) {
-        return Math.ceil( (index + 1) / _colCount) - 1
-    }
-
-    onExpandIndexChanged: _updateExpandPosition()
-    on_ColCountChanged: _updateExpandPosition()
-    function _updateExpandPosition() {
-        if (_oldExpandIndex === -1 || _rowOfIndex(_oldExpandIndex) < _rowOfIndex(expandIndex))
-            root.contentY = Math.max(0, root.contentY - expandItem.height)
-        expandItem.y = cellHeight * (Math.floor(expandIndex / _colCount) + 1) + _headerBottomY
-        if ( expandItem.bottomY > root.bottomContentY )
-            root.contentY = Math.min(expandItem.bottomY - root.height + _marginBottom, contentHeight - height)
-        _oldExpandIndex = expandIndex
-    }
-
-
-    states: [
-        State {
-            name: "-header-expand"
-            when: !header && !_expandActive
-            PropertyChanges {
-                target: root
-                topContentY: contentY
-                contentHeight: cellHeight * Math.ceil(modelCount / _colCount)
-            }
-        },
-        State {
-            name: "-header+expand"
-            when: !header &&_expandActive
-            PropertyChanges {
-                target: root
-                topContentY: contentY
-                contentHeight: cellHeight * Math.ceil(modelCount / _colCount) + expandItem.height
-            }
-        },
-        State {
-            name: "+header-expand"
-            when: header && !_expandActive
-            PropertyChanges {
-                target: root
-                topContentY: contentY - headerLoader.height
-                contentHeight: cellHeight * Math.ceil(modelCount / _colCount) + headerLoader.height
-            }
-        },
-        State {
-            name: "+header+expand"
-            when: header && _expandActive
-            PropertyChanges {
-                target: root
-                topContentY: contentY - headerLoader.height
-                contentHeight: cellHeight * Math.ceil(modelCount / _colCount) + expandItem.height + headerLoader.height
-            }
-        }
-    ]
-
-    Loader {
-        id: headerLoader
-        sourceComponent: root.header
-        y: 0
-        anchors.left: parent.left
-        anchors.right: parent.right
-    }
-
-    //Gridview visible above the expanded item
-    GridView {
-        id: top
-        clip: true
-        interactive: false
-
-        cellWidth: root.cellWidth
-        cellHeight: root.cellHeight
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-
-        states: [
-            //expand is unactive or below the view
-            State {
-                name: "visible_noexpand"
-                when: !_expandActive || expandItem.y >= root.bottomContentY
-                PropertyChanges {
-                    target: top
-                    y: (!_headerVisible) ? root.contentY : _headerBottomY
-
-                    height: (!_headerVisible) ? root.height : (root.height - (_headerBottomY - root.contentY) )
-                    //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts
-                    //OriginY, seems to change randomly on grid resize
-                    contentY: (!_headerVisible) ? root.topContentY  : 0
-                    visible: true
-                    enabled: true
-                }
-            },
-            //expand is active and within the view
-            State {
-                name: "visible_expand"
-                when: _expandActive && (expandItem.y >= root.contentY) && (expandItem.y < root.bottomContentY)
-                PropertyChanges {
-                    target: top
-                    y: (!_headerVisible) ? root.contentY : _headerBottomY
-                    height: expandItem.y - root.topContentY
-                    //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts
-                    //OriginY, seems to change randomly on grid resize
-                    contentY: (!_headerVisible) ? root.topContentY : 0
-                    visible: true
-                    enabled: true
-                }
-            },
-            //expand is active and above the view
-            State {
-                name: "hidden"
-                when: _expandActive && (expandItem.y < root.contentY)
-                PropertyChanges {
-                    target: top
-                    visible: false
-                    enabled: false
-                    height: 1
-                    y: 0
-                    contentY: 0
-                }
-            }
-        ]
-    }
-
-    //Expanded item view
-    Loader {
-        id: expandItem
-        sourceComponent: expandDelegate
-        active: _expandActive
-        y: 0 //updated by _updateExpandPosition
-        property int bottomY: y + height
-        anchors.left: parent.left
-        anchors.right: parent.right
-    }
-
-    //Gridview visible below the expand item
-    GridView {
-        id: bottom
-        clip: true
-        interactive: false
-
-        cellWidth: root.cellWidth
-        cellHeight: root.cellHeight
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-
-        property bool hidden: !_expandActive
-                              || (expandItem.bottomY >= root.bottomContentY)
-                              || _rowOfIndex(expandIndex) === _rowOfIndex(modelCount - 1)
-        states: [
-            //expand is visible and above the view
-            State {
-                name: "visible_noexpand"
-                when: !bottom.hidden && (expandItem.bottomY < root.contentY)
-                PropertyChanges {
-                    target: bottom
-                    enabled: true
-                    visible: true
-                    height: root.height
-                    y: root.contentY
-                    //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts.
-                    //OriginY, seems to change randomly on grid resize
-                    contentY: expandItem.y + root.contentY - expandItem.bottomY - _headerBottomY
-                }
-            },
-            //expand is visible and within the view
-            State {
-                name: "visible_expand"
-                when: !bottom.hidden && (expandItem.bottomY > root.contentY) && (expandItem.bottomY < root.bottomContentY)
-                PropertyChanges {
-                    target: bottom
-                    enabled: true
-                    visible: true
-                    height: Math.min(root.bottomContentY - expandItem.bottomY, cellHeight * ( _rowOfIndex(modelCount - 1) - _rowOfIndex(expandIndex)))
-                    y: expandItem.bottomY
-                    //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts.
-                    //OriginY, seems to change randomly on grid resize
-                    contentY: expandItem.y - _headerBottomY
-                }
-            },
-            //expand is inactive or below the view
-            State {
-                name: "hidden"
-                when: bottom.hidden
-                PropertyChanges {
-                    target: bottom
-                    enabled: false
-                    visible: false
-                    height: 1
-                    y: 0
-                    contentY: 0
-                }
-            }
-        ]
-    }
-
-    //from KeyNavigableGridView
-    function _yOfIndex( index ) {
-        if (index > (_rowOfIndex( expandIndex ) + 1) * _colCount)
-            return _rowOfIndex(currentIndex) * cellHeight + expandItem.height + _headerBottomY
-        else
-            return _rowOfIndex(currentIndex) * cellHeight + _headerBottomY
-    }
-
-    //index of the item currently selected on keyboard
-    property int currentIndex: 0
-    onCurrentIndexChanged: {
-        if ( _yOfIndex(currentIndex) + cellHeight > root.bottomContentY)
-            root.contentY = Math.min(_yOfIndex(currentIndex) + cellHeight - root.height + _marginBottom, contentHeight - height)
-        else if (_yOfIndex(currentIndex)  < root.contentY)
-            root.contentY = Math.max(_yOfIndex(currentIndex) - _marginTop, 0)
-    }
     //signals emitted when selected items is updated from keyboard
     signal selectionUpdated( int keyModifiers, int oldIndex,int newIndex )
     signal selectAll()
@@ -289,44 +58,285 @@ Flickable {
     signal actionAtIndex( int index )
     signal actionCancel( int index )
 
+    property alias contentY: flickable.contentY
+    property alias interactive: flickable.interactive
+    property alias clip: flickable.clip
+    property alias contentHeight: flickable.contentHeight
+    property alias contentWidth: flickable.contentWidth
+
+    //compute a delta that can be applied to grid elements to obtain an horizontal distribution
+    function shiftX( index ) {
+        var rightSpace = width - (flickable._colCount * root.cellWidth)
+        return ((index % flickable._colCount) + 1) * (rightSpace / (flickable._colCount + 1))
+    }
+
+    Flickable {
+        id: flickable
+
+        anchors.fill: parent
+        clip: true
+        //ScrollBar.vertical: ScrollBar { }
+
+        //disable bound behaviors to avoid visual artifacts around the expand delegate
+        boundsBehavior: Flickable.StopAtBounds
+
+
+        // number of elements per row, for internal computation
+        property int _colCount: Math.floor(width / root.cellWidth)
+        property int topContentY: flickable.contentY
+        property int bottomContentY: flickable.contentY + flickable.height
+
+        property int _oldExpandIndex: -1
+        property bool _expandActive: root.expandIndex !== -1
+
+        function _rowOfIndex( index ) {
+            return Math.ceil( (index + 1) / flickable._colCount) - 1
+        }
+
+        //from KeyNavigableGridView
+        function _yOfIndex( index ) {
+            if ( root.expandIndex != -1
+                 && (index > (flickable._rowOfIndex( root.expandIndex ) + 1) * flickable._colCount )  )
+                return flickable._rowOfIndex(root.currentIndex) * root.cellHeight + expandItem.height
+            else
+                return flickable._rowOfIndex(root.currentIndex) * root.cellHeight
+        }
+
+        Connections {
+            target: root
+            onExpandIndexChanged: {
+                flickable._updateExpandPosition()
+            }
+        }
+        on_ColCountChanged: _updateExpandPosition()
+        function _updateExpandPosition() {
+            expandItem.y = root.cellHeight * (Math.floor(root.expandIndex / flickable._colCount) + 1)
+            _oldExpandIndex = root.expandIndex
+        }
+
+
+        states: [
+            State {
+                name: "-expand"
+                when: ! flickable._expandActive
+                PropertyChanges {
+                    target: flickable
+                    topContentY: flickable.contentY
+                    contentHeight: root.cellHeight * Math.ceil(root.modelCount / flickable._colCount)
+                }
+            },
+            State {
+                name: "+expand"
+                when: flickable._expandActive
+                PropertyChanges {
+                    target: flickable
+                    topContentY: flickable.contentY
+                    contentHeight: root.cellHeight * Math.ceil(root.modelCount / flickable._colCount) + expandItem.height
+                }
+            }
+        ]
+
+        //Gridview visible above the expanded item
+        GridView {
+            id: top
+            clip: true
+            interactive: false
+
+            focus: !flickable._expandActive
+
+            highlightFollowsCurrentItem: false
+            currentIndex: root.currentIndex
+
+            cellWidth: root.cellWidth
+            cellHeight: root.cellHeight
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+
+            states: [
+                //expand is unactive or below the view
+                State {
+                    name: "visible_noexpand"
+                    when: !flickable._expandActive || expandItem.y >= flickable.bottomContentY
+                    PropertyChanges {
+                        target: top
+                        y: flickable.topContentY
+
+                        height:flickable.height
+                        //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts
+                        //OriginY, seems to change randomly on grid resize
+                        contentY: flickable.topContentY
+                        visible: true
+                        enabled: true
+                    }
+                },
+                //expand is active and within the view
+                State {
+                    name: "visible_expand"
+                    when: flickable._expandActive && (expandItem.y >= flickable.contentY) && (expandItem.y < flickable.bottomContentY)
+                    PropertyChanges {
+                        target: top
+                        y: flickable.contentY
+                        height: expandItem.y - flickable.topContentY
+                        //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts
+                        //OriginY, seems to change randomly on grid resize
+                        contentY: flickable.topContentY
+                        visible: true
+                        enabled: true
+                    }
+                },
+                //expand is active and above the view
+                State {
+                    name: "hidden"
+                    when: flickable._expandActive && (expandItem.y < flickable.contentY)
+                    PropertyChanges {
+                        target: top
+                        visible: false
+                        enabled: false
+                        height: 1
+                        y: 0
+                        contentY: 0
+                    }
+                }
+            ]
+        }
+
+        //Expanded item view
+        Loader {
+            id: expandItem
+            sourceComponent: root.expandDelegate
+            active: flickable._expandActive
+            focus: flickable._expandActive
+            y: 0 //updated by _updateExpandPosition
+            property int bottomY: y + height
+            anchors.left: parent.left
+            anchors.right: parent.right
+        }
+
+        //Gridview visible below the expand item
+        GridView {
+            id: bottom
+            clip: true
+            interactive: false
+            highlightFollowsCurrentItem: false
+            currentIndex: root.currentIndex
+
+            cellWidth: root.cellWidth
+            cellHeight: root.cellHeight
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+
+            property bool hidden: !flickable._expandActive
+                                  || (expandItem.bottomY >= flickable.bottomContentY)
+                                  || flickable._rowOfIndex(root.expandIndex) === flickable._rowOfIndex(root.modelCount - 1)
+            states: [
+                //expand is visible and above the view
+                State {
+                    name: "visible_noexpand"
+                    when: !bottom.hidden && (expandItem.bottomY < flickable.contentY)
+                    PropertyChanges {
+                        target: bottom
+                        enabled: true
+                        visible: true
+                        height: flickable.height
+                        y: flickable.contentY
+                        //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts.
+                        //OriginY, seems to change randomly on grid resize
+                        contentY: expandItem.y + flickable.contentY - expandItem.bottomY
+                    }
+                },
+                //expand is visible and within the view
+                State {
+                    name: "visible_expand"
+                    when: !bottom.hidden && (expandItem.bottomY > flickable.contentY) && (expandItem.bottomY < flickable.bottomContentY)
+                    PropertyChanges {
+                        target: bottom
+                        enabled: true
+                        visible: true
+                        height: Math.min(flickable.bottomContentY - expandItem.bottomY, root.cellHeight * ( flickable._rowOfIndex(root.modelCount - 1) - flickable._rowOfIndex(root.expandIndex)))
+                        y: expandItem.bottomY
+                        //FIXME: should we add + originY? this seemed to fix some issues but has performance impacts.
+                        //OriginY, seems to change randomly on grid resize
+                        contentY: expandItem.y
+                    }
+                },
+                //expand is inactive or below the view
+                State {
+                    name: "hidden"
+                    when: bottom.hidden
+                    PropertyChanges {
+                        target: bottom
+                        enabled: false
+                        visible: false
+                        height: 1
+                        y: 0
+                        contentY: 0
+                    }
+                }
+            ]
+        }
+    }
+
+    onCurrentIndexChanged: {
+        if ( flickable._yOfIndex(root.currentIndex) + root.cellHeight > flickable.bottomContentY) {
+            //move viewport to see expanded item bottom
+            flickable.contentY = Math.min(
+                        flickable._yOfIndex(root.currentIndex) + root.cellHeight - flickable.height, // + flickable.marginBottom,
+                        flickable.contentHeight - flickable.height)
+        } else if (flickable._yOfIndex(root.currentIndex)  < flickable.contentY) {
+            //move viewport to see expanded item at top
+            flickable.contentY = Math.max(
+                        flickable._yOfIndex(root.currentIndex) - root.marginTop,
+                        0)
+        }
+    }
+
+    onExpandIndexChanged: {
+        if (expandIndex != -1)
+            //move viewport to see expanded item at top
+            flickable.contentY = Math.max( flickable._yOfIndex(expandIndex) - root.marginTop, 0)
+    }
+
     Keys.onPressed: {
         var newIndex = -1
         if (event.key === Qt.Key_Right || event.matches(StandardKey.MoveToNextChar)) {
-            if ((currentIndex + 1) % _colCount == 0) {//are we at the end of line
-                actionRight(currentIndex)
+            if ((root.currentIndex + 1) % flickable._colCount == 0) {//are we at the end of line
+                root.actionRight(root.currentIndex)
                 event.accepted = true
                 return
             }
-            newIndex = Math.min(modelCount - 1, currentIndex + 1)
+            newIndex = Math.min(root.modelCount - 1, root.currentIndex + 1)
         } else if (event.key === Qt.Key_Left || event.matches(StandardKey.MoveToPreviousChar)) {
-            if (currentIndex % _colCount == 0) {//are we at the begining of line
-                actionLeft(currentIndex)
+            if (root.currentIndex % flickable._colCount == 0) {//are we at the begining of line
+                root.actionLeft(root.currentIndex)
                 event.accepted = true
                 return
             }
-            newIndex = Math.max(0, currentIndex - 1)
+            newIndex = Math.max(0, root.currentIndex - 1)
         } else if (event.key === Qt.Key_Down || event.matches(StandardKey.MoveToNextLine) ||event.matches(StandardKey.SelectNextLine) )
-            newIndex = Math.min(modelCount - 1, currentIndex + _colCount)
+            newIndex = Math.min(root.modelCount - 1, root.currentIndex + flickable._colCount)
         else if (event.key === Qt.Key_PageDown || event.matches(StandardKey.MoveToNextPage) ||event.matches(StandardKey.SelectNextPage))
-            newIndex = Math.min(modelCount - 1, currentIndex + _colCount * 5)
+            newIndex = Math.min(root.modelCount - 1, root.currentIndex + flickable._colCount * 5)
         else if (event.key === Qt.Key_Up || event.matches(StandardKey.MoveToPreviousLine) ||event.matches(StandardKey.SelectPreviousLine))
-            newIndex = Math.max(0, currentIndex - _colCount)
+            newIndex = Math.max(0, root.currentIndex - flickable._colCount)
         else if (event.key === Qt.Key_PageUp || event.matches(StandardKey.MoveToPreviousPage) ||event.matches(StandardKey.SelectPreviousPage))
-            newIndex = Math.max(0, currentIndex - _colCount * 5)
+            newIndex = Math.max(0, root.currentIndex - flickable._colCount * 5)
         else if (event.matches(StandardKey.SelectAll)) {
-            selectAll()
+            root.selectAll()
             event.accepted = true
         } else if (event.key === Qt.Key_Space || event.matches(StandardKey.InsertParagraphSeparator)) { //enter/return/space
-            actionAtIndex(currentIndex)
+            root.actionAtIndex(root.currentIndex)
             event.accepted = true
         } else if ( event.matches(StandardKey.Back) || event.matches(StandardKey.Cancel)) {
-            actionCancel(currentIndex)
+            root.actionCancel(root.currentIndex)
             event.accepted = true
         }
 
-        if (newIndex != -1 && newIndex != currentIndex) {
+        if (newIndex != -1 && newIndex != root.currentIndex) {
+            var oldIndex = currentIndex
             currentIndex = newIndex
-            selectionUpdated(event.modifiers, currentIndex, newIndex)
+            root.selectionUpdated(event.modifiers, oldIndex, newIndex)
             event.accepted = true
         }
     }
