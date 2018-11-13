@@ -23,7 +23,7 @@
 import QtQuick 2.9
 import QtQuick.Controls 2.2
 
-FocusScope {
+NavigableFocusScope {
     id: root
 
     /// cell Width
@@ -53,10 +53,7 @@ FocusScope {
     //signals emitted when selected items is updated from keyboard
     signal selectionUpdated( int keyModifiers, int oldIndex,int newIndex )
     signal selectAll()
-    signal actionLeft( int index )
-    signal actionRight( int index )
-    signal actionAtIndex( int index )
-    signal actionCancel( int index )
+    signal actionAtIndex(int index)
 
     property alias contentY: flickable.contentY
     property alias interactive: flickable.interactive
@@ -301,35 +298,30 @@ FocusScope {
     Keys.onPressed: {
         var newIndex = -1
         if (event.key === Qt.Key_Right || event.matches(StandardKey.MoveToNextChar)) {
-            if ((root.currentIndex + 1) % flickable._colCount == 0) {//are we at the end of line
-                root.actionRight(root.currentIndex)
-                event.accepted = true
-                return
+            if ((root.currentIndex + 1) % flickable._colCount !== 0) {//are we not at the end of line
+                newIndex = Math.min(root.modelCount - 1, root.currentIndex + 1)
             }
-            newIndex = Math.min(root.modelCount - 1, root.currentIndex + 1)
         } else if (event.key === Qt.Key_Left || event.matches(StandardKey.MoveToPreviousChar)) {
-            if (root.currentIndex % flickable._colCount == 0) {//are we at the begining of line
-                root.actionLeft(root.currentIndex)
-                event.accepted = true
-                return
+            if (root.currentIndex % flickable._colCount !== 0) {//are we not at the begining of line
+                newIndex = Math.max(0, root.currentIndex - 1)
             }
-            newIndex = Math.max(0, root.currentIndex - 1)
-        } else if (event.key === Qt.Key_Down || event.matches(StandardKey.MoveToNextLine) ||event.matches(StandardKey.SelectNextLine) )
-            newIndex = Math.min(root.modelCount - 1, root.currentIndex + flickable._colCount)
-        else if (event.key === Qt.Key_PageDown || event.matches(StandardKey.MoveToNextPage) ||event.matches(StandardKey.SelectNextPage))
+        } else if (event.key === Qt.Key_Down || event.matches(StandardKey.MoveToNextLine) ||event.matches(StandardKey.SelectNextLine) ) {
+            if (Math.floor(root.currentIndex / flickable._colCount) !== Math.floor(root.modelCount / flickable._colCount)) { //we are not on the last line
+                newIndex = Math.min(root.modelCount - 1, root.currentIndex + flickable._colCount)
+            }
+        } else if (event.key === Qt.Key_PageDown || event.matches(StandardKey.MoveToNextPage) ||event.matches(StandardKey.SelectNextPage)) {
             newIndex = Math.min(root.modelCount - 1, root.currentIndex + flickable._colCount * 5)
-        else if (event.key === Qt.Key_Up || event.matches(StandardKey.MoveToPreviousLine) ||event.matches(StandardKey.SelectPreviousLine))
-            newIndex = Math.max(0, root.currentIndex - flickable._colCount)
-        else if (event.key === Qt.Key_PageUp || event.matches(StandardKey.MoveToPreviousPage) ||event.matches(StandardKey.SelectPreviousPage))
+        } else if (event.key === Qt.Key_Up || event.matches(StandardKey.MoveToPreviousLine) ||event.matches(StandardKey.SelectPreviousLine)) {
+             if (Math.floor(root.currentIndex / flickable._colCount) !== 0) { //we are not on the first line
+                newIndex = Math.max(0, root.currentIndex - flickable._colCount)
+             }
+        } else if (event.key === Qt.Key_PageUp || event.matches(StandardKey.MoveToPreviousPage) ||event.matches(StandardKey.SelectPreviousPage)) {
             newIndex = Math.max(0, root.currentIndex - flickable._colCount * 5)
-        else if (event.matches(StandardKey.SelectAll)) {
+        } else if (event.matches(StandardKey.SelectAll)) {
             root.selectAll()
             event.accepted = true
         } else if (event.key === Qt.Key_Space || event.matches(StandardKey.InsertParagraphSeparator)) { //enter/return/space
             root.actionAtIndex(root.currentIndex)
-            event.accepted = true
-        } else if ( event.matches(StandardKey.Back) || event.matches(StandardKey.Cancel)) {
-            root.actionCancel(root.currentIndex)
             event.accepted = true
         }
 
@@ -339,5 +331,8 @@ FocusScope {
             root.selectionUpdated(event.modifiers, oldIndex, newIndex)
             event.accepted = true
         }
+
+        if (!event.accepted)
+            defaultKeyAction(event, currentIndex)
     }
 }
