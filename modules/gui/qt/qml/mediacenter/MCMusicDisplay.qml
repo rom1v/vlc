@@ -23,13 +23,14 @@
 import QtQuick 2.7
 import QtQuick.Controls 2.2
 import QtQuick.Layouts 1.3
+
+import "qrc:///utils/" as Utils
 import "qrc:///style/"
 
 import org.videolan.medialib 0.1
 
-Rectangle {
+Utils.NavigableFocusScope {
     id: root
-    color: VLCStyle.colors.bg
 
     //name and properties of the tab to be initially loaded
     property string view: "albums"
@@ -85,113 +86,137 @@ Rectangle {
     ColumnLayout {
         anchors.fill : parent
 
-        Rectangle {
-            Layout.fillWidth:  true
+        Utils.NavigableFocusScope {
+            id: toobar
 
-            color: VLCStyle.colors.banner
-            height: bar.height
+            Layout.fillWidth: true
+            Layout.preferredHeight: VLCStyle.icon_normal + VLCStyle.margin_small
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
+            Rectangle {
+                anchors.fill: parent
+                color: VLCStyle.colors.banner
 
-                TabBar {
-                    id: bar
+                RowLayout {
+                    anchors.fill: parent
 
-                    Layout.preferredHeight: parent.height
-                    background: Rectangle {
-                        color: VLCStyle.colors.banner
+                    TabBar {
+                        id: bar
+
+                        Layout.preferredHeight: parent.height
+                        Layout.alignment: Qt.AlignVCenter
+
+                        background: Rectangle {
+                            color: VLCStyle.colors.banner
+                        }
+
+                        /* List of sub-sources for Music */
+                        Repeater {
+                            id: model_music_id
+
+                            model: tabModel
+
+                            //Column {
+                            TabButton {
+                                id: control
+                                text: model.displayText
+                                background: Rectangle {
+                                    color: control.hovered ? VLCStyle.colors.bannerHover : VLCStyle.colors.banner
+                                }
+                                contentItem: Label {
+                                    text: control.text
+                                    font: control.font
+                                    color:  (control.checked || control.hovered) ?
+                                                VLCStyle.colors.textActiveSource :
+                                                VLCStyle.colors.text
+                                    verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                                onClicked: {
+                                    stackView.replace(model.url)
+                                    history.push({
+                                        view: "music",
+                                        viewProperties: {
+                                            view: model.name,
+                                            viewProperties: {}
+                                        },
+                                    }, History.Stay)
+                                    stackView.focus = true
+                                }
+                                checked: (model.name === root.view)
+
+                            }
+                        }
+
+                        KeyNavigation.right: searchBox
                     }
 
-                    /* List of sub-sources for Music */
-                    Repeater {
-                        id: model_music_id
+                    /* Spacer */
+                    Item {
+                        Layout.fillWidth: true
+                    }
 
-                        model: tabModel
+                    TextField {
+                        Layout.preferredWidth: VLCStyle.widthSearchInput
+                        Layout.preferredHeight: parent.height
+                        Layout.alignment: Qt.AlignVCenter  | Qt.AlignRight
 
-                        //Column {
-                        TabButton {
-                            id: control
-                            text: model.displayText
-                            background: Rectangle {
-                                color: control.hovered ? VLCStyle.colors.bannerHover : VLCStyle.colors.banner
-                            }
-                            contentItem: Label {
-                                text: control.text
-                                font: control.font
-                                color:  (control.checked || control.hovered) ?
-                                            VLCStyle.colors.textActiveSource :
-                                            VLCStyle.colors.text
-                                verticalAlignment: Text.AlignVCenter
-                                horizontalAlignment: Text.AlignHCenter
-                            }
-                            onClicked: {
-                                stackView.replace(model.url)
-                                history.push({
-                                    view: "music",
-                                    viewProperties: {
-                                        view: model.name,
-                                        viewProperties: {}
-                                    },
-                                }, History.Stay)
-                                stackView.focus = true
-                            }
-                            checked: (model.name === root.view)
+                        id: searchBox
 
+                        color: VLCStyle.colors.buttonText
+                        placeholderText: qsTr("filter")
+                        hoverEnabled: true
+
+                        background: Rectangle {
+                            radius: 5 //fixme
+                            color: VLCStyle.colors.button
+                            border.color: {
+                                if ( searchBox.text.length < 3 && searchBox.text.length !== 0 )
+                                    return VLCStyle.colors.alert
+                                else if ( searchBox.hovered || searchBox.activeFocus )
+                                    return VLCStyle.colors.bgHover
+                                else
+                                    return VLCStyle.colors.buttonBorder
+                           }
+                        }
+
+                        onTextChanged: {
+                            stackView.currentItem.model.searchPattern = text;
+                        }
+
+                        KeyNavigation.right: combo
+                    }
+
+                    /* Selector to choose a specific sorting operation */
+                    ComboBox {
+                        id: combo
+
+                        //Layout.fillHeight: true
+                        Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                        Layout.preferredWidth: VLCStyle.widthSortBox
+
+                        height: parent.height
+                        textRole: "text"
+                        model: stackView.currentItem.sortModel
+                        onCurrentIndexChanged: {
+                            var sorting = model.get(currentIndex);
+                            stackView.currentItem.model.sortCriteria = sorting.criteria
                         }
                     }
                 }
+            }
 
-                /* Spacer */
-                Item {
-                    Layout.fillWidth: true
-                }
+            onActionLeft:   root.actionLeft(index)
+            onActionRight:  root.actionRight(index)
+            onActionDown:   stackView.focus = true
+            onActionUp:     root.actionUp( index )
+            onActionCancel: root.actionCancel( index )
 
-                TextField {
-                    Layout.preferredWidth: VLCStyle.widthSearchInput
-                    Layout.preferredHeight: parent.height
-                    id: searchBox
-
-                    color: VLCStyle.colors.buttonText
-                    placeholderText: qsTr("filter")
-                    hoverEnabled: true
-
-                    background: Rectangle {
-                        radius: 5 //fixme
-                        color: VLCStyle.colors.button
-                        border.color: {
-                            if ( searchBox.text.length < 3 && searchBox.text.length !== 0 )
-                                return VLCStyle.colors.alert
-                            else if ( searchBox.hovered || searchBox.activeFocus )
-                                return VLCStyle.colors.bgHover
-                            else
-                                return VLCStyle.colors.buttonBorder
-                       }
-                    }
-
-                    onTextChanged: {
-                        stackView.currentItem.model.searchPattern = text;
-                    }
-                }
-
-                /* Selector to choose a specific sorting operation */
-                ComboBox {
-                    id: combo
-
-                    //Layout.fillHeight: true
-                    Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
-                    Layout.preferredWidth: VLCStyle.widthSortBox
-                    height: parent.height
-                    textRole: "text"
-                    model: stackView.currentItem.sortModel
-                    onCurrentIndexChanged: {
-                        var sorting = model.get(currentIndex);
-                        stackView.currentItem.model.sortCriteria = sorting.criteria
-                    }
-                }
+            Keys.priority: Keys.AfterItem
+            Keys.onPressed: {
+                if (!event.accepted)
+                    defaultKeyAction(event, 0)
             }
         }
-
 
         /* The data elements */
         StackView  {
@@ -223,6 +248,16 @@ Rectangle {
                     duration: 200
                 }
             }
+        }
+
+        Connections {
+            target: stackView.currentItem
+            ignoreUnknownSignals: true
+            onActionLeft:   root.actionLeft(index)
+            onActionRight:  root.actionRight(index)
+            onActionDown:   root.actionDown(index)
+            onActionUp:     toobar.focus = true
+            onActionCancel: root.actionCancel( index )
         }
     }
 }
