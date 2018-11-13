@@ -31,8 +31,8 @@ import org.videolan.medialib 0.1
 import "qrc:///utils/" as Utils
 import "qrc:///style/"
 
-Item {
-    id: artistViewLoader
+Utils.NavigableFocusScope {
+    id: root
     property alias model: artistModel.model
     property var sortModel: ListModel {
         ListElement { text: qsTr("Alphabetic");  criteria: "title" }
@@ -95,11 +95,10 @@ Item {
                 title: model.name || "Unknown Artist"
                 selected: element.DelegateModel.inSelected
 
-                //shiftX: ((index % mainView.currentItem._colCount) + 1) *
-                //        ((mainView.currentItem.width - mainView.currentItem._colCount * mainView.currentItem.cellWidth) / (mainView.currentItem._colCount + 1))
+                shiftX: mainView.currentItem.shiftX(index)
 
                 onItemClicked: {
-                    artistModel.updateSelection( modifier , mainView.currentItem.bodyItem.currentIndex, index)
+                    artistModel.updateSelection( modifier , mainView.currentItem.currentIndex, index)
                     mainView.currentItem.bodyItem.currentIndex = index
                     mainView.currentItem.bodyItem.focus = true
                 }
@@ -148,6 +147,11 @@ Item {
             onSelectAll: artistModel.selectAll()
             onSelectionUpdated: artistModel.updateSelection( keyModifiers, oldIndex, newIndex )
             onActionLeft: artistList.focus = true
+
+            onActionRight: root.actionRight(index)
+            onActionUp: root.actionUp(index)
+            onActionDown: root.actionDown(index)
+            onActionCancel: root.actionCancel(index)
         }
     }
 
@@ -171,8 +175,8 @@ Item {
         //        onActionLeft: artistList.focus = true
         //    }
         //}
-
         FocusScope {
+            property alias currentIndex: albumSubView.currentIndex
             ColumnLayout {
                 anchors.fill: parent
                 ArtistTopBanner {
@@ -184,22 +188,27 @@ Item {
                     artist: artistModel.items.get(currentArtistIndex).model
                 }
                 MusicAlbumsDisplay {
+                    id: albumSubView
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     focus: true
                     parentId: artistId
                     onActionLeft: artistList.focus = true
+
+                    onActionRight: root.actionRight(index)
+                    onActionUp: root.actionUp(index)
+                    onActionDown: root.actionDown(index)
+                    onActionCancel: root.actionCancel(index)
                 }
             }
         }
     }
 
-    RowLayout {
+    Row {
         anchors.fill: parent
         Utils.KeyNavigableListView {
-            Layout.preferredWidth: parent.width * 0.25
-            Layout.preferredHeight: parent.height
-            Layout.minimumWidth: 250
+            width: parent.width * 0.25
+            height: parent.height
 
             id: artistList
             spacing: 2
@@ -208,21 +217,22 @@ Item {
 
             onSelectAll: artistModel.selectAll()
             onSelectionUpdated: artistModel.updateSelection( keyModifiers, oldIndex, newIndex )
-            onActionRight: {
-                console.log("artists on right")
-                //mainView.currentItem.forceActiveFocus()
-                mainView.focus = true
-            }
             onActionAtIndex: {
                 currentArtistIndex = index
                 artistId = artistModel.items.get(index).model.id
             }
+
+            onActionRight:  mainView.focus = true
+            onActionLeft: root.actionLeft(index)
+            onActionUp: root.actionUp(index)
+            onActionDown: root.actionDown(index)
+            onActionCancel: root.actionCancel(index)
         }
 
         StackView {
             id: mainView
-            Layout.preferredWidth: parent.width * 0.75
-            Layout.preferredHeight: parent.height
+            width: parent.width * 0.75
+            height: parent.height
 
             initialItem: artistGridComponent
 
