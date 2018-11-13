@@ -8,13 +8,10 @@ import org.videolan.medialib 0.1
 import "qrc:///utils/" as Utils
 import "qrc:///style/"
 
-FocusScope {
+NavigableFocusScope {
     id: root
 
     //forwarded from subview
-    signal actionLeft( int index )
-    signal actionRight( int index )
-    signal actionCancel( int index )
     signal actionForSelection( var selection )
 
     property var sortModel: ListModel { }
@@ -56,15 +53,15 @@ FocusScope {
                         actionForSelection(delegateModel.selectedGroup)
                     }
 
-                    RowLayout {
+                    Row {
                         anchors.fill: parent
 
                         Repeater {
                             model: sortModel
 
                             Item {
-                                Layout.preferredHeight: VLCStyle.fontHeight_normal
-                                Layout.preferredWidth: model.width * view.width
+                                height: VLCStyle.fontHeight_normal
+                                width: model.width * view.width
 
                                 Text {
                                     text: rowModel[model.criteria]
@@ -117,14 +114,14 @@ FocusScope {
             width: parent.width
             color: VLCStyle.colors.button
 
-            RowLayout {
+            Row {
                 anchors.fill: parent
                 Repeater {
                     model: sortModel
                     MouseArea {
-                        Layout.preferredHeight: VLCStyle.fontHeight_normal
-                        Layout.preferredWidth: model.width * view.width
-                        Layout.alignment: Qt.AlignVCenter
+                        height: VLCStyle.fontHeight_normal
+                        width: model.width * view.width
+                        //Layout.alignment: Qt.AlignVCenter
 
                         Text {
                             text: model.text
@@ -177,6 +174,8 @@ FocusScope {
         onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
         onActionLeft: root.actionLeft(index)
         onActionRight: root.actionRight(index)
+        onActionUp: root.actionUp(index)
+        onActionDown: root.actionDown(index)
         onActionCancel: root.actionCancel(index)
         onActionAtIndex: root.actionForSelection( delegateModel.selectedGroup )
     }
