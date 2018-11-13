@@ -24,29 +24,34 @@
 
 import QtQuick 2.0
 import QtQuick.Layouts 1.3
-import QtQuick.Controls 1.4 as QC14
 import QtQuick.Controls 2.2
 import org.videolan.medialib 0.1
 
+import "qrc:///utils/" as Utils
 import "qrc:///style/"
 
 import "qrc:///mediacenter/" as MC
 import "qrc:///playlist/" as PL
 
 Rectangle {
+    id: root
     color: VLCStyle.colors.bg
 
     Row {
         anchors.fill: parent
         MC.MCMainDisplay {
-            //anchors.fill: parent
+            id: mlview
             width: parent.width * (2. / 3)
             height: parent.height
+            focus: true
+            onActionRight: playlist.focus = true
         }
 
         PL.PlaylistListView {
+            id: playlist
             width: parent.width / 3
             height: parent.height
+            onActionLeft: mlview.focus = true
         }
     }
 
