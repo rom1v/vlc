@@ -31,7 +31,7 @@ import org.videolan.vlc 0.1
 import "qrc:///utils/" as Utils
 import "qrc:///style/"
 
-FocusScope {
+Utils.NavigableFocusScope {
     id: root
 
     property var plmodel: PlaylistListModel {
@@ -203,16 +203,22 @@ FocusScope {
             overlay.state = "normal"
             overlay.focus = true
         }
-        onActionCancel: this.onCancel()
-        onActionLeft: this.onCancel()
+        onActionLeft: this.onCancel(index, root.actionLeft)
+        onActionCancel: this.onCancel(index, root.actionCancel)
+        onActionUp: root.actionUp(index)
+        onActionDown: root.actionDown(index)
 
-        function onCancel() {
+        function onCancel(index, fct) {
             if (delegateModel.mode === "select" || delegateModel.mode === "move")
             {
                 overlay.state = "hidden"
                 delegateModel.mode = "normal"
             }
+            else
+            {
+                fct(index)
+
+            }
         }
     }
-
 }
