@@ -31,7 +31,7 @@ import org.videolan.medialib 0.1
 import "qrc:///utils/" as Utils
 import "qrc:///style/"
 
-FocusScope {
+Utils.NavigableFocusScope {
     id: root
 
     property var sortModel: ListModel {
@@ -43,11 +43,7 @@ FocusScope {
 
     property alias model: delegateModel.model
     property alias parentId: delegateModel.parentId
-
-    //forwarded from subview
-    signal actionLeft( int index )
-    signal actionRight( int index )
-    signal actionCancel( int index )
+    property var currentIndex: view.currentItem.currentIndex
 
     Utils.SelectableDelegateModel {
         id: delegateModel
@@ -186,6 +182,8 @@ FocusScope {
 
             onActionLeft: root.actionLeft(index)
             onActionRight: root.actionRight(index)
+            onActionDown: root.actionDown(index)
+            onActionUp: root.actionUp(index)
             onActionCancel: root.actionCancel(index)
         }
     }
@@ -203,16 +201,13 @@ FocusScope {
             model: delegateModel.parts.list
             modelCount: delegateModel.items.count
 
-            onContentYChanged:{
-                root.contentY = contentY - originY
-            }
-
-            function shiftX(i) { return 0 }
-
             onSelectAll: delegateModel.selectAll()
             onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+
             onActionLeft: root.actionLeft(index)
             onActionRight: root.actionRight(index)
+            onActionDown: root.actionDown(index)
+            onActionUp: root.actionUp(index)
             onActionCancel: root.actionCancel(index)
         }
     }

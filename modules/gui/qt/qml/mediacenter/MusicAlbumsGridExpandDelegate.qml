@@ -31,33 +31,31 @@ import org.videolan.medialib 0.1
 import "qrc:///utils/" as Utils
 import "qrc:///style/"
 
-FocusScope {
+Utils.NavigableFocusScope {
     id: root
     property var model: []
     //color: VLCStyle.colors.bg
     implicitHeight: layout.height
 
-    signal actionUp()
-    signal actionDown()
-    signal actionLeft()
-    signal actionRight()
-    signal actionCancel()
-
-    Keys.onPressed: {
-        var newIndex = -1
-        if ( event.key === Qt.Key_Down || event.matches(StandardKey.MoveToNextLine) ||event.matches(StandardKey.SelectNextLine) )
-            actionDown()
-        else if ( event.key === Qt.Key_Up || event.matches(StandardKey.MoveToPreviousLine) ||event.matches(StandardKey.SelectPreviousLine) )
-            actionUp()
-        else if (event.key === Qt.Key_Right || event.matches(StandardKey.MoveToNextChar) )
-            actionRight()
-        else if (event.key === Qt.Key_Left || event.matches(StandardKey.MoveToPreviousChar) )
-            actionLeft()
-        else if ( event.matches(StandardKey.Back) || event.matches(StandardKey.Cancel))
-            actionCancel()
-        event.accepted = true
+    Menu {
+        id: moreactions_menu
+        MenuItem {
+            text: qsTr("view artist")
+            onTriggered: console.log("view artist checked")
+        }
+        MenuItem {
+            text: qsTr("view artist")
+            onTriggered: console.log("view artist checked")
+        }
+        MenuItem {
+            text: qsTr("view artist")
+            onTriggered: console.log("view artist checked")
+        }
+        MenuItem {
+            text: qsTr("view artist")
+            onTriggered: console.log("view artist checked")
+        }
     }
-
 
     Row {
         id: layout
@@ -99,20 +97,31 @@ FocusScope {
 
                     Button {
                         id: addButton
+                        focus: true
+
                         Layout.preferredWidth: VLCStyle.icon_normal
                         Layout.preferredHeight: VLCStyle.icon_normal
                         Layout.alignment: Qt.AlignHCenter
+
                         icon.source: "qrc:///buttons/playlist/playlist_add.svg"
+
+                        onClicked: medialib.addToPlaylist(model.id)
+
                         KeyNavigation.right: playButton
-                        focus: true
                     }
                     Button {
                         id: playButton
+
                         Layout.preferredWidth: VLCStyle.icon_normal
                         Layout.preferredHeight: VLCStyle.icon_normal
                         Layout.alignment: Qt.AlignHCenter
+
                         icon.source: "qrc:///toolbar/play_b.svg"
+
+                        onClicked: medialib.addAndPlay(model.id)
+
                         KeyNavigation.right: likeButton
+
                     }
                     Button {
                         id: likeButton
@@ -121,6 +130,8 @@ FocusScope {
                         Layout.alignment: Qt.AlignHCenter
                         text: "…"
                         font.bold: true
+
+                        onClicked: moreactions_menu.popup(likeButton.x + likeButton.width + moreactions_menu.width, likeButton.y + likeButton.height / 2 - (moreactions_menu.height / 2))
 
                         Keys.onRightPressed: {
                             expand_track_id.focus = true
@@ -213,8 +224,10 @@ FocusScope {
                 focus: true
 
                 onActionLeft:  artAndControl.focus = true
-                onActionRight: root.actionRight()
-                onActionCancel: root.actionCancel()
+                onActionRight: root.actionRight(index)
+                onActionUp: root.actionUp(index)
+                onActionDown: root.actionDown(index)
+                onActionCancel: root.actionCancel(index)
             }
 
             Item {
