@@ -32,6 +32,9 @@
 #include <vlc_actions.h>
 #include "video_output/xcb/vlc_xkb.h"
 
+#ifdef HAVE_XKBCOMMON
+# include <xkbcommon/xkbcommon.h>
+
 static int keysymcmp (const void *pa, const void *pb)
 {
     int a = *(const uint32_t *)pa;
@@ -54,7 +57,7 @@ static uint_fast32_t vlc_xkb_convert_keysym(uint_fast32_t sym)
 
     /* X11 Latin-1 range */
     if (sym <= 0xff)
-        return sym;
+        return xkb_keysym_to_lower(sym);
     /* X11 Unicode range */
     if (sym >= 0x1000100 && sym <= 0x110ffff)
         return sym - 0x1000000;
@@ -89,9 +92,6 @@ static uint_fast32_t vlc_xkb_convert_keysym(uint_fast32_t sym)
 
     return KEY_UNSET;
 }
-
-#ifdef HAVE_XKBCOMMON
-# include <xkbcommon/xkbcommon.h>
 
 struct modifiers
 {
