@@ -95,7 +95,7 @@ Utils.NavigableFocusScope {
                         right: parent.right
                     }
 
-                    Button {
+                    Utils.ImageToolButton {
                         id: addButton
                         focus: true
 
@@ -103,40 +103,25 @@ Utils.NavigableFocusScope {
                         Layout.preferredHeight: VLCStyle.icon_normal
                         Layout.alignment: Qt.AlignHCenter
 
-                        icon.source: "qrc:///buttons/playlist/playlist_add.svg"
+                        imageSource: "qrc:///buttons/playlist/playlist_add.svg"
 
                         onClicked: medialib.addToPlaylist(model.id)
 
                         KeyNavigation.right: playButton
                     }
-                    Button {
+                    Utils.ImageToolButton {
                         id: playButton
 
                         Layout.preferredWidth: VLCStyle.icon_normal
                         Layout.preferredHeight: VLCStyle.icon_normal
                         Layout.alignment: Qt.AlignHCenter
 
-                        icon.source: "qrc:///toolbar/play_b.svg"
+                        imageSource: "qrc:///toolbar/play_b.svg"
 
                         onClicked: medialib.addAndPlay(model.id)
 
                         KeyNavigation.right: likeButton
 
-                    }
-                    Button {
-                        id: likeButton
-                        Layout.preferredWidth: VLCStyle.icon_normal
-                        Layout.preferredHeight: VLCStyle.icon_normal
-                        Layout.alignment: Qt.AlignHCenter
-                        text: "…"
-                        font.bold: true
-
-                        onClicked: moreactions_menu.popup(likeButton.x + likeButton.width + moreactions_menu.width, likeButton.y + likeButton.height / 2 - (moreactions_menu.height / 2))
-
-                        Keys.onRightPressed: {
-                            expand_track_id.focus = true
-                            event.accepted = true
-                        }
                     }
                 }
 
@@ -238,4 +223,7 @@ Utils.NavigableFocusScope {
         }
     }
 
+
+    Keys.priority:  KeyNavigation.AfterItem
+    Keys.onPressed:  defaultKeyAction(event, 0)
 }

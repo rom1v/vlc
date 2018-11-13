@@ -33,7 +33,7 @@ import "qrc:///style/"
 
 Utils.NavigableFocusScope {
     id: root
-    property alias model: artistModel.model
+    property alias model: delegateModel.model
     property var sortModel: ListModel {
         ListElement { text: qsTr("Alphabetic");  criteria: "title" }
     }
@@ -48,7 +48,7 @@ Utils.NavigableFocusScope {
     property var artistId: null
 
     Utils.SelectableDelegateModel {
-        id: artistModel
+        id: delegateModel
         model: MLArtistModel {
             ml: medialib
         }
@@ -70,11 +70,14 @@ Utils.NavigableFocusScope {
 
                 onItemClicked: {
                     currentArtistIndex = index
-                    //albumDisplay.parentId = model.id
                     artistId = model.id
-                    artistModel.updateSelection( modifier , artistList.currentIndex, index)
+                    delegateModel.updateSelection( modifier , artistList.currentIndex, index)
                     artistList.currentIndex = index
                     artistList.forceActiveFocus()
+                }
+
+                onItemDoubleClicked: {
+                    delegateModel.actionAtIndex(index)
                 }
 
                 onPlayClicked: {
@@ -95,13 +98,18 @@ Utils.NavigableFocusScope {
                 title: model.name || "Unknown Artist"
                 selected: element.DelegateModel.inSelected
 
-                shiftX: mainView.currentItem.shiftX(index)
+                //shiftX: mainView.currentItem.shiftX(index)
 
                 onItemClicked: {
-                    artistModel.updateSelection( modifier , mainView.currentItem.currentIndex, index)
-                    mainView.currentItem.bodyItem.currentIndex = index
-                    mainView.currentItem.bodyItem.focus = true
+                    delegateModel.updateSelection( modifier , artistList.currentIndex, index)
+                    artistList.currentIndex = index
+                    artistList.forceActiveFocus()
                 }
+
+                onItemDoubleClicked: {
+                    delegateModel.actionAtIndex(index)
+                }
+
                 onPlayClicked: {
                     medialib.addAndPlay( model.id )
                 }
@@ -126,14 +134,26 @@ Utils.NavigableFocusScope {
                 Component.onCompleted: {
                     multicover.grabToImage(function(result) {
                         gridItem.image = result.url
-                        multicover.destroy()
+                        //multicover.destroy()
                     })
-
                 }
             }
         }
-    }
 
+        function actionAtIndex(index) {
+            console.log("actionAtIndex", index)
+            if (delegateModel.selectedGroup.count > 1) {
+                var list = []
+                for (var i = 0; i < delegateModel.selectedGroup.count; i++)
+                    list.push(delegateModel.selectedGroup.get(i).model.id)
+                medialib.addAndPlay( list )
+            } else if (delegateModel.selectedGroup.count === 1) {
+                root.artistId =  delegateModel.selectedGroup.get(0).model.id
+                root.currentArtistIndex = index
+                artistList.currentIndex = index
+            }
+        }
+    }
 
     Component {
         id: artistGridComponent
@@ -141,13 +161,14 @@ Utils.NavigableFocusScope {
             cellWidth: (VLCStyle.cover_normal) + VLCStyle.margin_small
             cellHeight: (VLCStyle.cover_normal + VLCStyle.fontHeight_normal)  + VLCStyle.margin_small
 
-            model: artistModel.parts.grid
-            modelCount: artistModel.items.count
+            model: delegateModel.parts.grid
+            modelCount: delegateModel.items.count
 
-            onSelectAll: artistModel.selectAll()
-            onSelectionUpdated: artistModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onSelectAll: delegateModel.selectAll()
+            onActionAtIndex: delegateModel.actionAtIndex(index)
+            onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+
             onActionLeft: artistList.focus = true
-
             onActionRight: root.actionRight(index)
             onActionUp: root.actionUp(index)
             onActionDown: root.actionDown(index)
@@ -165,7 +186,7 @@ Utils.NavigableFocusScope {
         //        anchors.left: parent.left
         //        anchors.right: parent.right
         //        contentY: albumsView.contentY
-        //        artist: artistModel.items.get(currentArtistIndex).model
+        //        artist: delegateModel.items.get(currentArtistIndex).model
         //    }
         //    headerReservedHeight: VLCStyle.heightBar_large
         //
@@ -185,7 +206,7 @@ Utils.NavigableFocusScope {
                     focus: false
                     //contentY: albumsView.contentY
                     contentY: 0
-                    artist: artistModel.items.get(currentArtistIndex).model
+                    artist: delegateModel.items.get(currentArtistIndex).model
                 }
                 MusicAlbumsDisplay {
                     id: albumSubView
@@ -212,15 +233,12 @@ Utils.NavigableFocusScope {
 
             id: artistList
             spacing: 2
-            model: artistModel.parts.list
-            modelCount: artistModel.items.count
+            model: delegateModel.parts.list
+            modelCount: delegateModel.items.count
 
-            onSelectAll: artistModel.selectAll()
-            onSelectionUpdated: artistModel.updateSelection( keyModifiers, oldIndex, newIndex )
-            onActionAtIndex: {
-                currentArtistIndex = index
-                artistId = artistModel.items.get(index).model.id
-            }
+            onSelectAll: delegateModel.selectAll()
+            onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onActionAtIndex: delegateModel.actionAtIndex(index)
 
             onActionRight:  mainView.focus = true
             onActionLeft: root.actionLeft(index)
@@ -233,6 +251,7 @@ Utils.NavigableFocusScope {
             id: mainView
             width: parent.width * 0.75
             height: parent.height
+            focus: true
 
             initialItem: artistGridComponent
 

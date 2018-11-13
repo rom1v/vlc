@@ -37,7 +37,7 @@ NavigableFocusScope {
                 width: parent.width
                 height: VLCStyle.fontHeight_normal + VLCStyle.margin_xxsmall
 
-                color:  VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, hoverArea.containsMouse, view.currentIndex === index)
+                color:  VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, hoverArea.containsMouse, this.activeFocus)
 
                 MouseArea {
                     id: hoverArea

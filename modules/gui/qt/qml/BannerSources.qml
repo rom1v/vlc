@@ -38,15 +38,15 @@ Utils.NavigableFocusScope {
     property int selectedIndex: 0
     property alias model: pLBannerSources.model
 
+    // Triggered when the toogleView button is selected
+    function toggleView () {
+        medialib.gridView = !medialib.gridView
+    }
+
     Rectangle {
         id: pLBannerSources
 
         anchors.fill: parent
-
-        // Triggered when the toogleView button is selected
-        function toggleView () {
-            medialib.gridView = !medialib.gridView
-        }
 
         color: VLCStyle.colors.banner
         property alias model: buttonView.model
@@ -54,32 +54,19 @@ Utils.NavigableFocusScope {
         RowLayout {
             anchors.fill: parent
 
-            ToolButton {
+            Utils.ImageToolButton {
                 id: history_back
+                imageSource: "qrc:///toolbar/dvd_prev.svg"
+
+                focus: true
 
                 Layout.preferredHeight: VLCStyle.icon_normal
                 Layout.preferredWidth: VLCStyle.icon_normal
                 Layout.alignment: Qt.AlignVCenter
 
-                focus: true
-
                 KeyNavigation.right: buttonView
 
                 onClicked: history.pop(History.Go)
-
-                contentItem:  Image {
-                    source: "qrc:///toolbar/dvd_prev.svg"
-                    fillMode: Image.PreserveAspectFit
-                    height: history_back.width
-                    width: history_back.height
-                    anchors.centerIn: history_back
-                }
-
-                background: Rectangle {
-                    height: history_back.width
-                    width: history_back.height
-                    color: (history_back.hovered || history_back.activeFocus) ? VLCStyle.colors.bgHover : VLCStyle.colors.banner
-                }
             }
 
             /* Button for the sources */
@@ -87,15 +74,19 @@ Utils.NavigableFocusScope {
                 id: buttonView
 
                 focusPolicy: Qt.StrongFocus
-                onActiveFocusChanged: {
-                    if (activeFocus)
-                        sourcesButtons.children[0].forceActiveFocus()
-                }
 
                 Layout.preferredHeight: VLCStyle.icon_normal
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
 
                 KeyNavigation.left: history_back
+
+                Component.onCompleted: {
+                    buttonView.contentItem.focus= true
+                }
+
+                background: Rectangle {
+                    color: "transparent"
+                }
 
                 property alias model: sourcesButtons.model
                 /* Repeater to display each button */
@@ -121,7 +112,8 @@ Utils.NavigableFocusScope {
                         background: Rectangle {
                             implicitHeight: parent.height
                             width: parent.contentItem.width
-                            color: (control.hovered || control.activeFocus) ? VLCStyle.colors.bgHover : VLCStyle.colors.banner
+                            //color: (control.hovered || control.activeFocus) ? VLCStyle.colors.bgHover : VLCStyle.colors.banner
+                            color: VLCStyle.colors.banner
                         }
 
                         contentItem: Row {
@@ -144,10 +136,22 @@ Utils.NavigableFocusScope {
                                 color: control.hovered ?  VLCStyle.colors.textActiveSource : VLCStyle.colors.text
                                 verticalAlignment: Text.AlignVCenter
                                 horizontalAlignment: Text.AlignHCenter
+
                                 anchors {
                                     verticalCenter: parent.verticalCenter
                                     rightMargin: VLCStyle.margin_xsmall
                                     leftMargin: VLCStyle.margin_small
+                                }
+
+                                Rectangle {
+                                    anchors {
+                                        left: parent.left
+                                        right: parent.right
+                                        bottom: parent.bottom
+                                    }
+                                    height: 2
+                                    visible: control.activeFocus || control.checked
+                                    color: control.activeFocus ? VLCStyle.colors.accent  : VLCStyle.colors.bgHover
                                 }
                             }
                         }
@@ -157,7 +161,7 @@ Utils.NavigableFocusScope {
 
 
             /* button to choose the view displayed (list or grid) */
-            ToolButton {
+            Utils.ImageToolButton {
                 id: view_selector
 
                 Layout.preferredHeight: VLCStyle.icon_normal
@@ -166,21 +170,9 @@ Utils.NavigableFocusScope {
 
                 KeyNavigation.left: buttonView
 
-                onClicked: toggleView()
+                onClicked: root.toggleView()
 
-                contentItem:  Image {
-                    source: "qrc:///toolbar/tv.svg"
-                    fillMode: Image.PreserveAspectFit
-                    height: view_selector.width
-                    width: view_selector.height
-                    anchors.centerIn: view_selector
-                }
-
-                background: Rectangle {
-                    height: view_selector.width
-                    width: view_selector.height
-                    color: (view_selector.hovered || view_selector.activeFocus) ? VLCStyle.colors.bgHover : VLCStyle.colors.banner
-                }
+                imageSource: "qrc:///toolbar/tv.svg"
             }
         }
     }

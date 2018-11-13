@@ -128,8 +128,6 @@ Utils.NavigableFocusScope {
 
             activeFocusOnTab:true
 
-            interactive: root.interactive
-
             cellWidth: VLCStyle.cover_normal + VLCStyle.margin_small
             cellHeight: VLCStyle.cover_normal + VLCStyle.fontHeight_normal * 2 + VLCStyle.margin_small
 
@@ -147,9 +145,11 @@ Utils.NavigableFocusScope {
                     visible: true
                     focus: true
                     model: delegateModel.items.get(gridView_id.expandIndex).model
-                    onActionCancel: {
-                        gridView_id.expandIndex = -1
-                    }
+                    onActionCancel:  gridView_id.expandIndex = -1
+                    onActionUp:  gridView_id.expandIndex = -1
+                    onActionDown: gridView_id.expandIndex = -1
+                    onActionLeft: root.actionLeft(index)
+                    onActionRight: root.actionRight(index)
                 }
 
                 Connections {

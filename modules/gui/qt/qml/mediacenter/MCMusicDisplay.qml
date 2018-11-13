@@ -102,11 +102,16 @@ Utils.NavigableFocusScope {
                     TabBar {
                         id: bar
 
-                        Layout.preferredHeight: parent.height
+                        focus: true
+
+                        Layout.preferredHeight: parent.height - VLCStyle.margin_small
                         Layout.alignment: Qt.AlignVCenter
 
                         background: Rectangle {
                             color: VLCStyle.colors.banner
+                        }
+                        Component.onCompleted: {
+                            bar.contentItem.focus= true
                         }
 
                         /* List of sub-sources for Music */
@@ -125,11 +130,20 @@ Utils.NavigableFocusScope {
                                 contentItem: Label {
                                     text: control.text
                                     font: control.font
-                                    color:  (control.checked || control.hovered) ?
-                                                VLCStyle.colors.textActiveSource :
-                                                VLCStyle.colors.text
+                                    color:  control.hovered ?  VLCStyle.colors.textActiveSource : VLCStyle.colors.text
                                     verticalAlignment: Text.AlignVCenter
                                     horizontalAlignment: Text.AlignHCenter
+
+                                    Rectangle {
+                                        anchors {
+                                            left: parent.left
+                                            right: parent.right
+                                            bottom: parent.bottom
+                                        }
+                                        height: 2
+                                        visible: control.activeFocus || control.checked
+                                        color: control.activeFocus ? VLCStyle.colors.accent  : VLCStyle.colors.bgHover
+                                    }
                                 }
                                 onClicked: {
                                     stackView.replace(model.url)
@@ -143,7 +157,7 @@ Utils.NavigableFocusScope {
                                     stackView.focus = true
                                 }
                                 checked: (model.name === root.view)
-
+                                activeFocusOnTab: true
                             }
                         }
 
@@ -157,7 +171,7 @@ Utils.NavigableFocusScope {
 
                     TextField {
                         Layout.preferredWidth: VLCStyle.widthSearchInput
-                        Layout.preferredHeight: parent.height
+                        Layout.preferredHeight: parent.height - VLCStyle.margin_small
                         Layout.alignment: Qt.AlignVCenter  | Qt.AlignRight
 
                         id: searchBox
@@ -173,7 +187,7 @@ Utils.NavigableFocusScope {
                                 if ( searchBox.text.length < 3 && searchBox.text.length !== 0 )
                                     return VLCStyle.colors.alert
                                 else if ( searchBox.hovered || searchBox.activeFocus )
-                                    return VLCStyle.colors.bgHover
+                                    return VLCStyle.colors.accent
                                 else
                                     return VLCStyle.colors.buttonBorder
                            }
@@ -193,8 +207,7 @@ Utils.NavigableFocusScope {
                         //Layout.fillHeight: true
                         Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
                         Layout.preferredWidth: VLCStyle.widthSortBox
-
-                        height: parent.height
+                        Layout.preferredHeight: parent.height - VLCStyle.margin_small
                         textRole: "text"
                         model: stackView.currentItem.sortModel
                         onCurrentIndexChanged: {
@@ -257,7 +270,7 @@ Utils.NavigableFocusScope {
             onActionRight:  root.actionRight(index)
             onActionDown:   root.actionDown(index)
             onActionUp:     toobar.focus = true
-            onActionCancel: root.actionCancel( index )
+            onActionCancel: toobar.focus = true
         }
     }
 }
