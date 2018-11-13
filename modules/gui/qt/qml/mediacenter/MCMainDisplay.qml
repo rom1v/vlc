@@ -27,12 +27,11 @@ import org.videolan.medialib 0.1
 
 import "qrc:///style/"
 import "qrc:///qml/"
+import "qrc:///utils/" as Utils
 
-ColumnLayout {
-    id: column
 
-    Layout.minimumWidth: VLCStyle.minWidthMediacenter
-    spacing: 0
+Utils.NavigableFocusScope {
+    id: root
 
     //name and properties of the tab to be initially loaded
     property string view: "music"
@@ -66,76 +65,105 @@ ColumnLayout {
                 console.warn("unable to load requested view, undefined")
                 return
             }
-            loadView(current.view, current.viewProperties)
+            stackView.loadView(current.view, current.viewProperties)
         }
     }
 
-    function loadView(name, viewProperties)
-    {
-        var found = false
-        for (var tab = 0; tab < tabModel.count; tab++ )
-            if (tabModel.get(tab).name === name) {
-                //we can't use push(url, properties) as Qt interprets viewProperties
-                //as a second component to load
-                var component = Qt.createComponent(tabModel.get(tab).url)
-                if (component.status === Component.Ready ) {
-                    var page = component.createObject(stackView, viewProperties)
-                    stackView.replace(page)
-                    view = name
-                    found = true
-                    break;
+    ColumnLayout {
+        id: column
+        anchors.fill: parent
+
+
+        Layout.minimumWidth: VLCStyle.minWidthMediacenter
+        spacing: 0
+
+        /* Source selection*/
+        BannerSources {
+            id: sourcesBanner
+
+            Layout.preferredHeight: height
+            Layout.minimumHeight: height
+            Layout.maximumHeight: height
+            Layout.fillWidth: true
+
+            need_toggleView_button: true
+
+            model: root.tabModel
+
+            onSelectedIndexChanged: {
+                stackView.replace(root.tabModel.get(selectedIndex).url)
+                history.push({
+                                 view: root.tabModel.get(selectedIndex).name,
+                                 viewProperties: {}
+                             }, History.Stay)
+                stackView.focus = true
+            }
+
+            onActionDown: stackView.focus = true
+
+            onActionLeft: root.actionLeft(index)
+            onActionRight: root.actionRight(index)
+            onActionUp: root.actionUp(index)
+            onActionCancel: root.actionCancel(index)
+        }
+
+        StackView {
+            id: stackView
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            focus: true
+
+            replaceEnter: Transition {
+                PropertyAnimation {
+                    property: "opacity"
+                    from: 0
+                    to:1
+                    duration: 200
                 }
             }
-        if (!found)
-            console.warn("unable to load view " + name)
-        return found
+
+            replaceExit: Transition {
+                PropertyAnimation {
+                    property: "opacity"
+                    from: 1
+                    to:0
+                    duration: 200
+                }
+            }
+
+            function loadView(name, viewProperties)
+            {
+                var found = false
+                for (var tab = 0; tab < root.tabModel.count; tab++ )
+                    if (root.tabModel.get(tab).name === name) {
+                        //we can't use push(url, properties) as Qt interprets viewProperties
+                        //as a second component to load
+                        var component = Qt.createComponent(root.tabModel.get(tab).url)
+                        if (component.status === Component.Ready ) {
+                            var page = component.createObject(stackView, viewProperties)
+                            stackView.replace(page)
+                            view = name
+                            found = true
+                            break;
+                        }
+                    }
+                if (!found)
+                    console.warn("unable to load view " + name)
+                return found
+            }
+
+        }
     }
 
-    /* Source selection*/
-    BannerSources {
-        id: sourcesBanner
+    Connections {
+        target: stackView.currentItem
+        ignoreUnknownSignals: true
 
-        height: VLCStyle.heightBar_normal
-        Layout.preferredHeight: height
-        Layout.minimumHeight: height
-        Layout.maximumHeight: height
-        Layout.fillWidth: true
+        onActionUp:     sourcesBanner.focus = true
+        onActionCancel: sourcesBanner.focus = true
 
-        need_toggleView_button: true
-
-        model: tabModel
-
-        onSelectedIndexChanged: {
-            stackView.replace(tabModel.get(selectedIndex).url)
-            history.push({
-                view: tabModel.get(selectedIndex).name,
-                viewProperties: {}
-            }, History.Stay)
-            stackView.focus = true
-        }
-    }
-
-    StackView {
-        id: stackView
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-
-        replaceEnter: Transition {
-            PropertyAnimation {
-                property: "opacity"
-                from: 0
-                to:1
-                duration: 200
-            }
-        }
-
-        replaceExit: Transition {
-            PropertyAnimation {
-                property: "opacity"
-                from: 1
-                to:0
-                duration: 200
-            }
-        }
+        onActionLeft:   root.actionLeft(index)
+        onActionRight:  root.actionRight(index)
+        onActionDown:   root.actionDown(index)
     }
 }
