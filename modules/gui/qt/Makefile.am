@@ -500,6 +500,7 @@ libqt_plugin_la_RES = \
 	gui/qt/qml/utils/GridItem.qml \
 	gui/qt/qml/utils/ListItem.qml \
 	gui/qt/qml/utils/MultiCoverPreview.qml \
+	gui/qt/qml/utils/NavigableFocusScope.qml \
 	gui/qt/qml/utils/KeyNavigableGridView.qml \
 	gui/qt/qml/utils/KeyNavigableListView.qml \
 	gui/qt/qml/utils/KeyNavigableTableView.qml \
