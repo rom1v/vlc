@@ -31,7 +31,7 @@ Item {
     function getBgColor(selected, hovered, focus)
     {
         if (focus)
-            return bgHover
+            return accent
         if ( selected )
             return bgHoverInactive
         else if (hovered)
