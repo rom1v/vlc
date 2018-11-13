@@ -36,7 +36,8 @@
 #include <vlc_common.h>
 #include <vlc_plugin.h>
 #include <vlc_interface.h>
-#include <vlc_playlist_legacy.h>
+#include <vlc_player.h>
+#include <vlc_playlist.h>
 #include <vlc_input.h>
 #include <vlc_vout.h>
 
@@ -161,14 +162,17 @@ static void *RunIntf( void *data )
         if( b_change )
         {
 #warning FIXME: refactor this plugin as a video filter!
-            input_thread_t *p_input = pl_CurrentInput( p_intf );
-            if( p_input )
+            vlc_playlist_t *playlist = vlc_intf_GetMainPlaylist(p_intf);
+            vlc_player_t *player = vlc_playlist_GetPlayer(playlist);
+            vlc_player_Lock(player);
+            if (vlc_player_IsStarted(player))
             {
-                vout_thread_t *p_vout;
-
-                p_vout = input_GetVout( p_input );
-                if( p_vout )
+                size_t count;
+                vout_thread_t **vouts =
+                    vlc_player_vout_HoldAll(player, &count);
+                for( size_t i = 0; i < count; ++i )
                 {
+                    vout_thread_t *p_vout = vouts[i];
                     if( psz_type != NULL )
                     {
                         var_Create( p_vout, "transform-type", VLC_VAR_STRING );
@@ -181,9 +185,10 @@ static void *RunIntf( void *data )
                                    psz_type != NULL ? "transform" : "" );
                     vlc_object_release( p_vout );
                 }
-                vlc_object_release( p_input );
+                free(vouts);
                 i_oldx = i_x;
             }
+            vlc_player_Unlock(player);
         }
 
         vlc_restorecancel( canc );
