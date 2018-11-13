@@ -29,11 +29,23 @@ import org.videolan.medialib 0.1
 import "qrc:///utils/" as Utils
 import "qrc:///style/"
 
-Item {
-    id: viewLoader
+Utils.NavigableFocusScope {
+    id: root
     property alias model: delegateModel.model
     property var sortModel: ListModel {
         ListElement { text: qsTr("Alphabetic"); criteria: "title" }
+    }
+
+    function goToView( parent ) {
+        history.push({
+            view: "music",
+            viewProperties: {
+                 view: "albums",
+                 viewProperties: {
+                     parentId: parent
+                 }
+             },
+        }, History.Go)
     }
 
     Utils.SelectableDelegateModel {
@@ -51,16 +63,14 @@ Item {
                 title: model.name || "Unknown genre"
                 selected: element.DelegateModel.inSelected
 
-                shiftX: ((model.index % gridView_id._colCount) + 1) *
-                        ((gridView_id.width - gridView_id._colCount * gridView_id.cellWidth) / (gridView_id._colCount + 1))
+                shiftX: view.currentItem.shiftX(model.index)
 
                 onItemClicked: {
-                    console.log('Clicked on details : '+model.name);
-                    delegateModel.updateSelection( modifier , gridView_id.currentIndex, index)
-                    gridView_id.currentIndex = index
+                    delegateModel.updateSelection( modifier , view.currentItem.currentIndex, index)
+                    view.currentItem.currentIndex = index
+                    view.currentItem.forceActiveFocus()
                 }
                 onPlayClicked: {
-                    console.log('Clicked on play : '+model.name);
                     medialib.addAndPlay( model.id )
                 }
                 onItemDoubleClicked: {
@@ -75,7 +85,6 @@ Item {
                     }, History.Go)
                 }
                 onAddToPlaylistClicked: {
-                    console.log('Clicked on addToPlaylist : '+model.name);
                     medialib.addToPlaylist( model.id );
                 }
 
@@ -95,15 +104,15 @@ Item {
                 Component.onCompleted: {
                     multicover.grabToImage(function(result) {
                         gridItem.image = result.url
-                        multicover.destroy()
+                        //multicover.destroy()
                     })
                 }
             }
 
             Utils.ListItem {
                 Package.name: "list"
+                width: root.width
                 height: VLCStyle.icon_normal
-                width: parent.width
 
                 color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, this.activeFocus)
 
@@ -118,8 +127,9 @@ Item {
 
                 onItemClicked: {
                     console.log("Clicked on : "+model.name);
-                    delegateModel.updateSelection( modifier, listView_id.currentIndex, index )
-                    listView_id.currentIndex = index
+                    delegateModel.updateSelection( modifier, view.currentItem.currentIndex, index )
+                    view.currentItem.currentIndex = index
+                    this.forceActiveFocus()
                 }
                 onPlayClicked: {
                     console.log('Clicked on play : '+model.name);
@@ -142,42 +152,105 @@ Item {
                 }
             }
         }
+
+        function actionAtIndex(index) {
+            if (delegateModel.selectedGroup.count > 1) {
+                var list = []
+                for (var i = 0; i < delegateModel.selectedGroup.count; i++)
+                    list.push(delegateModel.selectedGroup.get(i).model.id)
+                medialib.addAndPlay( list )
+            } else if (delegateModel.selectedGroup.count === 1) {
+                goToView(delegateModel.selectedGroup.get(0).model.id)
+            }
+        }
     }
 
     /* Grid View */
-    Utils.KeyNavigableGridView {
-        id: gridView_id
+    Component {
+        id: gridComponent
+        Utils.KeyNavigableGridView {
+            id: gridView_id
 
-        model: delegateModel.parts.grid
-        modelCount: delegateModel.items.count
+            model: delegateModel.parts.grid
+            modelCount: delegateModel.items.count
 
-        visible: medialib.gridView
-        enabled: medialib.gridView
-        focus: medialib.gridView
+            focus: true
 
-        anchors.fill: parent
-        cellWidth: (VLCStyle.cover_normal) + VLCStyle.margin_small
-        cellHeight: (VLCStyle.cover_normal + VLCStyle.fontHeight_normal) + VLCStyle.margin_small
+            cellWidth: (VLCStyle.cover_normal) + VLCStyle.margin_small
+            cellHeight: (VLCStyle.cover_normal + VLCStyle.fontHeight_normal) + VLCStyle.margin_small
 
-        onSelectAll: delegateModel.selectAll()
-        onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onSelectAll: delegateModel.selectAll()
+            onSelectionUpdated:  delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onActionAtIndex: delegateModel.actionAtIndex(index)
+
+            onActionLeft: root.actionLeft(index)
+            onActionRight: root.actionRight(index)
+            onActionUp: root.actionUp(index)
+            onActionDown: root.actionDown(index)
+            onActionCancel: root.actionCancel(index)
+        }
     }
 
-    /* List View */
-    Utils.KeyNavigableListView {
-        id: listView_id
 
-        model: delegateModel.parts.list
-        modelCount: delegateModel.items.count
+    Component {
+        id: listComponent
+        /* List View */
+        Utils.KeyNavigableListView {
+            id: listView_id
 
-        visible: !medialib.gridView
-        enabled: !medialib.gridView
-        focus: !medialib.gridView
+            model: delegateModel.parts.list
+            modelCount: delegateModel.items.count
+
+            focus: true
+            spacing: VLCStyle.margin_xxxsmall
+
+            onSelectAll: delegateModel.selectAll()
+            onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onActionAtIndex: delegateModel.actionAtIndex(index)
+
+            onActionLeft: root.actionLeft(index)
+            onActionRight: root.actionRight(index)
+            onActionUp: root.actionUp(index)
+            onActionDown: root.actionDown(index)
+            onActionCancel: root.actionCancel(index)
+        }
+    }
+
+
+    StackView {
+        id: view
 
         anchors.fill: parent
-        spacing: VLCStyle.margin_xxxsmall
+        focus: true
 
-        onSelectAll: delegateModel.selectAll()
-        onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+        initialItem: medialib.gridView ? gridComponent : listComponent
+
+        replaceEnter: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 0
+                to:1
+                duration: 500
+            }
+        }
+
+        replaceExit: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 1
+                to:0
+                duration: 500
+            }
+        }
+
+        Connections {
+            target: medialib
+            onGridViewChanged: {
+                if (medialib.gridView)
+                    view.replace(gridComponent)
+                else
+                    view.replace(listComponent)
+            }
+        }
     }
 }
