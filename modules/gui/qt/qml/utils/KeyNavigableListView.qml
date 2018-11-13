@@ -47,15 +47,17 @@ NavigableFocusScope {
 
         Keys.onPressed: {
             var newIndex = -1
-            if ( event.key === Qt.Key_Down || event.matches(StandardKey.MoveToNextLine) ||event.matches(StandardKey.SelectNextLine) )
-                newIndex = Math.min(modelCount - 1, currentIndex + 1)
-            else if ( event.key === Qt.Key_PageDown || event.matches(StandardKey.MoveToNextPage) ||event.matches(StandardKey.SelectNextPage))
+            if ( event.key === Qt.Key_Down || event.matches(StandardKey.MoveToNextLine) ||event.matches(StandardKey.SelectNextLine) ) {
+                if (currentIndex !== modelCount - 1 )
+                    newIndex = currentIndex + 1
+            } else if ( event.key === Qt.Key_PageDown || event.matches(StandardKey.MoveToNextPage) ||event.matches(StandardKey.SelectNextPage)) {
                 newIndex = Math.min(modelCount - 1, currentIndex + 10)
-            else if ( event.key === Qt.Key_Up || event.matches(StandardKey.MoveToPreviousLine) ||event.matches(StandardKey.SelectPreviousLine) )
-                newIndex = Math.max(0, currentIndex - 1)
-            else if ( event.key === Qt.Key_PageUp || event.matches(StandardKey.MoveToPreviousPage) ||event.matches(StandardKey.SelectPreviousPage))
+            } else if ( event.key === Qt.Key_Up || event.matches(StandardKey.MoveToPreviousLine) ||event.matches(StandardKey.SelectPreviousLine) ) {
+                if ( currentIndex !== 0 )
+                    newIndex = currentIndex - 1
+            } else if ( event.key === Qt.Key_PageUp || event.matches(StandardKey.MoveToPreviousPage) ||event.matches(StandardKey.SelectPreviousPage)) {
                 newIndex = Math.max(0, currentIndex - 10)
-            else if (event.matches(StandardKey.SelectAll)) {
+            } else if (event.matches(StandardKey.SelectAll)) {
                 selectAll()
                 event.accepted = true
             } else if (event.key === Qt.Key_Space || event.matches(StandardKey.InsertParagraphSeparator)) { //enter/return/space
