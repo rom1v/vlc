@@ -44,7 +44,9 @@ class MLNetworkModel : public QAbstractListModel
     {
         std::string name;
         std::string mrl;
-        bool selected;
+        bool indexed;
+        bool isDir;
+        bool canBeIndexed;
     };
 public:
     MLNetworkModel( QmlMainContext* ctx, QString parentMrl, QObject* parent = nullptr);

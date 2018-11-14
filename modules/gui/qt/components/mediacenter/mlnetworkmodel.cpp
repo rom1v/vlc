@@ -28,6 +28,8 @@ enum Role {
     NETWORK_NAME = Qt::UserRole + 1,
     NETWORK_MRL,
     NETWORK_INDEXED,
+    NETWORK_CANINDEX,
+    NETWORK_ISDIR,
 };
 
 }
@@ -60,7 +62,11 @@ QVariant MLNetworkModel::data( const QModelIndex& index, int role ) const
         case NETWORK_MRL:
             return QVariant::fromValue( QString::fromStdString( item.mrl ) );
         case NETWORK_INDEXED:
-            return QVariant::fromValue( item.selected );
+            return QVariant::fromValue( item.indexed );
+        case NETWORK_CANINDEX:
+            return QVariant::fromValue( item.canBeIndexed );
+        case NETWORK_ISDIR:
+            return QVariant::fromValue( item.isDir );
         default:
             return {};
     }
@@ -72,6 +78,8 @@ QHash<int, QByteArray> MLNetworkModel::roleNames() const
         { NETWORK_NAME, "name" },
         { NETWORK_MRL, "mrl" },
         { NETWORK_INDEXED, "indexed" },
+        { NETWORK_CANINDEX, "can_index" },
+        { NETWORK_ISDIR, "is_dir" }
     };
 }
 
@@ -95,14 +103,14 @@ bool MLNetworkModel::setData( const QModelIndex& idx, const QVariant& value, int
     auto ml = vlc_ml_instance_get( m_ctx->getIntf() );
     assert( ml != nullptr );
     auto enabled = value.toBool();
-    assert( m_items[idx.row()].selected != enabled );
+    assert( m_items[idx.row()].indexed != enabled );
     auto mrl = m_items[idx.row()].mrl.c_str();
     int res;
     if ( enabled )
         res = vlc_ml_add_folder( ml, mrl );
     else
         res = vlc_ml_remove_folder( ml, mrl );
-    m_items[idx.row()].selected = enabled;
+    m_items[idx.row()].indexed = enabled;
     return res == VLC_SUCCESS;
 }
 
@@ -172,14 +180,16 @@ void MLNetworkModel::onItemAdded( input_item_t* parent, input_item_t* p_item,
         Item i;
         i.mrl = p_item->psz_uri;
         i.name = p_item->psz_name;
-        i.selected = false;
+        i.indexed = false;
+        i.canBeIndexed = true;
+        i.isDir = true;
         if ( m_entryPoints != nullptr )
         {
             for ( const auto& ep : ml_range_iterate<vlc_ml_entry_point_t>( m_entryPoints ) )
             {
                 if ( ep.b_present && strcasecmp( ep.psz_mrl, p_item->psz_uri ) == 0 )
                 {
-                    i.selected = true;
+                    i.indexed = true;
                     break;
                 }
             }
@@ -230,7 +240,10 @@ void MLNetworkModel::onInputEvent( input_thread_t*, const vlc_input_event* event
     for ( auto i = 0; i < event->subitems->i_children; ++i )
     {
         auto it = event->subitems->pp_children[i]->p_item;
-        items.push_back( Item{ it->psz_name, it->psz_uri, isIndexed } );
+        items.push_back( Item{ it->psz_name, it->psz_uri, isIndexed,
+                            it->i_type == ITEM_TYPE_DIRECTORY,
+                            it->i_type == ITEM_TYPE_DIRECTORY
+                        } );
     }
     callAsync([this, items = std::move(items)]() {
         beginInsertRows( {}, m_items.size(), m_items.size() + items.size() - 1 );

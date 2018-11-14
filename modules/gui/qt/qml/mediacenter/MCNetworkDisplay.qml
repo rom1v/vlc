@@ -44,22 +44,32 @@ Utils.NavigableFocusScope {
             Column {
                 Package.name: "grid"
                 Utils.GridItem {
-                noActionButtons: true
-                image: "qrc:///type/network.svg"
-                title: model.name || qsTr("Unknown share")
-                selected: element.DelegateModel.inSelected || view.currentItem.currentIndex === index
-                shiftX: view.currentItem.shiftX(model.index)
+                    noActionButtons: model.is_dir
+                    image: model.is_dir ? "qrc:///type/network.svg" : VLCStyle.noArtCover
+                    title: model.name || qsTr("Unknown share")
+                    selected: element.DelegateModel.inSelected || view.currentItem.currentIndex === index
+                    shiftX: view.currentItem.shiftX(model.index)
 
-                onItemDoubleClicked: {
-                    history.push({
-                        view: "network",
-                        viewProperties: {
-                            model: networkModelFactory.create(mainctx, model.mrl)
-                         },
-                    }, History.Go)
-                }
+                    onItemDoubleClicked: {
+                        if ( model.is_dir ) {
+                            history.push({
+                                view: "network",
+                                viewProperties: {
+                                    model: networkModelFactory.create(mainctx, model.mrl)
+                                 },
+                            }, History.Go)
+                        }
+                    }
+                    onPlayClicked: {
+                        console.log( model.mrl );
+                        medialib.addAndPlay( model.mrl )
+                    }
+                    onAddToPlaylistClicked: {
+                        medialib.addToPlaylist( model.mrl );
+                    }
                 }
                 CheckBox {
+                    visible: model.can_index
                     text: "Indexed"
                     checked: model.indexed
                     onCheckedChanged: model.indexed = checked;
@@ -87,6 +97,28 @@ Utils.NavigableFocusScope {
                 }
             }
         }
+        function actionAtIndex(index) {
+            if ( delegateModel.selectedGroup.count > 1 ) {
+                var list = []
+                for (var i = 0; i < delegateModel.selectedGroup.count; i++) {
+                    if (!model.is_dir)
+                        list.push(delegateModel.selectedGroup.get(i).model.mrl)
+                }
+                medialib.addAndPlay( list )
+            } else {
+                var itemModel = delegateModel.selectedGroup.get(i).model;
+                if (itemModel.is_dir) {
+                    history.push({
+                        view: "network",
+                        viewProperties: {
+                            model: networkModelFactory.create(mainctx, itemModel.mrl)
+                         },
+                    }, History.Go);
+                } else {
+                    medialib.addAndPlay( itemModel.mrl );
+                }
+            }
+        }
     }
     Component {
         id: gridComponent
@@ -104,6 +136,7 @@ Utils.NavigableFocusScope {
 
             onSelectAll: delegateModel.selectAll()
             onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onActionAtIndex: delegateModel.actionAtIndex(index)
 
             onActionLeft: root.actionLeft(index)
             onActionRight: root.actionRight(index)
