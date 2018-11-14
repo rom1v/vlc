@@ -209,5 +209,6 @@
         <file alias="SliderBar.qml">qml/controlbar/SliderBar.qml</file>
         <file alias="AudioSubMenu.qml">qml/controlbar/AudioSubMenu.qml</file>
         <file alias="VideoControler.qml">qml/controlbar/VideoControler.qml</file>
+        <file alias="TrackInfo.qml">qml/controlbar/TrackInfo.qml</file>
     </qresource>
 </RCC>

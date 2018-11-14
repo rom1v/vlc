@@ -505,6 +505,7 @@ libqt_plugin_la_RES = \
 	gui/qt/pixmaps/lock.svg \
 	gui/qt/qml/MainInterface.qml \
 	gui/qt/qml/BannerSources.qml \
+	gui/qt/qml/controlbar/TrackInfo.qml \
 	gui/qt/qml/controlbar/AudioSubMenu.qml \
 	gui/qt/qml/controlbar/ControlBar.qml \
 	gui/qt/qml/controlbar/SliderBar.qml \

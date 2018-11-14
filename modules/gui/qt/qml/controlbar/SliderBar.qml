@@ -10,6 +10,9 @@ Slider {
     value: player.position
     onMoved: player.position = control.position
 
+    height: 5
+    implicitHeight: 5
+
     topPadding: 0
     leftPadding: 0
     bottomPadding: 0
@@ -19,7 +22,7 @@ Slider {
 
     background: Rectangle {
         width: control.availableWidth
-        implicitHeight: 5
+        implicitHeight: control.implicitHeight
         height: implicitHeight
         color: VLCStyle.colors.bg
 

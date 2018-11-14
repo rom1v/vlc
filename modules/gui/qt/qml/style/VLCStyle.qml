@@ -53,6 +53,7 @@ Item {
     property int icon_large: 64;
     property int icon_xlarge: 128;
 
+    property int cover_xxsmall: 32;
     property int cover_xsmall: 64;
     property int cover_small: 96;
     property int cover_normal: 128;
