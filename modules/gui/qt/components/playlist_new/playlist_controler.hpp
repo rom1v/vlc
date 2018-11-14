@@ -74,6 +74,8 @@ public:
 
     Q_PROPERTY(PlaylistPtr playlistPtr READ getPlaylistPtr WRITE setPlaylistPtr NOTIFY playlistPtrChanged)
 
+    Q_PROPERTY(PlaylistItem currentItem READ getCurrentItem NOTIFY currentItemChanged)
+
     Q_PROPERTY(bool hasNext READ hasNext NOTIFY hasNextChanged)
     Q_PROPERTY(bool hasPrev READ hasPrev NOTIFY hasPrevChanged)
     Q_PROPERTY(bool random READ isRandom WRITE setRandom NOTIFY randomChanged )
@@ -111,6 +113,8 @@ public:
     virtual ~PlaylistControlerModel();
 
 public slots:
+    PlaylistItem getCurrentItem() const;
+
     bool hasNext() const;
     bool hasPrev() const;
 
@@ -132,6 +136,8 @@ public slots:
 signals:
     void playlistPtrChanged( PlaylistPtr );
 
+    void currentItemChanged( );
+
     void hasNextChanged( bool );
     void hasPrevChanged( bool );
     void randomChanged( bool );
@@ -139,7 +145,7 @@ signals:
     void repeatModeChanged( PlaybackRepeat );
     void isEmptyChanged( bool empty );
 
-    void currentItemChanged(ssize_t index);
+    void currentIndexChanged(ssize_t index);
     void itemsReset(QVector<PlaylistItem>);
     void itemsAdded(size_t index, QVector<PlaylistItem>);
     void itemsMoved(size_t index, size_t count, size_t target);

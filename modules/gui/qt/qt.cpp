@@ -516,8 +516,6 @@ static inline void qRegisterMetaTypes()
     qRegisterMetaType<size_t>("size_t");
     qRegisterMetaType<ssize_t>("ssize_t");
     qRegisterMetaType<vlc_tick_t>("vlc_tick_t");
-    qRegisterMetaType<vlc::playlist::PlaylistItem>("PlaylistItem");
-    qRegisterMetaType<QVector<vlc::playlist::PlaylistItem>>("QVector<PlaylistItem>");
 }
 
 static void *Thread( void *obj )

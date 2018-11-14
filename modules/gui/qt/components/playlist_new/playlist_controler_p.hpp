@@ -55,6 +55,7 @@ public:
     vlc_playlist_listener_id* m_listener = nullptr;
 
     ssize_t m_currentIndex = -1;
+    PlaylistItem m_currentItem;
     bool m_hasNext= false;
     bool m_hasPrev = false;
     PlaylistControlerModel::PlaybackRepeat m_repeat = PlaylistControlerModel::PLAYBACK_REPEAT_NONE;

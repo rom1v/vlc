@@ -152,6 +152,7 @@ libqt_plugin_la_SOURCES = \
 	gui/qt/components/playlist_new/playlist_controler.cpp \
 	gui/qt/components/playlist_new/playlist_controler.hpp \
 	gui/qt/components/playlist_new/playlist_controler_p.hpp \
+	gui/qt/components/playlist_new/playlist_item.cpp \
 	gui/qt/components/playlist_new/playlist_item.hpp \
 	gui/qt/components/playlist_new/playlist_model.cpp \
 	gui/qt/components/playlist_new/playlist_model.hpp \
@@ -272,6 +273,7 @@ nodist_libqt_plugin_la_SOURCES = \
 	gui/qt/components/playlist/playlist.moc.cpp \
 	gui/qt/components/playlist/qml_main_context.moc.cpp \
 	gui/qt/components/playlist_new/playlist_common.moc.cpp \
+	gui/qt/components/playlist_new/playlist_item.moc.cpp \
 	gui/qt/components/playlist_new/playlist_model.moc.cpp \
 	gui/qt/components/playlist_new/playlist_controler.moc.cpp \
 	gui/qt/components/sout/profile_selector.moc.cpp \

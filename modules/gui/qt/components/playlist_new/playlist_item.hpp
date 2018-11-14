@@ -21,10 +21,18 @@
 #ifndef VLC_QT_PLAYLIST_NEW_ITEM_HPP_
 #define VLC_QT_PLAYLIST_NEW_ITEM_HPP_
 
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
+
+#include "vlc_player.h"
 #include <vlc_cxx_helpers.hpp>
 #include <vlc_input_item.h>
 #include <vlc_playlist_new.h>
 #include <QExplicitlySharedDataPointer>
+#include <QUrl>
+#include <QMetaType>
+
 
 namespace vlc {
   namespace playlist {
@@ -42,43 +50,34 @@ using PlaylistItemPtr = vlc_shared_data_ptr_type(vlc_playlist_item_t,
  */
 class PlaylistItem
 {
+    Q_GADGET
 public:
-    PlaylistItem(vlc_playlist_item_t *item = nullptr)
-    {
-        if (item)
-        {
-            d = new Data();
-            d->item.reset(item);
-            sync();
-        }
-    }
+    Q_PROPERTY(QString title READ getTitle CONSTANT )
+    Q_PROPERTY(QString artist READ getArtist CONSTANT )
+    Q_PROPERTY(QString album READ getAlbum CONSTANT )
+    Q_PROPERTY(QUrl artwork READ getArtwork CONSTANT )
+    Q_PROPERTY(vlc_tick_t duration READ getDuration CONSTANT )
 
-    operator bool() const
-    {
-        return d;
-    }
+    PlaylistItem(vlc_playlist_item_t *item = nullptr);
+
+    operator bool() const;
 
     vlc_playlist_item_t *raw() const {
         return d ? d->item.get() : nullptr;
     }
 
-    QString getTitle() const
-    {
-        return d->title;
-    }
+    QString getTitle() const;
 
-    vlc_tick_t getDuration() const
-    {
-        return d->duration;
-    }
+    QString getArtist() const;
 
-    void sync() {
-        input_item_t *media = vlc_playlist_item_GetMedia(d->item.get());
-        vlc_mutex_lock(&media->lock);
-        d->title = media->psz_name;
-        d->duration = media->i_duration;
-        vlc_mutex_unlock(&media->lock);
-    }
+    QString getAlbum() const;
+
+    QUrl getArtwork() const;
+
+    vlc_tick_t getDuration() const;
+
+
+    void sync();
 
 private:
     struct Data : public QSharedData {
@@ -86,6 +85,10 @@ private:
 
         /* cached values */
         QString title;
+        QString artist;
+        QString album;
+        QUrl artwork;
+
         vlc_tick_t duration;
     };
 
@@ -98,6 +101,6 @@ static_assert(sizeof(PlaylistItem) == sizeof(void *));
   } // namespace playlist
 } // namespace vlc
 
-Q_DECLARE_METATYPE(vlc::playlist::PlaylistItem);
+Q_DECLARE_METATYPE(vlc::playlist::PlaylistItem)
 
 #endif

@@ -180,14 +180,25 @@ on_playlist_current_item_changed(vlc_playlist_t *playlist, ssize_t index,
                                  void *userdata)
 {
     PlaylistControlerModelPrivate *that = static_cast<PlaylistControlerModelPrivate *>(userdata);
+
+
+    vlc_playlist_item_t* playlistItem = nullptr;
+    if (index >= 0)
+        playlistItem = vlc_playlist_Get(playlist, index);
+    PlaylistItem newItem{ playlistItem };
+
     that->callAsync([=](){
+        PlaylistControlerModel* q = that->q_func();
+
         if (that->m_playlist != playlist)
             return;
         if (that->m_currentIndex != index)
         {
             that->m_currentIndex = index;
-            emit that->q_func()->currentItemChanged(index);
+            emit q->currentIndexChanged(that->m_currentIndex);
         }
+        that->m_currentItem = newItem;
+        emit q->currentItemChanged();
     });
 }
 
@@ -273,6 +284,12 @@ PlaylistControlerModel::PlaylistControlerModel(vlc_playlist_t *playlist, QObject
 
 PlaylistControlerModel::~PlaylistControlerModel()
 {
+}
+
+PlaylistItem PlaylistControlerModel::getCurrentItem() const
+{
+    Q_D(const PlaylistControlerModel);
+    return d->m_currentItem;
 }
 
 void
