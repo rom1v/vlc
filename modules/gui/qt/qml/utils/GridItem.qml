@@ -46,6 +46,7 @@ Item {
     property string subtitle: ""
     property bool selected: false
     property int shiftX: 0
+    property bool noActionButtons: false
 
     signal playClicked
     signal addToPlaylistClicked
@@ -98,6 +99,7 @@ Item {
 
                             RowLayout {
                                 anchors.fill: parent
+                                visible: !noActionButtons
                                 Item {
                                     Layout.fillHeight: true
                                     Layout.fillWidth: true
