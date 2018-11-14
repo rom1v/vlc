@@ -37,7 +37,7 @@ Item {
         else if (hovered)
             return bgHoverInactive
         else
-            return bgInactive
+            return "transparent"
     }
 
     property color text: activePalette.text;

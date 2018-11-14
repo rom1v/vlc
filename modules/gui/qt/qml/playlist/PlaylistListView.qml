@@ -217,8 +217,19 @@ Utils.NavigableFocusScope {
             else
             {
                 fct(index)
-
             }
         }
     }
+
+    Label {
+        anchors.centerIn: parent
+        visible: delegateModel.items.count === 0
+        font.pixelSize: VLCStyle.fontHeight_xxlarge
+        color: root.activeFocus ? VLCStyle.colors.accent : VLCStyle.colors.text
+        text: qsTr("playlist is empty")
+    }
+
+    Keys.priority: Keys.AfterItem
+    Keys.forwardTo: view
+    Keys.onPressed: defaultKeyAction(event, 0)
 }

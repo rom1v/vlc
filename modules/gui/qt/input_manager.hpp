@@ -37,6 +37,8 @@
 #include <QAbstractListModel>
 #include <QScopedPointer>
 #include <vlc_cxx_helpers.hpp>
+#include "util/input_models.hpp"
+#include "util/vlc_var_choice_model.hpp"
 
 class QSignalMapper;
 
@@ -121,24 +123,24 @@ public:
     Q_PROPERTY(bool ratechangable READ isRateChangable NOTIFY rateChangableChanged)
 
     //tracks
-    Q_PROPERTY(QAbstractListModel* videoTracks READ getVideoTracks CONSTANT)
-    Q_PROPERTY(QAbstractListModel* audioTracks READ getAudioTracks CONSTANT)
-    Q_PROPERTY(QAbstractListModel* subtitleTracks READ getSubtitleTracks CONSTANT)
+    Q_PROPERTY(TrackListModel* videoTracks READ getVideoTracks CONSTANT)
+    Q_PROPERTY(TrackListModel* audioTracks READ getAudioTracks CONSTANT)
+    Q_PROPERTY(TrackListModel* subtitleTracks READ getSubtitleTracks CONSTANT)
 
     Q_PROPERTY(vlc_tick_t audioDelay READ getAudioDelay WRITE setAudioDelay NOTIFY audioDelayChanged)
     Q_PROPERTY(vlc_tick_t subtitleDelay READ getSubtitleDelay WRITE setSubtitleDelay NOTIFY subtitleDelayChanged)
     Q_PROPERTY(float subtitleFPS READ getSubtitleFPS WRITE setSubtitleFPS NOTIFY subtitleFPSChanged)
 
     //title/chapters/menu
-    Q_PROPERTY(QAbstractListModel* titles READ getTitles CONSTANT)
-    Q_PROPERTY(QAbstractListModel* chapters READ getChapters CONSTANT)
+    Q_PROPERTY(TitleListModel* titles READ getTitles CONSTANT)
+    Q_PROPERTY(ChapterListModel* chapters READ getChapters CONSTANT)
 
     Q_PROPERTY(bool hasTitles READ hasTitles NOTIFY hasTitlesChanged)
     Q_PROPERTY(bool hasChapters READ hasChapters NOTIFY hasChaptersChanged)
     Q_PROPERTY(bool hasMenu READ hasMenu NOTIFY hasMenuChanged)
 
     //programs
-    Q_PROPERTY(QAbstractListModel* programs READ getPrograms CONSTANT)
+    Q_PROPERTY(ProgramListModel* programs READ getPrograms CONSTANT)
     Q_PROPERTY(bool isEncrypted READ isEncrypted NOTIFY isEncryptedChanged)
 
     //teletext
@@ -149,11 +151,11 @@ public:
 
     //vout properties
     Q_PROPERTY(bool hasVideoOutput READ hasVideoOutput NOTIFY hasVideoOutputChanged)
-    Q_PROPERTY(QAbstractListModel* zoom READ getZoom CONSTANT)
-    Q_PROPERTY(QAbstractListModel* aspectRatio READ getAspectRatio CONSTANT)
-    Q_PROPERTY(QAbstractListModel* crop READ getCrop CONSTANT)
-    Q_PROPERTY(QAbstractListModel* deinterlace READ getDeinterlace CONSTANT)
-    Q_PROPERTY(QAbstractListModel* deinterlaceMode READ getDeinterlaceMode CONSTANT)
+    Q_PROPERTY(VLCVarChoiceModel* zoom READ getZoom CONSTANT)
+    Q_PROPERTY(VLCVarChoiceModel* aspectRatio READ getAspectRatio CONSTANT)
+    Q_PROPERTY(VLCVarChoiceModel* crop READ getCrop CONSTANT)
+    Q_PROPERTY(VLCVarChoiceModel* deinterlace READ getDeinterlace CONSTANT)
+    Q_PROPERTY(VLCVarChoiceModel* deinterlaceMode READ getDeinterlaceMode CONSTANT)
     Q_PROPERTY(bool fullscreen READ isFullscreen WRITE setFullscreen NOTIFY fullscreenChanged)
     Q_PROPERTY(bool wallpaperMode READ getWallpaperMode WRITE setWallpaperMode NOTIFY wallpaperModeChanged)
     Q_PROPERTY(bool autoscale READ getAutoscale WRITE setAutoscale NOTIFY autoscaleChanged)
@@ -161,8 +163,8 @@ public:
     //aout properties
     Q_PROPERTY(float volume READ getVolume WRITE setVolume NOTIFY volumeChanged)
     Q_PROPERTY(bool muted READ isMuted WRITE setMuted NOTIFY soundMuteChanged)
-    Q_PROPERTY(QAbstractListModel* audioStereoMode READ getAudioStereoMode CONSTANT)
-    Q_PROPERTY(QAbstractListModel* audioVisualization READ getAudioVisualizations CONSTANT)
+    Q_PROPERTY(VLCVarChoiceModel* audioStereoMode READ getAudioStereoMode CONSTANT)
+    Q_PROPERTY(VLCVarChoiceModel* audioVisualization READ getAudioVisualizations CONSTANT)
     Q_PROPERTY(bool hasAudioVisualization READ hasAudioVisualization NOTIFY hasAudioVisualizationChanged)
 
     //misc
@@ -271,9 +273,9 @@ public slots:
     bool isRateChangable() const;
 
     //tracks
-    QAbstractListModel* getVideoTracks();
-    QAbstractListModel* getAudioTracks();
-    QAbstractListModel* getSubtitleTracks();
+    TrackListModel* getVideoTracks();
+    TrackListModel* getAudioTracks();
+    TrackListModel* getSubtitleTracks();
 
     vlc_tick_t getAudioDelay() const;
     void setAudioDelay( vlc_tick_t );
@@ -283,14 +285,14 @@ public slots:
     void setSubtitleFPS( float );
 
     //title/chapters/menu
-    QAbstractListModel* getTitles();
-    QAbstractListModel* getChapters();
+    TitleListModel* getTitles();
+    ChapterListModel* getChapters();
     bool hasTitles() const;
     bool hasChapters() const;
     bool hasMenu()  const;
 
     //programs
-    QAbstractListModel* getPrograms();
+    ProgramListModel* getPrograms();
     bool isEncrypted() const;
 
     //teletext
@@ -304,11 +306,11 @@ public slots:
 
     //vout properties
     bool hasVideoOutput() const;
-    QAbstractListModel* getZoom();
-    QAbstractListModel* getAspectRatio();
-    QAbstractListModel* getCrop();
-    QAbstractListModel* getDeinterlace();
-    QAbstractListModel* getDeinterlaceMode();
+    VLCVarChoiceModel* getZoom();
+    VLCVarChoiceModel* getAspectRatio();
+    VLCVarChoiceModel* getCrop();
+    VLCVarChoiceModel* getDeinterlace();
+    VLCVarChoiceModel* getDeinterlaceMode();
     bool isFullscreen() const;
     void setFullscreen( bool );
     bool getWallpaperMode() const;
@@ -321,8 +323,8 @@ public slots:
     void setVolume( float volume );
     bool isMuted() const;
     void setMuted( bool muted );
-    QAbstractListModel* getAudioStereoMode();
-    QAbstractListModel* getAudioVisualizations();
+    VLCVarChoiceModel* getAudioStereoMode();
+    VLCVarChoiceModel* getAudioVisualizations();
     bool hasAudioVisualization() const;
 
 

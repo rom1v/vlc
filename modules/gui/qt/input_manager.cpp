@@ -1387,26 +1387,28 @@ int InputManager::AddAssociatedMedia(es_format_category_e cat, const QString &ur
     return vlc_player_AddAssociatedMedia( d->m_player, cat, qtu(uri), select, notify, check_ext );
 }
 
-#define QABSTRACTLIST_GETTER( fun, var ) \
-    QAbstractListModel* InputManager::fun() \
+#define QABSTRACTLIST_GETTER( type, fun, var ) \
+    type* InputManager::fun() \
     { \
         Q_D(InputManager); \
         return &d->var; \
     }
 
-QABSTRACTLIST_GETTER( getVideoTracks, m_videoTracks)
-QABSTRACTLIST_GETTER( getAudioTracks, m_audioTracks)
-QABSTRACTLIST_GETTER( getSubtitleTracks, m_subtitleTracks)
-QABSTRACTLIST_GETTER( getTitles, m_titleList)
-QABSTRACTLIST_GETTER( getChapters, m_chapterList)
-QABSTRACTLIST_GETTER( getPrograms, m_programList)
-QABSTRACTLIST_GETTER( getZoom, m_zoom)
-QABSTRACTLIST_GETTER( getAspectRatio, m_aspectRatio)
-QABSTRACTLIST_GETTER( getCrop, m_crop)
-QABSTRACTLIST_GETTER( getDeinterlace, m_deinterlace)
-QABSTRACTLIST_GETTER( getDeinterlaceMode, m_deinterlaceMode)
-QABSTRACTLIST_GETTER( getAudioStereoMode, m_audioStereoMode)
-QABSTRACTLIST_GETTER( getAudioVisualizations, m_audioVisualization)
+
+QABSTRACTLIST_GETTER( TrackListModel, getVideoTracks, m_videoTracks)
+QABSTRACTLIST_GETTER( TrackListModel, getAudioTracks, m_audioTracks)
+QABSTRACTLIST_GETTER( TrackListModel, getSubtitleTracks, m_subtitleTracks)
+QABSTRACTLIST_GETTER( TitleListModel, getTitles, m_titleList)
+QABSTRACTLIST_GETTER( ChapterListModel,getChapters, m_chapterList)
+QABSTRACTLIST_GETTER( ProgramListModel, getPrograms, m_programList)
+QABSTRACTLIST_GETTER( VLCVarChoiceModel, getZoom, m_zoom)
+QABSTRACTLIST_GETTER( VLCVarChoiceModel, getAspectRatio, m_aspectRatio)
+QABSTRACTLIST_GETTER( VLCVarChoiceModel, getCrop, m_crop)
+QABSTRACTLIST_GETTER( VLCVarChoiceModel, getDeinterlace, m_deinterlace)
+QABSTRACTLIST_GETTER( VLCVarChoiceModel, getDeinterlaceMode, m_deinterlaceMode)
+QABSTRACTLIST_GETTER( VLCVarChoiceModel, getAudioStereoMode, m_audioStereoMode)
+QABSTRACTLIST_GETTER( VLCVarChoiceModel, getAudioVisualizations, m_audioVisualization)
+
 
 #undef QABSTRACTLIST_GETTER
 
@@ -1416,6 +1418,7 @@ QABSTRACTLIST_GETTER( getAudioVisualizations, m_audioVisualization)
         Q_D(const InputManager); \
         return d->var; \
     }
+
 
 PRIMITIVETYPE_GETTER(InputManager::PlayingState, getPlayingState, m_playing_status)
 PRIMITIVETYPE_GETTER(QString, getName, m_name)

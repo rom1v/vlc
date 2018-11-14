@@ -62,6 +62,7 @@
         <file alias="space.svg">pixmaps/space.svg</file>
         <file alias="slower2.svg">pixmaps/slower2.svg</file>
         <file alias="faster2.svg">pixmaps/faster2.svg</file>
+        <file alias="audiosub.svg">pixmaps/toolbar/audiosub.svg</file>
     </qresource>
     <qresource prefix="/buttons/playlist">
         <file alias="playlist_add.svg">pixmaps/playlist/add.svg</file>
@@ -202,5 +203,11 @@
         <file alias="PlaylistListView.qml">qml/playlist/PlaylistListView.qml</file>
         <file alias="PlaylistMenu.qml">qml/playlist/PlaylistMenu.qml</file>
         <file alias="PLItemFooter.qml">qml/playlist/PLItemFooter.qml</file>
+    </qresource>
+    <qresource prefix="/controlbar">
+        <file alias="ControlBar.qml">qml/controlbar/ControlBar.qml</file>
+        <file alias="SliderBar.qml">qml/controlbar/SliderBar.qml</file>
+        <file alias="AudioSubMenu.qml">qml/controlbar/AudioSubMenu.qml</file>
+        <file alias="VideoControler.qml">qml/controlbar/VideoControler.qml</file>
     </qresource>
 </RCC>

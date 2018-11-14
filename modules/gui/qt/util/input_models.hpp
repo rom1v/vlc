@@ -61,6 +61,8 @@ public:
 
     void clear();
 
+    QHash<int, QByteArray> roleNames() const override;
+
 private:
     vlc_player_t* m_player;
     class Data {
@@ -110,6 +112,8 @@ public:
     const vlc_player_title* getTitleAt( size_t index ) const;
 
     void resetTitles(vlc_player_title_list* newTitleList);
+
+    QHash<int, QByteArray> roleNames() const override;
 
 private:
     vlc_player_t* m_player;
@@ -190,6 +194,8 @@ public:
     void updateProgramSelection(int programid, bool selected);
 
     void clear();
+
+    QHash<int, QByteArray> roleNames() const override;
 
 private:
     vlc_player_t* m_player;

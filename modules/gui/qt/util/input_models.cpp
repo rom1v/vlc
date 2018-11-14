@@ -138,6 +138,13 @@ void TrackListModel::clear()
     endRemoveRows();
 }
 
+QHash<int, QByteArray> TrackListModel::roleNames() const
+{
+    QHash<int, QByteArray> roleNames = this->QAbstractListModel::roleNames();
+    roleNames[Qt::CheckStateRole] = "checked";
+    return roleNames;
+}
+
 TrackListModel::Data::Data(const vlc_player_track *track_info)
     : m_title( qfu(track_info->name) )
     , m_id( track_info->es_id, true )
@@ -240,6 +247,13 @@ void TitleListModel::resetTitles(vlc_player_title_list *newTitleList)
     else
         m_count = 0;
     endResetModel();
+}
+
+QHash<int, QByteArray> TitleListModel::roleNames() const
+{
+    QHash<int, QByteArray> roleNames = this->QAbstractListModel::roleNames();
+    roleNames[Qt::CheckStateRole] = "checked";
+    return roleNames;
 }
 
 //***************************
@@ -444,6 +458,13 @@ void ProgramListModel::clear()
     beginRemoveRows({}, 0, m_data.size() - 1);
     m_data.clear();
     endRemoveRows();
+}
+
+QHash<int, QByteArray> ProgramListModel::roleNames() const
+{
+    QHash<int, QByteArray> roleNames = this->QAbstractListModel::roleNames();
+    roleNames[Qt::CheckStateRole] = "checked";
+    return roleNames;
 }
 
 ProgramListModel::Data::Data(const vlc_player_program *program)

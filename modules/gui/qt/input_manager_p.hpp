@@ -22,9 +22,9 @@
 #define QVLC_INPUT_MANAGER_P_H_
 
 #include "input_manager.hpp"
+#include "util/vlc_var_observer.hpp"
 #include "util/input_models.hpp"
 #include "util/vlc_var_choice_model.hpp"
-#include "util/vlc_var_observer.hpp"
 
 class InputManagerPrivate {
     Q_DISABLE_COPY(InputManagerPrivate)

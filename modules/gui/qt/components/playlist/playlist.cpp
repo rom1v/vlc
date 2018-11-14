@@ -104,7 +104,16 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
         NavigationHistory* navigation_history = new NavigationHistory(this);
         rootCtx->setContextProperty( "history", navigation_history );
 
-        //auto mainplaylistptr = new PlaylistPtr(p_intf->p_sys->p_playlist, mediacenterView);
+
+        qmlRegisterUncreatableType<TrackListModel>("org.videolan.vlc", 0, 1, "TrackListModel", "FIXME doc" );
+        qmlRegisterUncreatableType<TitleListModel>("org.videolan.vlc", 0, 1, "TitleListModel", "FIXME doc" );
+        qmlRegisterUncreatableType<ChapterListModel>("org.videolan.vlc", 0, 1, "ChapterListModel", "FIXME doc" );
+        qmlRegisterUncreatableType<ProgramListModel>("org.videolan.vlc", 0, 1, "ProgramListModel", "FIXME doc" );
+        qmlRegisterUncreatableType<VLCVarChoiceModel>("org.videolan.vlc", 0, 1, "VLCVarChoiceModel", "FIXME doc" );
+        qmlRegisterUncreatableType<InputManager>("org.videolan.vlc", 0, 1, "PlayerControler", "FIXME doc" );
+
+        rootCtx->setContextProperty( "player", _p_i->p_sys->p_mainPlayerControler );
+
         qRegisterMetaType<PlaylistPtr>();
         qmlRegisterType<PlaylistListModel>( "org.videolan.vlc", 0, 1, "PlaylistListModel" );
         qmlRegisterType<PlaylistControlerModel>( "org.videolan.vlc", 0, 1, "PlaylistControlerModel" );

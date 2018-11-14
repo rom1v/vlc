@@ -32,6 +32,7 @@ import "qrc:///style/"
 
 import "qrc:///mediacenter/" as MC
 import "qrc:///playlist/" as PL
+import "qrc:///controlbar/" as CB
 
 Rectangle {
     id: root
@@ -61,7 +62,6 @@ Rectangle {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
     }
-
 
     Component.onCompleted: {
         history.push({

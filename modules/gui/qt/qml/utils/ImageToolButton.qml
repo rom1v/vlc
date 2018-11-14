@@ -28,7 +28,7 @@ ToolButton {
                 bottom: parent.bottom
             }
             height: 2
-            visible: control.activeFocus
+            visible: control.activeFocus || control.checked
             color: control.activeFocus ? VLCStyle.colors.accent  : VLCStyle.colors.bgHover
         }
     }

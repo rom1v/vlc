@@ -446,6 +446,7 @@ libqt_plugin_la_RES = \
 	gui/qt/pixmaps/slower2.svg \
 	gui/qt/pixmaps/space.svg \
 	gui/qt/pixmaps/stop.svg \
+	gui/qt/pixmaps/toolbar/audiosub.svg \
 	gui/qt/pixmaps/toolbar/arrows.svg \
 	gui/qt/pixmaps/toolbar/aspect-ratio.svg \
 	gui/qt/pixmaps/toolbar/atob.svg \
@@ -502,6 +503,10 @@ libqt_plugin_la_RES = \
 	gui/qt/pixmaps/lock.svg \
 	gui/qt/qml/MainInterface.qml \
 	gui/qt/qml/BannerSources.qml \
+	gui/qt/qml/controlbar/AudioSubMenu.qml \
+	gui/qt/qml/controlbar/ControlBar.qml \
+	gui/qt/qml/controlbar/SliderBar.qml \
+	gui/qt/qml/controlbar/VideoControler.qml \
 	gui/qt/qml/utils/BannerView.qml \
 	gui/qt/qml/utils/DNDLabel.qml \
 	gui/qt/qml/utils/ToolTipArea.qml \
