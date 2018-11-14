@@ -29,7 +29,7 @@ enum Role {
     NETWORK_MRL,
     NETWORK_INDEXED,
     NETWORK_CANINDEX,
-    NETWORK_ISDIR,
+    NETWORK_TYPE,
 };
 
 }
@@ -64,8 +64,8 @@ QVariant MLNetworkModel::data( const QModelIndex& index, int role ) const
             return QVariant::fromValue( item.indexed );
         case NETWORK_CANINDEX:
             return QVariant::fromValue( item.canBeIndexed );
-        case NETWORK_ISDIR:
-            return QVariant::fromValue( item.isDir );
+        case NETWORK_TYPE:
+            return QVariant::fromValue( item.type );
         default:
             return {};
     }
@@ -78,7 +78,7 @@ QHash<int, QByteArray> MLNetworkModel::roleNames() const
         { NETWORK_MRL, "mrl" },
         { NETWORK_INDEXED, "indexed" },
         { NETWORK_CANINDEX, "can_index" },
-        { NETWORK_ISDIR, "is_dir" }
+        { NETWORK_TYPE, "type" }
     };
 }
 
@@ -188,9 +188,8 @@ void MLNetworkModel::onItemAdded( input_item_t* parent, input_item_t* p_item,
     item.mrl = p_item->psz_uri;
     item.name = p_item->psz_name;
     item.indexed = false;
-    item.canBeIndexed = strncasecmp( p_item->psz_uri, "smb:", 4 ) == 0 ||
-                     strncasecmp( p_item->psz_uri, "ftp:", 4 ) == 0;
-    item.isDir = true;
+    item.canBeIndexed = canBeIndexed( p_item->psz_uri );
+    item.type = TYPE_SHARE;
 
     if ( m_entryPoints != nullptr )
     {
@@ -254,10 +253,14 @@ void MLNetworkModel::onInputEvent( input_thread_t*, const vlc_input_event* event
     for ( auto i = 0; i < event->subitems->i_children; ++i )
     {
         auto it = event->subitems->pp_children[i]->p_item;
-        items.push_back( Item{ it->psz_name, it->psz_uri, isIndexed,
-                            it->i_type == ITEM_TYPE_DIRECTORY,
-                            it->i_type == ITEM_TYPE_DIRECTORY
-                        } );
+        items.push_back( Item{
+            it->psz_name,
+            it->psz_uri,
+            isIndexed,
+            (it->i_type == ITEM_TYPE_DIRECTORY || it->i_type == ITEM_TYPE_NODE) ?
+                TYPE_DIR : TYPE_FILE,
+            canBeIndexed( it->psz_uri )
+        });
     }
     callAsync([this, items = std::move(items)]() {
         beginInsertRows( {}, m_items.size(), m_items.size() + items.size() - 1 );
@@ -285,4 +288,10 @@ void MLNetworkModel::onInputEvent( input_thread_t* input,
 {
     MLNetworkModel* self = static_cast<MLNetworkModel*>( data );
     self->onInputEvent( input, event );
+}
+
+bool MLNetworkModel::canBeIndexed(const char* psz_mrl)
+{
+    return strncasecmp( psz_mrl, "smb:", 4 ) == 0 ||
+           strncasecmp( psz_mrl, "ftp:", 4 ) == 0;
 }

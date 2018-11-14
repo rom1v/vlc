@@ -40,15 +40,15 @@ class MLNetworkModel : public QAbstractListModel
 {
     Q_OBJECT
 
-    struct Item
-    {
-        std::string name;
-        std::string mrl;
-        bool indexed;
-        bool isDir;
-        bool canBeIndexed;
-    };
 public:
+    enum ItemType
+    {
+        TYPE_SHARE,
+        TYPE_DIR,
+        TYPE_FILE,
+    };
+    Q_ENUM( ItemType );
+
     MLNetworkModel( QmlMainContext* ctx, QString parentMrl, QObject* parent = nullptr);
 
     QVariant data(const QModelIndex& index, int role) const override;
@@ -59,6 +59,15 @@ public:
     bool setData( const QModelIndex& idx,const QVariant& value, int role ) override;
 
 private:
+    struct Item
+    {
+        std::string name;
+        std::string mrl;
+        bool indexed;
+        ItemType type;
+        bool canBeIndexed;
+    };
+
     ///call function @a fun on object thread
     template <typename Fun>
     void callAsync(Fun&& fun)
@@ -85,6 +94,7 @@ private:
 
     static void onInputEvent( input_thread_t* input, const vlc_input_event *event,
                               void *data );
+    static bool canBeIndexed( const char* psz_mrl );
 
 private:
     std::vector<Item> m_items;

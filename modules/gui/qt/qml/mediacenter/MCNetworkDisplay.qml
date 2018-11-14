@@ -44,24 +44,27 @@ Utils.NavigableFocusScope {
             Column {
                 Package.name: "grid"
                 Utils.GridItem {
-                    noActionButtons: model.is_dir
-                    image: model.is_dir ? "qrc:///type/network.svg" : VLCStyle.noArtCover
+                    noActionButtons: model.type == MLNetworkModel.TYPE_FILE
+                    image: model.type == MLNetworkModel.TYPE_SHARE ?
+                                "qrc:///type/network.svg" : (model.type == MLNetworkModel.TYPE_DIR ?
+                                    "qrc:///type/directory.svg" : "qrc:///type/file-asym.svg")
                     title: model.name || qsTr("Unknown share")
                     selected: element.DelegateModel.inSelected || view.currentItem.currentIndex === index
                     shiftX: view.currentItem.shiftX(model.index)
 
                     onItemDoubleClicked: {
-                        if ( model.is_dir ) {
+                        if ( model.type != MLNetworkModel.TYPE_FILE ) {
                             history.push({
                                 view: "network",
                                 viewProperties: {
                                     model: networkModelFactory.create(mainctx, model.mrl)
                                  },
                             }, History.Go)
+                        } else {
+                            medialib.addAndPlay( model.mrl )
                         }
                     }
                     onPlayClicked: {
-                        console.log( model.mrl );
                         medialib.addAndPlay( model.mrl )
                     }
                     onAddToPlaylistClicked: {
@@ -86,7 +89,9 @@ Utils.NavigableFocusScope {
                 cover: Image {
                     id: cover_obj
                     fillMode: Image.PreserveAspectFit
-                    source: "qrc:///type/network.svg"
+                    source: model.type == MLNetworkModel.TYPE_SHARE ?
+                                "qrc:///type/network.svg" : (model.type == MLNetworkModel.TYPE_DIR ?
+                                    "qrc:///type/directory.svg" : "qrc:///type/file-asym.svg")
                 }
                 line1: model.name || qsTr("Unknown share")
 
@@ -95,19 +100,37 @@ Utils.NavigableFocusScope {
                     view.currentItem.currentIndex = index
                     this.forceActiveFocus()
                 }
+                onItemDoubleClicked: {
+                    if ( model.type != MLNetworkModel.TYPE_FILE ) {
+                        history.push({
+                            view: "network",
+                            viewProperties: {
+                                model: networkModelFactory.create(mainctx, model.mrl)
+                             },
+                        }, History.Go)
+                    } else {
+                        medialib.addAndPlay( model.mrl )
+                    }
+                }
+                onPlayClicked: {
+                    medialib.addAndPlay( model.mrl )
+                }
+                onAddToPlaylistClicked: {
+                    medialib.addToPlaylist( model.mrl );
+                }
             }
         }
         function actionAtIndex(index) {
             if ( delegateModel.selectedGroup.count > 1 ) {
                 var list = []
                 for (var i = 0; i < delegateModel.selectedGroup.count; i++) {
-                    if (!model.is_dir)
+                    if (model.type == MLNetworkModel.TYPE_FILE)
                         list.push(delegateModel.selectedGroup.get(i).model.mrl)
                 }
                 medialib.addAndPlay( list )
             } else {
-                var itemModel = delegateModel.selectedGroup.get(i).model;
-                if (itemModel.is_dir) {
+                var itemModel = delegateModel.selectedGroup.get(0).model;
+                if (model.type != MLNetworkModel.TYPE_FILE) {
                     history.push({
                         view: "network",
                         viewProperties: {
@@ -160,6 +183,7 @@ Utils.NavigableFocusScope {
 
             onSelectAll: delegateModel.selectAll()
             onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+            onActionAtIndex: delegateModel.actionAtIndex(index)
 
             onActionLeft: root.actionLeft(index)
             onActionRight: root.actionRight(index)
