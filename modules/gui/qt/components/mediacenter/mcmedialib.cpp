@@ -70,6 +70,11 @@ void MCMediaLib::openMRLFromMedia(const vlc_ml_media_t& media, bool start )
     }
 }
 
+void MCMediaLib::addToPlaylist(const QString& mrl)
+{
+    Open::openMRL(m_intf, qtu(mrl), false);
+}
+
 // A specific item has been asked to be added to the playlist
 void MCMediaLib::addToPlaylist(const MLParentId & itemId)
 {
@@ -97,10 +102,16 @@ void MCMediaLib::addToPlaylist(const QVariantList& itemIdList)
     printf("MCMediaLib::addToPlaylist\n");
     for (const QVariant& varValue: itemIdList)
     {
-        if (!varValue.canConvert<MLParentId>())
-            continue;
-        MLParentId itemId = varValue.value<MLParentId>();
-        addToPlaylist(itemId);
+        if (varValue.canConvert<QString>())
+        {
+            auto mrl = varValue.value<QString>();
+            Open::openMRL(m_intf, qtu(mrl), false);
+        }
+        else if (varValue.canConvert<MLParentId>())
+        {
+            MLParentId itemId = varValue.value<MLParentId>();
+            addToPlaylist(itemId);
+        }
     }
 }
 
@@ -131,21 +142,34 @@ void MCMediaLib::addAndPlay(const MLParentId & itemId )
     }
 }
 
+void MCMediaLib::addAndPlay(const QString& mrl)
+{
+    Open::openMRL(m_intf, qtu(mrl), true);
+}
+
+
 void MCMediaLib::addAndPlay(const QVariantList& itemIdList)
 {
     printf("MCMediaLib::addAndPlay\n");
     bool b_start = true;
     for (const QVariant& varValue: itemIdList)
     {
-        if (!varValue.canConvert<MLParentId>())
-            continue;
-        printf("MCMediaLib::converted\n");
-        MLParentId itemId = varValue.value<MLParentId>();
-        if (b_start)
-            addAndPlay(itemId);
-        else
-            addToPlaylist(itemId);
-        b_start = false;
+        if (varValue.canConvert<QString>())
+        {
+            auto mrl = varValue.value<QString>();
+            Open::openMRL(m_intf, qtu(mrl), b_start);
+            b_start = false;
+        }
+        else if (varValue.canConvert<MLParentId>())
+        {
+            printf("MCMediaLib::converted\n");
+            MLParentId itemId = varValue.value<MLParentId>();
+            if (b_start)
+                addAndPlay(itemId);
+            else
+                addToPlaylist(itemId);
+            b_start = false;
+        }
     }
 }
 
