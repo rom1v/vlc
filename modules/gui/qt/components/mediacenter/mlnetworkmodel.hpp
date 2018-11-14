@@ -46,18 +46,12 @@ class MLNetworkModel : public QAbstractListModel
         std::string mrl;
         bool selected;
     };
-
 public:
-    Q_PROPERTY( QmlMainContext* ctx READ getMainContext WRITE setMainContext )
-
-    MLNetworkModel(QObject* parent = nullptr);
+    MLNetworkModel( QmlMainContext* ctx, QString parentMrl, QObject* parent = nullptr);
 
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
     int rowCount(const QModelIndex& parent) const override;
-
-    QmlMainContext* getMainContext() const;
-    void setMainContext( QmlMainContext* ctx );
 
     Qt::ItemFlags flags( const QModelIndex& idx ) const override;
     bool setData( const QModelIndex& idx,const QVariant& value, int role ) override;
@@ -76,19 +70,39 @@ private:
     }
 
     bool initializeKnownEntrypoints();
+    bool initializeDeviceDiscovery();
+    bool initializeFolderDiscovery();
     void onItemAdded( input_item_t *parent, input_item_t *p_item,
                       const char *psz_cat );
     void onItemRemoved( input_item_t *p_item );
+    void onInputEvent( input_thread_t* input, const vlc_input_event *event );
 
     static void onItemAdded( services_discovery_t *sd, input_item_t *parent,
                              input_item_t *p_item, const char *psz_cat );
     static void onItemRemoved( services_discovery_t *sd, input_item_t *p_item );
 
+    static void onInputEvent( input_thread_t* input, const vlc_input_event *event,
+                              void *data );
+
 private:
     std::vector<Item> m_items;
     std::unique_ptr<services_discovery_t, decltype(&vlc_sd_Destroy)> m_sd;
+    std::unique_ptr<input_thread_t, decltype(&input_Close)> m_input;
     std::unique_ptr<vlc_ml_entry_point_list_t, decltype(&vlc_ml_entry_point_list_release)> m_entryPoints;
     QmlMainContext* m_ctx;
+    QString m_parentMrl;
 };
+
+
+struct MLNetworkModelFactory : public QObject
+{
+    Q_OBJECT
+public:
+    Q_INVOKABLE MLNetworkModel* create( QmlMainContext* ctx, QString parentMrl )
+    {
+        return new MLNetworkModel( ctx, parentMrl );
+    }
+};
+
 
 #endif // MLNETWORKMODEL_HPP

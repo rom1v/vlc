@@ -90,14 +90,15 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
         qmlRegisterType<MLAlbumTrackModel>( "org.videolan.medialib", 0, 1, "MLAlbumTrackModel" );
         qmlRegisterType<MLGenreModel>( "org.videolan.medialib", 0, 1, "MLGenreModel" );
         qmlRegisterType<MLVideoModel>( "org.videolan.medialib", 0, 1, "MLVideoModel" );
-        qmlRegisterType<MLNetworkModel>( "org.videolan.medialib", 0, 1, "MLNetworkModel" );
+        qmlRegisterUncreatableType<MLNetworkModel>( "org.videolan.medialib", 0, 1,
+            "MLNetworkModel", "Use the model factory to create this type" );
+        rootCtx->setContextProperty( "networkModelFactory", new MLNetworkModelFactory );
         //expose base object, they aren't instanciable from QML side
         qmlRegisterType<MLAlbum>();
         qmlRegisterType<MLArtist>();
         qmlRegisterType<MLAlbumTrack>();
         qmlRegisterType<MLGenre>();
         qmlRegisterType<MLVideo>();
-
 
         qmlRegisterUncreatableType<NavigationHistory>("org.videolan.medialib", 0, 1, "History", "Type of global variable history" );
         NavigationHistory* navigation_history = new NavigationHistory(this);

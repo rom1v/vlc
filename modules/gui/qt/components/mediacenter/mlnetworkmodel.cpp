@@ -32,12 +32,19 @@ enum Role {
 
 }
 
-MLNetworkModel::MLNetworkModel(QObject *parent)
+MLNetworkModel::MLNetworkModel( QmlMainContext* ctx, QString parentMrl, QObject* parent )
     : QAbstractListModel( parent )
     , m_sd( nullptr, &vlc_sd_Destroy )
+    , m_input( nullptr, &input_Close )
     , m_entryPoints( nullptr, &vlc_ml_entry_point_list_release )
-    , m_ctx( nullptr )
+    , m_ctx( ctx )
+    , m_parentMrl( parentMrl )
 {
+    initializeKnownEntrypoints();
+    if ( parentMrl.isEmpty() )
+        initializeDeviceDiscovery();
+    else
+        initializeFolderDiscovery();
 }
 
 QVariant MLNetworkModel::data( const QModelIndex& index, int role ) const
@@ -76,32 +83,6 @@ int MLNetworkModel::rowCount(const QModelIndex& parent) const
     return static_cast<int>( m_items.size() );
 }
 
-QmlMainContext*MLNetworkModel::getMainContext() const
-{
-    return m_ctx;
-}
-
-void MLNetworkModel::setMainContext( QmlMainContext* ctx )
-{
-    assert( m_ctx == nullptr );
-    m_ctx = ctx;
-    initializeKnownEntrypoints();
-    static const services_discovery_callbacks cbs = {
-        .item_added = &MLNetworkModel::onItemAdded,
-        .item_removed = &MLNetworkModel::onItemRemoved,
-    };
-    services_discovery_owner_t owner = {
-        .cbs = &cbs,
-        .sys = this
-    };
-    m_sd.reset( vlc_sd_Create( VLC_OBJECT( m_ctx->getIntf() ), "dsm-sd", &owner ) );
-    if ( !m_sd )
-    {
-        msg_Warn( m_ctx->getIntf(), "Failed to instantiate SD" );
-        return;
-    }
-}
-
 Qt::ItemFlags MLNetworkModel::flags( const QModelIndex& idx ) const
 {
     return QAbstractListModel::flags( idx ) | Qt::ItemIsEditable;
@@ -127,7 +108,6 @@ bool MLNetworkModel::setData( const QModelIndex& idx, const QVariant& value, int
 
 bool MLNetworkModel::initializeKnownEntrypoints()
 {
-    assert( m_ctx != nullptr );
     auto ml = vlc_ml_instance_get( m_ctx->getIntf() );
     assert( ml != nullptr );
     vlc_ml_entry_point_list_t *entryPoints;
@@ -137,10 +117,47 @@ bool MLNetworkModel::initializeKnownEntrypoints()
     return true;
 }
 
+bool MLNetworkModel::initializeDeviceDiscovery()
+{
+    static const services_discovery_callbacks cbs = {
+        .item_added = &MLNetworkModel::onItemAdded,
+        .item_removed = &MLNetworkModel::onItemRemoved,
+    };
+    services_discovery_owner_t owner = {
+        .cbs = &cbs,
+        .sys = this
+    };
+    m_sd.reset( vlc_sd_Create( VLC_OBJECT( m_ctx->getIntf() ), "dsm-sd", &owner ) );
+    if ( !m_sd )
+    {
+        msg_Warn( m_ctx->getIntf(), "Failed to instantiate SD" );
+        return false;
+    }
+    return true;
+}
+
+bool MLNetworkModel::initializeFolderDiscovery()
+{
+    std::unique_ptr<input_item_t, decltype(&input_item_Release)> inputItem{
+        input_item_New( qtu( m_parentMrl ), NULL ),
+        &input_item_Release
+    };
+    inputItem->i_preparse_depth = 1;
+    if ( inputItem == nullptr )
+        return false;
+    m_input.reset( input_CreatePreparser( VLC_OBJECT( m_ctx->getIntf() ),
+                                          &MLNetworkModel::onInputEvent,
+                                          this, inputItem.get() ) );
+    if ( m_input == nullptr )
+        return false;
+    input_Start( m_input.get() );
+    return true;
+}
+
 void MLNetworkModel::onItemAdded( input_item_t* parent, input_item_t* p_item,
                                   const char* )
 {
-    if ( parent != nullptr )
+    if ( ( parent == nullptr ) != m_parentMrl.isEmpty() )
         return;
     input_item_Hold( p_item );
     callAsync([this, p_item]() {
@@ -192,6 +209,36 @@ void MLNetworkModel::onItemRemoved( input_item_t* p_item )
     });
 }
 
+void MLNetworkModel::onInputEvent( input_thread_t*, const vlc_input_event* event )
+{
+    if ( event->type != INPUT_EVENT_SUBITEMS )
+        return;
+    auto isIndexed = false;
+    if ( m_entryPoints != nullptr )
+    {
+        for ( const auto& ep : ml_range_iterate<vlc_ml_entry_point_t>( m_entryPoints ) )
+        {
+            if ( ep.b_present && strncasecmp( ep.psz_mrl, event->subitems->p_item->psz_uri,
+                                              strlen(ep.psz_mrl) ) == 0 )
+            {
+                isIndexed = true;
+                break;
+            }
+        }
+    }
+    std::vector<Item> items;
+    for ( auto i = 0; i < event->subitems->i_children; ++i )
+    {
+        auto it = event->subitems->pp_children[i]->p_item;
+        items.push_back( Item{ it->psz_name, it->psz_uri, isIndexed } );
+    }
+    callAsync([this, items = std::move(items)]() {
+        beginInsertRows( {}, m_items.size(), m_items.size() + items.size() - 1 );
+        std::move( begin( items ), end( items ), std::back_inserter( m_items ) );
+        endInsertRows();
+    });
+}
+
 void MLNetworkModel::onItemAdded( services_discovery_t* sd, input_item_t* parent,
                                   input_item_t* p_item, const char* psz_cat )
 {
@@ -204,4 +251,11 @@ void MLNetworkModel::onItemRemoved( services_discovery_t* sd,
 {
     MLNetworkModel* self = static_cast<MLNetworkModel*>( sd->owner.sys );
     self->onItemRemoved( p_item );
+}
+
+void MLNetworkModel::onInputEvent( input_thread_t* input,
+                                   const vlc_input_event* event, void* data )
+{
+    MLNetworkModel* self = static_cast<MLNetworkModel*>( data );
+    self->onInputEvent( input, event );
 }
