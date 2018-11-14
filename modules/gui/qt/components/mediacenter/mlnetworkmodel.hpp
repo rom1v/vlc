@@ -98,6 +98,7 @@ struct MLNetworkModelFactory : public QObject
 {
     Q_OBJECT
 public:
+    explicit MLNetworkModelFactory(QObject* parent = nullptr) : QObject(parent) {}
     Q_INVOKABLE MLNetworkModel* create( QmlMainContext* ctx, QString parentMrl )
     {
         return new MLNetworkModel( ctx, parentMrl );
