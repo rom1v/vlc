@@ -1,5 +1,5 @@
 /*****************************************************************************
- * MCVideoDisplay.qml : The network component of the mediacenter
+ * MCVideoDisplay.qml : The video component of the mediacenter
  ****************************************************************************
  * Copyright (C) 2006-2011 VideoLAN and AUTHORS
  *
@@ -21,7 +21,155 @@
  *****************************************************************************/
 
 import QtQuick 2.0
+import QtQuick.Controls 2.0
+import QtQml.Models 2.2
 
-Rectangle {
-    color: "blue"
+import org.videolan.medialib 0.1
+
+import "qrc:///utils/" as Utils
+import "qrc:///style/"
+
+Utils.NavigableFocusScope {
+    id: root
+
+    property alias model: delegateModel.model
+    property string mrl
+
+    Utils.SelectableDelegateModel {
+        id: delegateModel
+        model: networkModelFactory.create(mainctx, mrl)
+
+        delegate: Package {
+            id: element
+            Column {
+                Package.name: "grid"
+                Utils.GridItem {
+                noActionButtons: true
+                image: "qrc:///type/network.svg"
+                title: model.name || qsTr("Unknown share")
+                selected: element.DelegateModel.inSelected || view.currentItem.currentIndex === index
+                shiftX: view.currentItem.shiftX(model.index)
+
+                onItemDoubleClicked: {
+                    history.push({
+                        view: "network",
+                        viewProperties: {
+                            model: networkModelFactory.create(mainctx, model.mrl)
+                         },
+                    }, History.Go)
+                }
+                }
+                CheckBox {
+                    text: "Indexed"
+                    checked: model.indexed
+                    onCheckedChanged: model.indexed = checked;
+                }
+            }
+
+            Utils.ListItem {
+                Package.name: "list"
+                width: root.width
+                height: VLCStyle.icon_normal
+
+                color: VLCStyle.colors.getBgColor(element.DelegateModel.inSelected, this.hovered, this.activeFocus)
+
+                cover: Image {
+                    id: cover_obj
+                    fillMode: Image.PreserveAspectFit
+                    source: "qrc:///type/network.svg"
+                }
+                line1: model.name || qsTr("Unknown share")
+
+                onItemClicked : {
+                    delegateModel.updateSelection( modifier, view.currentItem.currentIndex, index )
+                    view.currentItem.currentIndex = index
+                    this.forceActiveFocus()
+                }
+            }
+        }
+    }
+    Component {
+        id: gridComponent
+
+        Utils.KeyNavigableGridView {
+            id: gridView_id
+
+            model: delegateModel.parts.grid
+            modelCount: delegateModel.items.count
+
+            focus: true
+
+            cellWidth: VLCStyle.cover_normal + VLCStyle.margin_small
+            cellHeight: VLCStyle.cover_normal + VLCStyle.fontHeight_normal + VLCStyle.margin_small
+
+            onSelectAll: delegateModel.selectAll()
+            onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+
+            onActionLeft: root.actionLeft(index)
+            onActionRight: root.actionRight(index)
+            onActionDown: root.actionDown(index)
+            onActionUp: root.actionUp(index)
+            onActionCancel: root.actionCancel(index)
+        }
+    }
+
+    Component {
+        id: listComponent
+        /* ListView */
+        Utils.KeyNavigableListView {
+            id: listView_id
+
+            model: delegateModel.parts.list
+            modelCount: delegateModel.items.count
+
+            focus: true
+            spacing: VLCStyle.margin_xxxsmall
+
+            onSelectAll: delegateModel.selectAll()
+            onSelectionUpdated: delegateModel.updateSelection( keyModifiers, oldIndex, newIndex )
+
+            onActionLeft: root.actionLeft(index)
+            onActionRight: root.actionRight(index)
+            onActionDown: root.actionDown(index)
+            onActionUp: root.actionUp(index)
+            onActionCancel: root.actionCancel(index)
+        }
+    }
+
+    StackView {
+        id: view
+
+        anchors.fill: parent
+        focus: true
+
+        initialItem: medialib.gridView ? gridComponent : listComponent
+
+        replaceEnter: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 0
+                to:1
+                duration: 500
+            }
+        }
+
+        replaceExit: Transition {
+            PropertyAnimation {
+                property: "opacity"
+                from: 1
+                to:0
+                duration: 500
+            }
+        }
+
+        Connections {
+            target: medialib
+            onGridViewChanged: {
+                if (medialib.gridView)
+                    view.replace(gridComponent)
+                else
+                    view.replace(listComponent)
+            }
+        }
+    }
 }
