@@ -39,6 +39,7 @@
 #include "components/mediacenter/mlalbumtrackmodel.hpp"
 #include "components/mediacenter/mlgenremodel.hpp"
 #include "components/mediacenter/mlvideomodel.hpp"
+#include "components/mediacenter/mlnetworkmodel.hpp"
 
 #include "components/mediacenter/navigation_history.hpp"
 
@@ -89,6 +90,7 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
         qmlRegisterType<MLAlbumTrackModel>( "org.videolan.medialib", 0, 1, "MLAlbumTrackModel" );
         qmlRegisterType<MLGenreModel>( "org.videolan.medialib", 0, 1, "MLGenreModel" );
         qmlRegisterType<MLVideoModel>( "org.videolan.medialib", 0, 1, "MLVideoModel" );
+        qmlRegisterType<MLNetworkModel>( "org.videolan.medialib", 0, 1, "MLNetworkModel" );
         //expose base object, they aren't instanciable from QML side
         qmlRegisterType<MLAlbum>();
         qmlRegisterType<MLArtist>();
@@ -102,7 +104,6 @@ PlaylistWidget::PlaylistWidget( intf_thread_t *_p_i, QWidget *_par )
         rootCtx->setContextProperty( "history", navigation_history );
 
         //auto mainplaylistptr = new PlaylistPtr(p_intf->p_sys->p_playlist, mediacenterView);
-        //qRegisterMetaType<PlaylistPtr>();
         qRegisterMetaType<PlaylistPtr>();
         qmlRegisterType<PlaylistListModel>( "org.videolan.vlc", 0, 1, "PlaylistListModel" );
         qmlRegisterType<PlaylistControlerModel>( "org.videolan.vlc", 0, 1, "PlaylistControlerModel" );
