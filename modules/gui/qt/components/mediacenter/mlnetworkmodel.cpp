@@ -36,7 +36,6 @@ enum Role {
 
 MLNetworkModel::MLNetworkModel( QmlMainContext* ctx, QString parentMrl, QObject* parent )
     : QAbstractListModel( parent )
-    , m_sd( nullptr, &vlc_sd_Destroy )
     , m_input( nullptr, &input_Close )
     , m_entryPoints( nullptr, &vlc_ml_entry_point_list_release )
     , m_ctx( ctx )
@@ -135,13 +134,30 @@ bool MLNetworkModel::initializeDeviceDiscovery()
         .cbs = &cbs,
         .sys = this
     };
-    m_sd.reset( vlc_sd_Create( VLC_OBJECT( m_ctx->getIntf() ), "dsm-sd", &owner ) );
-    if ( !m_sd )
-    {
-        msg_Warn( m_ctx->getIntf(), "Failed to instantiate SD" );
+    char** sdLongNames;
+    int* categories;
+    auto releaser = [](char** ptr) {
+        for ( auto i = 0u; ptr[i] != nullptr; ++i )
+            free( ptr[i] );
+        free( ptr );
+    };
+    auto sdNames = vlc_sd_GetNames( VLC_OBJECT( m_ctx->getIntf() ), &sdLongNames, &categories );
+    if ( sdNames == nullptr )
         return false;
+    auto sdNamesPtr = vlc::wrap_carray( sdNames, releaser );
+    auto sdLongNamesPtr = vlc::wrap_carray( sdLongNames, releaser );
+    auto categoriesPtr = vlc::wrap_carray( categories );
+    for ( auto i = 0u; sdNames[i] != nullptr; ++i )
+    {
+        if ( categories[i] != SD_CAT_LAN )
+            continue;
+        SdPtr sd{ vlc_sd_Create( VLC_OBJECT( m_ctx->getIntf() ), sdNames[i], &owner ),
+                  &vlc_sd_Destroy };
+        if ( sd == nullptr )
+            continue;
+        m_sds.push_back( std::move( sd ) );
     }
-    return true;
+    return m_sds.size() > 0;
 }
 
 bool MLNetworkModel::initializeFolderDiscovery()
@@ -167,38 +183,36 @@ void MLNetworkModel::onItemAdded( input_item_t* parent, input_item_t* p_item,
 {
     if ( ( parent == nullptr ) != m_parentMrl.isEmpty() )
         return;
-    input_item_Hold( p_item );
-    callAsync([this, p_item]() {
-        auto it = std::find_if( begin( m_items ), end( m_items ), [p_item](const Item& i) {
-            return i.mrl == p_item->psz_uri;
-        });
-        if ( it != end( m_items ) )
+
+    Item item;
+    item.mrl = p_item->psz_uri;
+    item.name = p_item->psz_name;
+    item.indexed = false;
+    item.canBeIndexed = strncasecmp( p_item->psz_uri, "smb:", 4 ) == 0 ||
+                     strncasecmp( p_item->psz_uri, "ftp:", 4 ) == 0;
+    item.isDir = true;
+
+    if ( m_entryPoints != nullptr )
+    {
+        for ( const auto& ep : ml_range_iterate<vlc_ml_entry_point_t>( m_entryPoints ) )
         {
-            input_item_Release( p_item );
-            return;
-        }
-        Item i;
-        i.mrl = p_item->psz_uri;
-        i.name = p_item->psz_name;
-        i.indexed = false;
-        i.canBeIndexed = true;
-        i.isDir = true;
-        if ( m_entryPoints != nullptr )
-        {
-            for ( const auto& ep : ml_range_iterate<vlc_ml_entry_point_t>( m_entryPoints ) )
+            if ( ep.b_present && strcasecmp( ep.psz_mrl, p_item->psz_uri ) == 0 )
             {
-                if ( ep.b_present && strcasecmp( ep.psz_mrl, p_item->psz_uri ) == 0 )
-                {
-                    i.indexed = true;
-                    break;
-                }
+                item.indexed = true;
+                break;
             }
         }
+    }
 
-        input_item_Release( p_item );
+    callAsync([this, item = std::move( item )]() {
+        auto it = std::find_if( begin( m_items ), end( m_items ), [&item](const Item& i) {
+            return i.mrl == item.mrl;
+        });
+        if ( it != end( m_items ) )
+            return;
 
         beginInsertRows( {}, m_items.size(), m_items.size() );
-        m_items.push_back( std::move( i ) );
+        m_items.push_back( std::move( item ) );
         endInsertRows();
     });
 }
