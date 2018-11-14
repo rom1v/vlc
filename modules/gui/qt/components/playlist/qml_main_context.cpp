@@ -21,8 +21,14 @@
 
 QmlMainContext::QmlMainContext(intf_thread_t* intf, QObject *parent)
     : QObject(parent)
+    , m_intf( intf )
     , m_playlist(intf->p_sys->p_playlist)
 {
+}
+
+intf_thread_t*QmlMainContext::getIntf() const
+{
+    return m_intf;
 }
 
 PlaylistPtr QmlMainContext::getPlaylist() const

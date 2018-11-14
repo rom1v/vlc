@@ -36,9 +36,11 @@ class QmlMainContext : public QObject
 public:
     explicit QmlMainContext(intf_thread_t *intf,  QObject *parent = nullptr);
 
+    intf_thread_t* getIntf() const;
     PlaylistPtr getPlaylist() const;
 
 private:
+    intf_thread_t* m_intf;
     PlaylistPtr m_playlist;
 };
 
