@@ -36,10 +36,10 @@ enum Role {
 
 MLNetworkModel::MLNetworkModel( QmlMainContext* ctx, QString parentMrl, QObject* parent )
     : QAbstractListModel( parent )
-    , m_input( nullptr, &input_Close )
     , m_entryPoints( nullptr, &vlc_ml_entry_point_list_release )
     , m_ctx( ctx )
     , m_parentMrl( parentMrl )
+    , m_input( nullptr, &input_Close )
 {
     initializeKnownEntrypoints();
     if ( parentMrl.isEmpty() )
