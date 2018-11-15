@@ -84,8 +84,8 @@ VideoWidget::VideoWidget( intf_thread_t *_p_i, QWidget* p_parent )
     /* Set the policy to expand in both directions */
     // setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Expanding );
 
-    layout = new QHBoxLayout( this );
-    layout->setContentsMargins( 0, 0, 0, 0 );
+    m_layout = new QHBoxLayout( this );
+    m_layout->setContentsMargins( 0, 0, 0, 0 );
     stable = NULL;
     p_window = NULL;
 
@@ -149,7 +149,7 @@ bool VideoWidget::request( struct vout_window_t *p_wnd )
     stable->setMouseTracking( true );
     setMouseTracking( true );
 #endif
-    layout->addWidget( stable );
+    m_layout->addWidget( stable );
 
     sync();
     p_window = p_wnd;
@@ -396,7 +396,7 @@ void VideoWidget::release( void )
 
     if( stable )
     {
-        layout->removeWidget( stable );
+        m_layout->removeWidget( stable );
         stable->deleteLater();
         stable = NULL;
         p_window = NULL;

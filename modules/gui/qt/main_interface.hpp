@@ -32,6 +32,7 @@
 
 #include <QSystemTrayIcon>
 #include <QStackedWidget>
+#include <QQuickWidget>
 
 #ifdef _WIN32
 # include <shobjidl.h>
@@ -43,12 +44,7 @@ class QKeyEvent;
 class QLabel;
 class QEvent;
 class VideoWidget;
-class BackgroundWidget;
-class PlaylistWidget;
 class VisualSelector;
-class ControlsWidget;
-class InputControlsWidget;
-class FullscreenControllerWidget;
 class QVBoxLayout;
 class QMenu;
 class QSize;
@@ -60,8 +56,6 @@ struct vout_window_t;
 class MainInterface : public QVLCMW
 {
     Q_OBJECT
-
-    friend class PlaylistWidget;
 
 public:
     /* tors */
@@ -79,7 +73,6 @@ public:
     /* Getters */
     QSystemTrayIcon *getSysTray() { return sysTray; }
     QMenu *getSysTrayMenu() { return systrayMenu; }
-    FullscreenControllerWidget* getFullscreenControllerWidget() { return fullscreenControls; }
     enum
     {
         CONTROLS_VISIBLE  = 0x1,
@@ -93,8 +86,6 @@ public:
         RAISE_AUDIO,
         RAISE_AUDIOVIDEO,
     };
-    int getControlsVisibilityStatus();
-    bool isPlDocked() { return ( b_plDocked != false ); }
     bool isInterfaceFullScreen() { return b_interfaceFullScreen; }
     bool isInterfaceAlwaysOnTop() { return b_interfaceOnTop; }
 
@@ -115,23 +106,13 @@ protected:
 protected:
     /* Main Widgets Creation */
     void createMainWidget( QSettings* );
-    void createStatusBar();
-    void createPlaylist();
-    void createResumePanel( QWidget *w );
 
     /* Systray */
     void createSystray();
     void initSystray();
     void handleSystray();
 
-    /* Central StackWidget Management */
-    void showTab( QWidget *, bool video_closing = false );
-    void showVideo();
-    void restoreStackOldWidget( bool video_closing = false );
-
     /* */
-    void displayNormalView();
-    void setMinimalView( bool );
     void setInterfaceFullScreen( bool );
     void computeMinimumSize();
 
@@ -142,22 +123,9 @@ protected:
 
     QString              input_name;
     QVBoxLayout         *mainLayout;
-    ControlsWidget      *controls;
-    InputControlsWidget *inputC;
-    FullscreenControllerWidget *fullscreenControls;
-
-    /* Widgets */
-    QStackedWidget      *stackCentralW;
 
     VideoWidget         *videoWidget;
-    BackgroundWidget    *bgWidget;
-    PlaylistWidget      *playlistWidget;
-    //VisualSelector      *visualSelector;
-
-    /* resume panel */
-    QWidget             *resumePanel;
-    QTimer              *resumeTimer;
-    vlc_tick_t          i_resumeTime;
+    QQuickWidget        *mediacenterView;
 
     /* Status Bar */
     QLabel              *nameLabel;
@@ -200,19 +168,11 @@ protected:
     int i_kc_offset;
 
 public slots:
-    void dockPlaylist( bool b_docked = true );
-    void toggleMinimalView( bool );
-    void togglePlaylist();
     void toggleUpdateSystrayMenu();
     void showUpdateSystrayMenu();
     void hideUpdateSystrayMenu();
-    void toggleAdvancedButtons();
     void toggleInterfaceFullScreen();
-    void toggleFSC();
     void setInterfaceAlwaysOnTop( bool );
-
-    void setStatusBarVisibility(bool b_visible);
-    void setPlaylistVisibility(bool b_visible);
 
     /* Manage the Video Functions from the vout threads */
     void getVideoSlot( struct vout_window_t *,
@@ -227,48 +187,22 @@ public slots:
 
 protected slots:
     void debug();
-    void recreateToolbars();
-    void setName( const QString& );
     void setVLCWindowsTitle( const QString& title = "" );
     void handleSystrayClick( QSystemTrayIcon::ActivationReason );
     void updateSystrayTooltipName( const QString& );
     void updateSystrayTooltipStatus( InputManager::PlayingState );
-    void showCryptedLabel( bool );
 
     void handleKeyPress( QKeyEvent * );
 
     void showBuffering( float );
 
-    void resizeStack( int w, int h )
-    {
-        if( isFullScreen() )
-        {
-            /* postpone resize, will be applied once fullscreen is disabled */
-            pendingResize = QSize( w, h );
-        }
-        else if( !isMaximized() && !b_isWindowTiled )
-        {
-            if( b_minimalView )
-                resizeWindow( w, h ); /* Oh yes, it shouldn't
-                                   be possible that size() - stackCentralW->size() < 0
-                                   since stackCentralW is contained in the QMW... */
-            else
-                resizeWindow( width() - stackCentralW->width() + w, height() - stackCentralW->height() + h );
-        }
-        debug();
-    }
-
     void setVideoSize( unsigned int, unsigned int );
     void videoSizeChanged( int, int );
-    virtual void setVideoFullScreen( bool );
     void setVideoOnTop( bool );
     void setBoss();
     void setRaise();
     void voutReleaseMouseEvents();
 
-    void showResumePanel( vlc_tick_t);
-    void hideResumePanel();
-    void resumePlayback();
     void onInputChanged( bool );
 
 signals:

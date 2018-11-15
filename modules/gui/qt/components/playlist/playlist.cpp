@@ -144,8 +144,7 @@ PlaylistWidget::~PlaylistWidget()
 
 void PlaylistWidget::dropEvent( QDropEvent *event )
 {
-    if( p_intf->p_sys->p_mi )
-        p_intf->p_sys->p_mi->dropEventPlay( event, false );
+
 }
 void PlaylistWidget::dragEnterEvent( QDragEnterEvent *event )
 {
@@ -156,12 +155,10 @@ void PlaylistWidget::closeEvent( QCloseEvent *event )
 {
     if( THEDP->isDying() )
     {
-        p_intf->p_sys->p_mi->playlistVisible = true;
         event->accept();
     }
     else
     {
-        p_intf->p_sys->p_mi->playlistVisible = false;
         hide();
         event->ignore();
     }

@@ -337,7 +337,6 @@ QMenu *VLCMenuBar::ViewMenu( intf_thread_t *p_intf, QMenu *current, MainInterfac
     /* Docked Playlist */
     action = menu->addAction( qtr( "Docked Playlist" ) );
     action->setCheckable( true );
-    action->setChecked( mi->isPlDocked() );
     CONNECT( action, triggered( bool ), mi, dockPlaylist( bool ) );
 
     menu->addSeparator();
@@ -353,8 +352,7 @@ QMenu *VLCMenuBar::ViewMenu( intf_thread_t *p_intf, QMenu *current, MainInterfac
     action = menu->addAction( qtr( "Mi&nimal Interface" ) );
     action->setShortcut( qtr( "Ctrl+H" ) );
     action->setCheckable( true );
-    action->setChecked( (mi->getControlsVisibilityStatus()
-                         & MainInterface::CONTROLS_HIDDEN ) );
+
 
     CONNECT( action, triggered( bool ), mi, toggleMinimalView( bool ) );
     CONNECT( mi, minimalViewToggled( bool ), action, setChecked( bool ) );
@@ -371,8 +369,6 @@ QMenu *VLCMenuBar::ViewMenu( intf_thread_t *p_intf, QMenu *current, MainInterfac
     action = menu->addAction( qtr( "&Advanced Controls" ), mi,
             SLOT( toggleAdvancedButtons() ) );
     action->setCheckable( true );
-    if( mi->getControlsVisibilityStatus() & MainInterface::CONTROLS_ADVANCED )
-        action->setChecked( true );
 
     action = menu->addAction( qtr( "Status Bar" ) );
     action->setCheckable( true );

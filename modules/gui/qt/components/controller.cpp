@@ -96,14 +96,12 @@ void AbstractController::playAction()
 
 void AbstractController::playlistAction()
 {
-    if( p_intf->p_sys->p_mi )
-        p_intf->p_sys->p_mi->togglePlaylist();
+
 }
 
 void AbstractController::fullwidthAction()
 {
-    if( p_intf->p_sys->p_mi )
-        p_intf->p_sys->p_mi->getFullscreenControllerWidget()->toggleFullwidth();
+
 }
 
 

@@ -84,7 +84,7 @@ private:
     vout_window_t *p_window;
 
     QWidget *stable;
-    QLayout *layout;
+    QLayout *m_layout;
     QTimer *cursorTimer;
     int cursorTimeout;
 
