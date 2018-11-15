@@ -195,7 +195,8 @@ void MLNetworkModel::onItemAdded( input_item_t* parent, input_item_t* p_item,
     {
         for ( const auto& ep : ml_range_iterate<vlc_ml_entry_point_t>( m_entryPoints ) )
         {
-            if ( ep.b_present && strcasecmp( ep.psz_mrl, p_item->psz_uri ) == 0 )
+            if ( ep.b_present && ep.b_banned == false &&
+                 strcasecmp( ep.psz_mrl, p_item->psz_uri ) == 0 )
             {
                 item.indexed = true;
                 break;
