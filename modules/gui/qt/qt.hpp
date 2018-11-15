@@ -31,7 +31,7 @@
 
 #include <vlc_common.h>
 #include <vlc_interface.h> /* intf_thread_t */
-#include <vlc_playlist_new.h>  /* vlc_playlist_t */
+#include <vlc_playlist.h>  /* vlc_playlist_t */
 #include <vlc_player.h>  /* vlc_player_t */
 
 #include <qconfig.h>

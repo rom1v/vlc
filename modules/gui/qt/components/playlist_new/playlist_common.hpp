@@ -25,7 +25,7 @@
 #endif
 
 #include <QObject>
-#include <vlc_playlist_new.h>
+#include <vlc_playlist.h>
 
 // QObject wrapper to carry playlist ptr through QML
 class PlaylistPtr

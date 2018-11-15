@@ -28,7 +28,7 @@
 #include "vlc_player.h"
 #include <vlc_cxx_helpers.hpp>
 #include <vlc_input_item.h>
-#include <vlc_playlist_new.h>
+#include <vlc_playlist.h>
 #include <QExplicitlySharedDataPointer>
 #include <QUrl>
 #include <QMetaType>

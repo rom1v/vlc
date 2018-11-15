@@ -46,7 +46,7 @@
 
 #include "components/playlist/playlist.hpp"
 #include "components/playlist_new/playlist_model.hpp"
-#include <vlc_playlist_new.h>
+#include <vlc_playlist.h>
 
 #include "components/mediacenter/mcmedialib.hpp"
 #include "components/mediacenter/mlqmltypes.hpp"
