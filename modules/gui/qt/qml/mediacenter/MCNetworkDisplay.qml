@@ -124,13 +124,14 @@ Utils.NavigableFocusScope {
             if ( delegateModel.selectedGroup.count > 1 ) {
                 var list = []
                 for (var i = 0; i < delegateModel.selectedGroup.count; i++) {
-                    if (model.type == MLNetworkModel.TYPE_FILE)
-                        list.push(delegateModel.selectedGroup.get(i).model.mrl)
+                    var itemModel = delegateModel.selectedGroup.get(i).model;
+                    if (itemModel.type == MLNetworkModel.TYPE_FILE)
+                        list.push(itemModel.mrl)
                 }
                 medialib.addAndPlay( list )
-            } else {
+            } else if (delegateModel.selectedGroup.count === 1) {
                 var itemModel = delegateModel.selectedGroup.get(0).model;
-                if (model.type != MLNetworkModel.TYPE_FILE) {
+                if (itemModel.type != MLNetworkModel.TYPE_FILE) {
                     history.push({
                         view: "network",
                         viewProperties: {
