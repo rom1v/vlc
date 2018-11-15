@@ -125,8 +125,6 @@ Utils.NavigableFocusScope {
                             event.accepted = true
                         }
                     }
-
-                    }
                 }
 
                 Item {
