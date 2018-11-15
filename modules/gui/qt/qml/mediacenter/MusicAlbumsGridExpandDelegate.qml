@@ -120,7 +120,11 @@ Utils.NavigableFocusScope {
 
                         onClicked: medialib.addAndPlay(model.id)
 
-                        KeyNavigation.right: likeButton
+                        Keys.onRightPressed: {
+                            expand_track_id.focus = true
+                            event.accepted = true
+                        }
+                    }
 
                     }
                 }
