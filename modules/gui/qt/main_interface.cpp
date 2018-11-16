@@ -391,7 +391,7 @@ void MainInterface::createMainWidget( QSettings *creationSettings )
     front_wrapper->setAttribute(Qt::WA_NativeWindow);
     front_wrapper->setAttribute(Qt::WA_DontCreateNativeAncestors);
 
-    stackedLayout->addWidget(front_wrapper);
+    //stackedLayout->addWidget(front_wrapper);
     stackedLayout->addWidget(videoWidget);
 
     //QVBoxLayout *layout = new QVBoxLayout();
