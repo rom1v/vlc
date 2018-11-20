@@ -314,6 +314,13 @@ void
 vlc_media_tree_Preparse(vlc_media_tree_t *media_tree, libvlc_int_t *libvlc,
                         input_item_t *media)
 {
+#ifdef TEST_MEDIA_SOURCE
+    VLC_UNUSED(media_tree);
+    VLC_UNUSED(libvlc);
+    VLC_UNUSED(media);
+    VLC_UNUSED(input_preparser_callbacks);
+#else
     vlc_MetadataRequest(libvlc, media, META_REQUEST_OPTION_NONE,
                         &input_preparser_callbacks, media_tree, -1, NULL);
+#endif
 }

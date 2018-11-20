@@ -31,6 +31,10 @@
 #include "libvlc.h"
 #include "media_tree.h"
 
+#ifdef TEST_MEDIA_SOURCE
+#define vlc_module_name "test"
+#endif /* TEST_MEDIA_SOURCE */
+
 typedef struct
 {
     vlc_media_source_t public_data;
@@ -199,13 +203,34 @@ vlc_media_source_provider_Get(libvlc_int_t *libvlc)
     return libvlc_priv(libvlc)->media_source_provider;
 }
 
+static void *
+CreateObject(vlc_object_t *parent, size_t length, const char *typename)
+{
+#ifdef TEST_MEDIA_SOURCE
+    VLC_UNUSED(parent);
+    VLC_UNUSED(typename);
+    return malloc(length);
+#else
+    return vlc_custom_create(parent, length, typename);
+#endif
+}
+
+static void
+ReleaseObject(void *obj)
+{
+#ifdef TEST_MEDIA_SOURCE
+    free(obj);
+#else
+    vlc_object_release((vlc_object_t *) obj);
+#endif
+}
+
 #undef vlc_media_source_provider_New
 vlc_media_source_provider_t *
 vlc_media_source_provider_New(vlc_object_t *parent)
 {
     vlc_media_source_provider_t *provider =
-            vlc_custom_create(parent, sizeof(*provider),
-                              "media-source-provider");
+            CreateObject(parent, sizeof(*provider), "media-source-provider");
     if (unlikely(!provider))
         return NULL;
 
@@ -218,7 +243,7 @@ void
 vlc_media_source_provider_Delete(vlc_media_source_provider_t *provider)
 {
     vlc_mutex_destroy(&provider->lock);
-    vlc_object_release(provider);
+    ReleaseObject(provider);
 }
 
 static vlc_media_source_t *
