@@ -321,9 +321,6 @@ int libvlc_InternalInit( libvlc_int_t *p_libvlc, int i_argc,
     var_Create( p_libvlc, "app-version", VLC_VAR_STRING );
     var_SetString( p_libvlc, "app-version", PACKAGE_VERSION );
 
-    /* System specific configuration */
-    system_Configure( p_libvlc, i_argc - vlc_optind, ppsz_argv + vlc_optind );
-
 #ifdef ENABLE_VLM
     /* Initialize VLM if vlm-conf is specified */
     psz_parser = var_InheritString( p_libvlc, "vlm-conf" );
@@ -341,6 +338,9 @@ int libvlc_InternalInit( libvlc_int_t *p_libvlc, int i_argc,
         goto error;
 
     PlaylistConfigureFromVariables(priv->main_playlist, VLC_OBJECT(p_libvlc));
+
+    /* System specific configuration */
+    system_Configure( p_libvlc, i_argc - vlc_optind, ppsz_argv + vlc_optind );
 
     /*
      * Load background interfaces
