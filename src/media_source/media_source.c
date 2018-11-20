@@ -105,7 +105,7 @@ static const struct services_discovery_callbacks sd_cbs = {
 };
 
 static vlc_media_source_t *
-MediaSourceNew(vlc_media_source_provider_t *provider, const char *name)
+vlc_media_source_New(vlc_media_source_provider_t *provider, const char *name)
 {
     media_source_private_t *priv = malloc(sizeof(*priv) + strlen(name) + 1);
     if (unlikely(!priv))
@@ -115,9 +115,9 @@ MediaSourceNew(vlc_media_source_provider_t *provider, const char *name)
 
     vlc_media_source_t *ms = &priv->public_data;
 
-    /* vlc_sd_Create() may call services_discovery_item_added(), which will read its
-     * tree, so it must be initialized first */
-    ms->tree = vlc_media_tree_Create();
+    /* vlc_sd_Create() may call services_discovery_item_added(), which will read
+     * its tree, so it must be initialized first */
+    ms->tree = vlc_media_tree_New();
     if (unlikely(!ms->tree))
     {
         free(priv);
@@ -148,7 +148,8 @@ MediaSourceNew(vlc_media_source_provider_t *provider, const char *name)
 }
 
 static void
-Remove(vlc_media_source_provider_t *provider, vlc_media_source_t *ms)
+vlc_media_source_provider_Remove(vlc_media_source_provider_t *provider,
+                                 vlc_media_source_t *ms)
 {
     vlc_mutex_lock(&provider->lock);
     vlc_list_remove(&ms_priv(ms)->node);
@@ -156,10 +157,10 @@ Remove(vlc_media_source_provider_t *provider, vlc_media_source_t *ms)
 }
 
 static void
-MediaSourceDestroy(vlc_media_source_t *ms)
+vlc_media_source_Delete(vlc_media_source_t *ms)
 {
     media_source_private_t *priv = ms_priv(ms);
-    Remove(priv->owner, ms);
+    vlc_media_source_provider_Remove(priv->owner, ms);
     vlc_sd_Destroy(priv->sd);
     vlc_media_tree_Release(ms->tree);
     free(priv);
@@ -177,11 +178,12 @@ vlc_media_source_Release(vlc_media_source_t *ms)
 {
     media_source_private_t *priv = ms_priv(ms);
     if (vlc_atomic_rc_dec(&priv->rc))
-        MediaSourceDestroy(ms);
+        vlc_media_source_Delete(ms);
 }
 
 static vlc_media_source_t *
-FindByName(vlc_media_source_provider_t *provider, const char *name)
+vlc_media_source_provider_Find(vlc_media_source_provider_t *provider,
+                               const char *name)
 {
     vlc_mutex_assert(&provider->lock);
     media_source_private_t *entry;
@@ -197,9 +199,9 @@ vlc_media_source_provider_Get(libvlc_int_t *libvlc)
     return libvlc_priv(libvlc)->media_source_provider;
 }
 
-#undef vlc_media_source_provider_Create
+#undef vlc_media_source_provider_New
 vlc_media_source_provider_t *
-vlc_media_source_provider_Create(vlc_object_t *parent)
+vlc_media_source_provider_New(vlc_object_t *parent)
 {
     vlc_media_source_provider_t *provider =
             vlc_custom_create(parent, sizeof(*provider),
@@ -213,18 +215,19 @@ vlc_media_source_provider_Create(vlc_object_t *parent)
 }
 
 void
-vlc_media_source_provider_Destroy(vlc_media_source_provider_t *provider)
+vlc_media_source_provider_Delete(vlc_media_source_provider_t *provider)
 {
     vlc_mutex_destroy(&provider->lock);
     vlc_object_release(provider);
 }
 
 static vlc_media_source_t *
-AddServiceDiscovery(vlc_media_source_provider_t *provider, const char *name)
+vlc_media_source_provider_Add(vlc_media_source_provider_t *provider,
+                              const char *name)
 {
     vlc_mutex_assert(&provider->lock);
 
-    vlc_media_source_t *ms = MediaSourceNew(provider, name);
+    vlc_media_source_t *ms = vlc_media_source_New(provider, name);
     if (unlikely(!ms))
         return NULL;
 
@@ -237,9 +240,9 @@ vlc_media_source_provider_GetMediaSource(vlc_media_source_provider_t *provider,
                                          const char *name)
 {
     vlc_mutex_lock(&provider->lock);
-    vlc_media_source_t *ms = FindByName(provider, name);
+    vlc_media_source_t *ms = vlc_media_source_provider_Find(provider, name);
     if (!ms)
-        ms = AddServiceDiscovery(provider, name);
+        ms = vlc_media_source_provider_Add(provider, name);
     vlc_mutex_unlock(&provider->lock);
 
     return ms;

@@ -293,7 +293,7 @@ int libvlc_InternalInit( libvlc_int_t *p_libvlc, int i_argc,
     if( !priv->parser )
         goto error;
 
-    priv->media_source_provider = vlc_media_source_provider_Create( VLC_OBJECT( p_libvlc ) );
+    priv->media_source_provider = vlc_media_source_provider_New( VLC_OBJECT( p_libvlc ) );
     if( !priv->media_source_provider )
         goto error;
 
@@ -443,7 +443,7 @@ void libvlc_InternalCleanup( libvlc_int_t *p_libvlc )
         libvlc_MlRelease( priv->p_media_library );
 
     if( priv->media_source_provider )
-        vlc_media_source_provider_Destroy( priv->media_source_provider );
+        vlc_media_source_provider_Delete( priv->media_source_provider );
 
     libvlc_InternalDialogClean( p_libvlc );
     libvlc_InternalKeystoreClean( p_libvlc );

@@ -24,7 +24,7 @@
 #include <vlc_media_source.h>
 
 vlc_media_tree_t *
-vlc_media_tree_Create(void);
+vlc_media_tree_New(void);
 
 void
 vlc_media_tree_Hold(vlc_media_tree_t *tree);

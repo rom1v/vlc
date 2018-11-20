@@ -51,7 +51,7 @@ typedef struct
 #define mt_priv(mt) container_of(mt, media_tree_private_t, public_data)
 
 vlc_media_tree_t *
-vlc_media_tree_Create(void)
+vlc_media_tree_New(void)
 {
     media_tree_private_t *priv = malloc(sizeof(*priv));
     if (unlikely(!priv))
@@ -70,7 +70,7 @@ vlc_media_tree_Create(void)
 }
 
 static inline void
-AssertLocked(vlc_media_tree_t *tree)
+vlc_media_tree_AssertLocked(vlc_media_tree_t *tree)
 {
     media_tree_private_t *priv = mt_priv(tree);
     vlc_mutex_assert(&priv->lock);
@@ -87,15 +87,17 @@ do { \
 
 #define vlc_media_tree_Notify(tree, event, ...) \
 do { \
-    AssertLocked(tree); \
+    vlc_media_tree_AssertLocked(tree); \
     vlc_media_tree_listener_id *listener; \
     vlc_media_tree_listener_foreach(listener, tree) \
         vlc_media_tree_NotifyListener(tree, listener, event, ##__VA_ARGS__); \
 } while (0)
 
 static bool
-FindNodeByMedia(input_item_node_t *parent, const input_item_t *media,
-                input_item_node_t **result, input_item_node_t **result_parent)
+vlc_media_tree_FindNodeByMedia(input_item_node_t *parent,
+                               const input_item_t *media,
+                               input_item_node_t **result,
+                               input_item_node_t **result_parent)
 {
     for (int i = 0; i < parent->i_children; ++i)
     {
@@ -108,7 +110,7 @@ FindNodeByMedia(input_item_node_t *parent, const input_item_t *media,
             return true;
         }
 
-        if (FindNodeByMedia(child, media, result, result_parent))
+        if (vlc_media_tree_FindNodeByMedia(child, media, result, result_parent))
             return true;
     }
 
@@ -116,45 +118,46 @@ FindNodeByMedia(input_item_node_t *parent, const input_item_t *media,
 }
 
 static input_item_node_t *
-AddChild(input_item_node_t *parent, input_item_t *media);
+vlc_media_tree_AddChild(input_item_node_t *parent, input_item_t *media);
 
 static void
-AddSubtree(input_item_node_t *to, input_item_node_t *from)
+vlc_media_tree_AddSubtree(input_item_node_t *to, input_item_node_t *from)
 {
     for (int i = 0; i < from->i_children; ++i)
     {
         input_item_node_t *child = from->pp_children[i];
-        input_item_node_t *node = AddChild(to, child->p_item);
+        input_item_node_t *node = vlc_media_tree_AddChild(to, child->p_item);
         if (unlikely(!node))
             break; /* what could we do? */
 
-        AddSubtree(node, child);
+        vlc_media_tree_AddSubtree(node, child);
     }
 }
 
 static void
 media_subtree_changed(input_item_t *media, input_item_node_t *node,
-                    void *userdata)
+                      void *userdata)
 {
     vlc_media_tree_t *tree = userdata;
 
     vlc_media_tree_Lock(tree);
     input_item_node_t *subtree_root;
     /* TODO retrieve the node without traversing the tree */
-    bool found = FindNodeByMedia(&tree->root, media, &subtree_root, NULL);
+    bool found = vlc_media_tree_FindNodeByMedia(&tree->root, media,
+                                                &subtree_root, NULL);
     if (!found) {
         /* the node probably failed to be allocated */
         vlc_media_tree_Unlock(tree);
         return;
     }
 
-    AddSubtree(subtree_root, node);
+    vlc_media_tree_AddSubtree(subtree_root, node);
     vlc_media_tree_Notify(tree, on_children_reset, subtree_root);
     vlc_media_tree_Unlock(tree);
 }
 
 static void
-DestroyRootNode(vlc_media_tree_t *tree)
+vlc_media_tree_DestroyRootNode(vlc_media_tree_t *tree)
 {
     input_item_node_t *root = &tree->root;
     for (int i = 0; i < root->i_children; ++i)
@@ -164,14 +167,14 @@ DestroyRootNode(vlc_media_tree_t *tree)
 }
 
 static void
-Destroy(vlc_media_tree_t *tree)
+vlc_media_tree_Delete(vlc_media_tree_t *tree)
 {
     media_tree_private_t *priv = mt_priv(tree);
     vlc_media_tree_listener_id *listener;
     vlc_list_foreach(listener, &priv->listeners, node)
         free(listener);
     vlc_list_init(&priv->listeners); /* reset */
-    DestroyRootNode(tree);
+    vlc_media_tree_DestroyRootNode(tree);
     vlc_mutex_destroy(&priv->lock);
     free(tree);
 }
@@ -188,7 +191,7 @@ vlc_media_tree_Release(vlc_media_tree_t *tree)
 {
     media_tree_private_t *priv = mt_priv(tree);
     if (vlc_atomic_rc_dec(&priv->rc))
-        Destroy(tree);
+        vlc_media_tree_Delete(tree);
 }
 
 void
@@ -206,7 +209,7 @@ vlc_media_tree_Unlock(vlc_media_tree_t *tree)
 }
 
 static input_item_node_t *
-AddChild(input_item_node_t *parent, input_item_t *media)
+vlc_media_tree_AddChild(input_item_node_t *parent, input_item_t *media)
 {
     input_item_node_t *node = input_item_node_Create(media);
     if (unlikely(!node))
@@ -263,9 +266,9 @@ input_item_node_t *
 vlc_media_tree_Add(vlc_media_tree_t *tree, input_item_node_t *parent,
                    input_item_t *media)
 {
-    AssertLocked(tree);
+    vlc_media_tree_AssertLocked(tree);
 
-    input_item_node_t *node = AddChild(parent, media);
+    input_item_node_t *node = vlc_media_tree_AddChild(parent, media);
     if (unlikely(!node))
         return NULL;
 
@@ -279,20 +282,22 @@ vlc_media_tree_Find(vlc_media_tree_t *tree, const input_item_t *media,
                     input_item_node_t **result,
                     input_item_node_t **result_parent)
 {
-    AssertLocked(tree);
+    vlc_media_tree_AssertLocked(tree);
 
-    /* quick & dirty depth-first O(n) implementation, with n the number of nodes in the tree */
-    return FindNodeByMedia(&tree->root, media, result, result_parent);
+    /* quick & dirty depth-first O(n) implementation, with n the number of nodes
+     * in the tree */
+    return vlc_media_tree_FindNodeByMedia(&tree->root, media, result,
+                                          result_parent);
 }
 
 bool
 vlc_media_tree_Remove(vlc_media_tree_t *tree, input_item_t *media)
 {
-    AssertLocked(tree);
+    vlc_media_tree_AssertLocked(tree);
 
     input_item_node_t *node;
     input_item_node_t *parent;
-    if (!FindNodeByMedia(&tree->root, media, &node, &parent))
+    if (!vlc_media_tree_FindNodeByMedia(&tree->root, media, &node, &parent))
         return false;
 
     input_item_node_RemoveNode(parent, node);
