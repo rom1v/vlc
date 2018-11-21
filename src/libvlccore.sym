@@ -889,6 +889,7 @@ vlc_player_SetSubtitleSync
 vlc_player_SetTeletextEnabled
 vlc_player_SetTeletextTransparency
 vlc_player_SetTrackCategoryEnabled
+vlc_player_SetVideoSplitter
 vlc_player_Start
 vlc_player_Stop
 vlc_player_title_list_GetAt
