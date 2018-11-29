@@ -211,8 +211,30 @@ function playlist_is_tree( client )
     end
 end
 
+function format_item(item, is_current)
+    local marker = ( item.id == current ) and "*" or " "
+    local str = "|"..marker..tostring(item.id).." - "..
+                    ( item.name or item.path )
+    if item.duration > 0 then
+        str = str.." ("..common.durationtostring(item.duration)..")"
+    end
+    return str
+end
+
 function playlist(name,client,arg)
     local current = vlc.playlist.current()
+    if arg == nil then
+        -- print the whole playlist
+        local list = vlc.playlist.list()
+        for _, item in ipairs(list) do
+            client:append(format_item(item, item.id == current))
+        end
+        return
+    else
+        -- print the requested item (if it exists)
+        local id = tonumber(arg)
+
+    end
     function playlist0(item,prefix)
         local prefix = prefix or ""
         if not item.flags.disabled then
@@ -247,7 +269,8 @@ function playlist(name,client,arg)
         elseif arg then
             playlist = vlc.playlist.get(arg, tree)
         else
-            playlist = vlc.playlist.get(nil, tree)
+            local list = vlc.playlist.list()
+            client:append("+++ "..#list.."+++")
         end
     end
     if name == "search" then
@@ -558,7 +581,7 @@ commands_ordered = {
     { "add"; { func = add; args = "XYZ"; help = "add XYZ to playlist" } };
     { "enqueue"; { func = add; args = "XYZ"; help = "queue XYZ to playlist" } };
     { "playlist"; { func = playlist; help = "show items currently in playlist" } };
-    { "search"; { func = playlist; args = "[string]"; help = "search for items in playlist (or reset search)" } };
+    --{ "search"; { func = playlist; args = "[string]"; help = "search for items in playlist (or reset search)" } };
     { "delete"; { func = skip2(vlc.playlist.delete); args = "[X]"; help = "delete item X in playlist" } };
     { "move"; { func = move; args = "[X][Y]"; help = "move item X in playlist after Y" } };
     { "sort"; { func = playlist_sort; args = "key"; help = "sort the playlist" } };
