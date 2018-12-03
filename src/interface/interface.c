@@ -42,6 +42,7 @@
 #include <vlc_modules.h>
 #include <vlc_interface.h>
 #include <vlc_playlist_legacy.h>
+#include <vlc_playlist.h>
 #include "libvlc.h"
 #include "playlist_legacy/playlist_internal.h"
 #include "../lib/libvlc_internal.h"
@@ -154,17 +155,13 @@ vlc_intf_GetMainPlaylist(intf_thread_t *intf)
 /**
  * Inserts an item in the playlist.
  *
- * This function is used during initialization. Unlike playlist_Add() and
- * variants, it inserts an item to the beginning of the playlist. That is
- * meant to compensate for the reverse parsing order of the command line.
- *
- * @note This function may <b>not</b> be called at the same time as
- * intf_DestroyAll().
+ * This function is used during initialization. It inserts an item to the
+ * beginning of the playlist. That is meant to compensate for the reverse
+ * parsing order of the command line.
  */
 int intf_InsertItem(libvlc_int_t *libvlc, const char *mrl, unsigned optc,
                     const char *const *optv, unsigned flags)
 {
-    playlist_t *playlist = intf_GetPlaylist(libvlc);
     input_item_t *item = input_item_New(mrl, NULL);
 
     if (unlikely(item == NULL))
@@ -174,11 +171,10 @@ int intf_InsertItem(libvlc_int_t *libvlc, const char *mrl, unsigned optc,
 
     if (input_item_AddOptions(item, optc, optv, flags) == VLC_SUCCESS)
     {
-        playlist_Lock(playlist);
-        if (playlist_NodeAddInput(playlist, item, playlist->p_playing,
-                                  0) != NULL)
-            ret = 0;
-        playlist_Unlock(playlist);
+        vlc_playlist_t *playlist = libvlc_priv(libvlc)->main_playlist;
+        vlc_playlist_Lock(playlist);
+        ret = vlc_playlist_InsertOne(playlist, 0, item);
+        vlc_playlist_Unlock(playlist);
     }
     input_item_Release(item);
     return ret;
@@ -186,14 +182,17 @@ int intf_InsertItem(libvlc_int_t *libvlc, const char *mrl, unsigned optc,
 
 void libvlc_InternalPlay(libvlc_int_t *libvlc)
 {
-    playlist_t *pl;
-
-    vlc_mutex_lock(&lock);
-    pl = libvlc_priv(libvlc)->playlist;
-    vlc_mutex_unlock(&lock);
-
-    if (pl != NULL && var_GetBool(pl, "playlist-autostart"))
-        playlist_Control(pl, PLAYLIST_PLAY, false);
+    if (!var_InheritBool(VLC_OBJECT(libvlc), "playlist-autostart"))
+        return;
+    vlc_playlist_t *playlist = libvlc_priv(libvlc)->main_playlist;
+    vlc_playlist_Lock(playlist);
+    if (vlc_playlist_Count(playlist) > 0)
+    {
+        if (vlc_playlist_GetCurrentIndex(playlist) < 0)
+            vlc_playlist_GoTo(playlist, 0);
+        vlc_playlist_Start(playlist);
+    }
+    vlc_playlist_Unlock(playlist);
 }
 
 /**
