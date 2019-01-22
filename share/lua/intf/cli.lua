@@ -424,37 +424,38 @@ function get_time(var)
     end
 end
 
-function titlechap(name,client,value)
-    local input = vlc.object.input()
-    local var = string.gsub( name, "_.*$", "" )
+function title(name,client,value)
     if value then
-        vlc.var.set( input, var, value )
+        vlc.player.title_goto(value)
     else
-        local item = vlc.var.get( input, var )
-        -- Todo: add item name conversion
-        client:append(item)
+        local idx = vlc.player.get_title_index()
+        client:append(idx)
     end
 end
 
-function titlechap_offset(var,offset)
-    local input = vlc.object.input()
-    vlc.var.set( input, var, vlc.var.get( input, var ) + offset )
-end
-
 function title_next(name,client,value)
-    titlechap_offset('title', 1)
+    vlc.player.title_next()
 end
 
 function title_previous(name,client,value)
-    titlechap_offset('title', -1)
+    vlc.player.title_prev()
+end
+
+function chapter(name,client,value)
+    if value then
+        vlc.player.chapter_goto(value)
+    else
+        local idx = vlc.player.get_chapter_index()
+        client:append(idx)
+    end
 end
 
 function chapter_next(name,client,value)
-    titlechap_offset('chapter', 1)
+    vlc.player.chapter_next()
 end
 
 function chapter_previous(name,client,value)
-    titlechap_offset('chapter', -1)
+    vlc.player.chapter_prev()
 end
 
 function seek(name,client,value)
@@ -544,10 +545,10 @@ commands_ordered = {
     { "random"; { func = skip2(vlc.playlist.random); args = "[on|off]"; help = "toggle playlist random" } };
     { "clear"; { func = skip2(vlc.playlist.clear); help = "clear the playlist" } };
     { "status"; { func = playlist_status; help = "current playlist status" } };
-    { "title"; { func = titlechap; args = "[X]"; help = "set/get title in current item" } };
+    { "title"; { func = title; args = "[X]"; help = "set/get title in current item" } };
     { "title_n"; { func = title_next; help = "next title in current item" } };
     { "title_p"; { func = title_previous; help = "previous title in current item" } };
-    { "chapter"; { func = titlechap; args = "[X]"; help = "set/get chapter in current item" } };
+    { "chapter"; { func = chapter; args = "[X]"; help = "set/get chapter in current item" } };
     { "chapter_n"; { func = chapter_next; help = "next chapter in current item" } };
     { "chapter_p"; { func = chapter_previous; help = "previous chapter in current item" } };
     { "" };
