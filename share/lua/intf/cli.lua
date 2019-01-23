@@ -325,10 +325,19 @@ end
 function input_info(name,client,id)
     local item = nil;
 
-    if id then item = (vlc.playlist.get(id) or {})["item"]
-    else       item = vlc.input.item() end
+    if id then
+        local pl_item = vlc.playlist.get(id)
+        if pl_item then
+            item = pl_item["item"]
+        end
+    else
+        item = vlc.playlist.current_item()
+    end
 
-    if(item == nil) then return end
+    if item == nil then
+        return
+    end
+
     local infos = item:info()
     infos["Meta data"] = item:metas()
 
