@@ -32,6 +32,7 @@
 #endif
 
 #include <vlc_common.h>
+#include <vlc_es.h>
 #include <vlc_meta.h>
 #include <vlc_url.h>
 #include <vlc_playlist_legacy.h>
@@ -251,6 +252,111 @@ static int vlclua_player_decrement_rate(lua_State *L)
     vlc_player_Unlock(player);
 
     return 0;
+}
+
+static int vlclua_player_get_tracks_(lua_State *L,
+                                     enum es_format_category_e cat)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+
+    size_t count = vlc_player_GetTrackCount(player, cat);
+    lua_createtable(L, count, 0);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        const struct vlc_player_track *track =
+                vlc_player_GetTrackAt(player, cat, i);
+        if (!track) {
+            continue;
+        }
+
+        lua_newtable(L);
+
+        lua_pushinteger(L, vlc_es_id_GetInputId(track->es_id));
+        lua_setfield(L, -2, "id");
+
+        lua_pushstring(L, track->name);
+        lua_setfield(L, -2, "name");
+
+        lua_pushboolean(L, track->selected);
+        lua_setfield(L, -2, "selected");
+
+        lua_rawseti(L, -2, i + 1);
+    }
+
+    vlc_player_Unlock(player);
+
+    return 1;
+}
+
+static int vlclua_player_get_video_tracks(lua_State *L)
+{
+    return vlclua_player_get_tracks_(L, VIDEO_ES);
+}
+
+static int vlclua_player_get_audio_tracks(lua_State *L)
+{
+    return vlclua_player_get_tracks_(L, AUDIO_ES);
+}
+
+static int vlclua_player_get_spu_tracks(lua_State *L)
+{
+    return vlclua_player_get_tracks_(L, SPU_ES);
+}
+
+static const struct vlc_player_track *
+FindTrack(vlc_player_t *player, enum es_format_category_e cat, int id)
+{
+    size_t count = vlc_player_GetTrackCount(player, cat);
+    for (size_t i = 0; i < count; ++i)
+    {
+        const struct vlc_player_track *track =
+                vlc_player_GetTrackAt(player, cat, i);
+        if (id == vlc_es_id_GetInputId(track->es_id))
+            return track;
+    }
+    return NULL;
+}
+
+static int vlclua_player_toggle_track_(lua_State *L,
+                                       enum es_format_category_e cat,
+                                       int id)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+
+    const struct vlc_player_track *track = FindTrack(player, cat, id);
+    if (track) {
+        if (track->selected)
+            vlc_player_UnselectTrack(player, track->es_id);
+        else
+            vlc_player_SelectTrack(player, track->es_id);
+    }
+
+    vlc_player_Unlock(player);
+
+    return 0;
+}
+
+static int vlclua_player_toggle_video_track(lua_State *L)
+{
+    int id = luaL_checkinteger(L, 1);
+    return vlclua_player_toggle_track_(L, VIDEO_ES, id);
+}
+
+static int vlclua_player_toggle_audio_track(lua_State *L)
+{
+    int id = luaL_checkinteger(L, 1);
+    return vlclua_player_toggle_track_(L, AUDIO_ES, id);
+}
+
+static int vlclua_player_toggle_spu_track(lua_State *L)
+{
+    int id = luaL_checkinteger(L, 1);
+    return vlclua_player_toggle_track_(L, SPU_ES, id);
 }
 
 static int vlclua_input_metas_internal( lua_State *L, input_item_t *p_item )
@@ -567,6 +673,12 @@ static const luaL_Reg vlclua_input_reg[] = {
     { "set_rate", vlclua_player_set_rate },
     { "increment_rate", vlclua_player_increment_rate },
     { "decrement_rate", vlclua_player_decrement_rate },
+    { "get_video_tracks", vlclua_player_get_video_tracks },
+    { "get_audio_tracks", vlclua_player_get_audio_tracks },
+    { "get_spu_tracks", vlclua_player_get_spu_tracks },
+    { "toggle_video_track", vlclua_player_toggle_video_track },
+    { "toggle_audio_track", vlclua_player_toggle_audio_track },
+    { "toggle_spu_track", vlclua_player_toggle_spu_track },
     { NULL, NULL }
 };
 
