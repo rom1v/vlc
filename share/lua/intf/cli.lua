@@ -358,7 +358,7 @@ function input_info(name,client,id)
 end
 
 function stats(name,client)
-    local item = vlc.input.item()
+    local item = vlc.player.item()
     if(item == nil) then return end
     local stats_tab = item:stats()
 
@@ -384,7 +384,7 @@ function stats(name,client)
 end
 
 function playlist_status(name,client)
-    local item = vlc.input.item()
+    local item = vlc.player.item()
     if(item ~= nil) then
         client:append( "( new input: " .. vlc.strings.decode_uri(item:uri()) .. " )" )
     end
@@ -393,11 +393,11 @@ function playlist_status(name,client)
 end
 
 function is_playing(name,client)
-    if vlc.input.is_playing() then client:append "1" else client:append "0" end
+    if vlc.player.is_playing() then client:append "1" else client:append "0" end
 end
 
 function get_title(name,client)
-    local item = vlc.input.item()
+    local item = vlc.player.item()
     if item then
         client:append(item:name())
     else
@@ -406,7 +406,7 @@ function get_title(name,client)
 end
 
 function get_length(name,client)
-    local item = vlc.input.item()
+    local item = vlc.player.item()
     if item then
         client:append(math.floor(item:duration()))
     else
