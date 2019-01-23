@@ -504,9 +504,7 @@ end
 function listvalue(obj,var)
     return function(client,value)
         local o
-        if obj == "input" then
-            o = vlc.object.input()
-        elseif obj == "aout" then
+        if obj == "aout" then
             o = vlc.object.aout()
         elseif obj == "vout" then
             o = vlc.object.vout()
@@ -524,6 +522,48 @@ function listvalue(obj,var)
             end
             client:append("+----[ end of "..var.." ]")
         end
+    end
+end
+
+function vtrack(name, client, value)
+    if value then
+        vlc.player.toggle_video_track(value)
+    else
+        client:append("+----[ video tracks ]")
+        local tracks = vlc.player.get_video_tracks()
+        for _, track in ipairs(tracks) do
+            local mark = track.selected and "*" or " "
+            client:append("|"..mark..tostring(track.id).." - "..track.name)
+        end
+        client:append("+----[ end of video tracks ]")
+    end
+end
+
+function atrack(name, client, value)
+    if value then
+        vlc.player.toggle_audio_track(value)
+    else
+        client:append("+----[ audio tracks ]")
+        local tracks = vlc.player.get_audio_tracks()
+        for _, track in ipairs(tracks) do
+            local mark = track.selected and "*" or " "
+            client:append("|"..mark..tostring(track.id).." - "..track.name)
+        end
+        client:append("+----[ end of audio tracks ]")
+    end
+end
+
+function strack(name, client, value)
+    if value then
+        vlc.player.toggle_spu_track(value)
+    else
+        client:append("+----[ spu tracks ]")
+        local tracks = vlc.player.get_spu_tracks()
+        for _, track in ipairs(tracks) do
+            local mark = track.selected and "*" or " "
+            client:append("|"..mark..tostring(track.id).." - "..track.name)
+        end
+        client:append("+----[ end of spu tracks ]")
     end
 end
 
@@ -587,15 +627,15 @@ commands_ordered = {
     { "voldown"; { func = ret_print(vlc.volume.down,"( audio volume: "," )"); args = "[X]"; help = "lower audio volume X steps" } };
     -- { "adev"; { func = skip(listvalue("aout","audio-device")); args = "[X]"; help = "set/get audio device" } };
     { "achan"; { func = skip(listvalue("aout","stereo-mode")); args = "[X]"; help = "set/get stereo audio output mode" } };
-    { "atrack"; { func = skip(listvalue("input","audio-es")); args = "[X]"; help = "set/get audio track" } };
-    { "vtrack"; { func = skip(listvalue("input","video-es")); args = "[X]"; help = "set/get video track" } };
+    { "atrack"; { func = atrack; args = "[X]"; help = "set/get audio track" } };
+    { "vtrack"; { func = vtrack; args = "[X]"; help = "set/get video track" } };
     { "vratio"; { func = skip(listvalue("vout","aspect-ratio")); args = "[X]"; help = "set/get video aspect ratio" } };
     { "vcrop"; { func = skip(listvalue("vout","crop")); args = "[X]"; help = "set/get video crop"; aliases = { "crop" } } };
     { "vzoom"; { func = skip(listvalue("vout","zoom")); args = "[X]"; help = "set/get video zoom"; aliases = { "zoom" } } };
     { "vdeinterlace"; { func = skip(listvalue("vout","deinterlace")); args = "[X]"; help = "set/get video deinterlace" } };
     { "vdeinterlace_mode"; { func = skip(listvalue("vout","deinterlace-mode")); args = "[X]"; help = "set/get video deinterlace mode" } };
     { "snapshot"; { func = common.snapshot; help = "take video snapshot" } };
-    { "strack"; { func = skip(listvalue("input","spu-es")); args = "[X]"; help = "set/get subtitle track" } };
+    { "strack"; { func = strack; args = "[X]"; help = "set/get subtitle track" } };
     { "hotkey"; { func = hotkey; args = "[hotkey name]"; help = "simulate hotkey press"; adv = true; aliases = { "key" } } };
     { "" };
     { "vlm"; { func = load_vlm; help = "load the VLM" } };
