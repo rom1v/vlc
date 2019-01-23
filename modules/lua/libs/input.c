@@ -194,6 +194,18 @@ static int vlclua_player_chapter_goto(lua_State *L)
     return 0;
 }
 
+static int vlclua_player_get_time(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+    vlc_tick_t time = vlc_player_GetTime(player);
+    vlc_player_Unlock(player);
+
+    lua_pushinteger(L, US_FROM_VLC_TICK(time));
+    return 1;
+}
+
 static int vlclua_input_metas_internal( lua_State *L, input_item_t *p_item )
 {
     if( !p_item )
@@ -503,6 +515,7 @@ static const luaL_Reg vlclua_input_reg[] = {
     { "chapter_next", vlclua_player_chapter_next },
     { "chapter_prev", vlclua_player_chapter_prev },
     { "chapter_goto", vlclua_player_chapter_goto },
+    { "get_time", vlclua_player_get_time },
     { NULL, NULL }
 };
 

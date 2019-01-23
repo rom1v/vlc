@@ -422,14 +422,11 @@ function ret_print(foo,start,stop)
     return function(discard,client,...) client:append(start..tostring(foo(...))..stop) end
 end
 
-function get_time(var)
-    return function(name,client)
-        local input = vlc.object.input()
-	if input then
-	    client:append(math.floor(vlc.var.get( input, var ) / 1000000))
-	else
-	    client:append("")
-	end
+function get_time(name,client)
+    if vlc.player.is_playing() then
+        client:append(math.floor(vlc.player.get_time() / 1000000))
+    else
+        client:append("")
     end
 end
 
@@ -573,7 +570,7 @@ commands_ordered = {
     { "fullscreen"; { func = skip2(vlc.video.fullscreen); args = "[on|off]"; help = "toggle fullscreen"; aliases = { "f", "F" } } };
     { "info"; { func = input_info; args= "[X]"; help = "information about the current stream (or specified id)" } };
     { "stats"; { func = stats; help = "show statistical information" } };
-    { "get_time"; { func = get_time("time"); help = "seconds elapsed since stream's beginning" } };
+    { "get_time"; { func = get_time; help = "seconds elapsed since stream's beginning" } };
     { "is_playing"; { func = is_playing; help = "1 if a stream plays, 0 otherwise" } };
     { "get_title"; { func = get_title; help = "the title of the current stream" } };
     { "get_length"; { func = get_length; help = "the length of the current stream" } };
