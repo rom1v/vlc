@@ -476,18 +476,25 @@ function volume(name,client,value)
     end
 end
 
-function rate(name,client,value)
-    local input = vlc.object.input()
-    if name == "rate" then
-        vlc.var.set(input, "rate", common.us_tonumber(value))
-    elseif name == "normal" then
-        vlc.var.set(input,"rate",1)
-    end
+function rate_normal(name, client)
+    vlc.player.set_rate(1)
 end
 
-function rate_var(name,client,value)
-    local playlist = vlc.object.playlist()
-    vlc.var.trigger_callback(playlist,"rate-"..name)
+function rate_faster(name, client)
+    vlc.player.increment_rate()
+end
+
+function rate_slower(name, client)
+    vlc.player.decrement_rate()
+end
+
+function rate(name, client, value)
+    if value then
+        local rate = common.us_tonumber(value)
+        vlc.player.set_rate(rate)
+    else
+        client:append(vlc.player.get_rate())
+    end
 end
 
 function frame(name,client)
@@ -562,9 +569,9 @@ commands_ordered = {
     { "pause"; { func = skip2(vlc.playlist.pause); help = "toggle pause" } };
     { "fastforward"; { func = setarg(common.hotkey,"key-jump+extrashort"); help = "set to maximum rate" } };
     { "rewind"; { func = setarg(common.hotkey,"key-jump-extrashort"); help = "set to minimum rate" } };
-    { "faster"; { func = rate_var; help = "faster playing of stream" } };
-    { "slower"; { func = rate_var; help = "slower playing of stream" } };
-    { "normal"; { func = rate; help = "normal playing of stream" } };
+    { "faster"; { func = rate_faster; help = "faster playing of stream" } };
+    { "slower"; { func = rate_slower; help = "slower playing of stream" } };
+    { "normal"; { func = rate_normal; help = "normal playing of stream" } };
     { "rate"; { func = rate; args = "[playback rate]"; help = "set playback rate to value" } };
     { "frame"; { func = frame; help = "play frame by frame" } };
     { "fullscreen"; { func = skip2(vlc.video.fullscreen); args = "[on|off]"; help = "toggle fullscreen"; aliases = { "f", "F" } } };

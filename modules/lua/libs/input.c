@@ -206,6 +206,53 @@ static int vlclua_player_get_time(lua_State *L)
     return 1;
 }
 
+static int vlclua_player_get_rate(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+    float rate = vlc_player_GetRate(player);
+    vlc_player_Unlock(player);
+
+    lua_pushnumber(L, rate);
+    return 1;
+}
+
+static int vlclua_player_set_rate(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    float rate = luaL_checknumber(L, 1);
+
+    vlc_player_Lock(player);
+    vlc_player_ChangeRate(player, rate);
+    vlc_player_Unlock(player);
+
+    return 0;
+}
+
+static int vlclua_player_increment_rate(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+    vlc_player_IncrementRate(player);
+    vlc_player_Unlock(player);
+
+    return 0;
+}
+
+static int vlclua_player_decrement_rate(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+    vlc_player_DecrementRate(player);
+    vlc_player_Unlock(player);
+
+    return 0;
+}
+
 static int vlclua_input_metas_internal( lua_State *L, input_item_t *p_item )
 {
     if( !p_item )
@@ -516,6 +563,10 @@ static const luaL_Reg vlclua_input_reg[] = {
     { "chapter_prev", vlclua_player_chapter_prev },
     { "chapter_goto", vlclua_player_chapter_goto },
     { "get_time", vlclua_player_get_time },
+    { "get_rate", vlclua_player_get_rate },
+    { "set_rate", vlclua_player_set_rate },
+    { "increment_rate", vlclua_player_increment_rate },
+    { "decrement_rate", vlclua_player_decrement_rate },
     { NULL, NULL }
 };
 
