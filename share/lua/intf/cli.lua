@@ -496,7 +496,7 @@ function rate(name, client, value)
 end
 
 function frame(name,client)
-    vlc.var.trigger_callback(vlc.object.input(),"frame-next");
+    vlc.player.next_video_frame()
 end
 
 function listvalue(obj,var)
