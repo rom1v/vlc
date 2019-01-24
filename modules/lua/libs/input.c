@@ -370,6 +370,55 @@ static int vlclua_player_next_video_frame(lua_State *L)
     return 0;
 }
 
+static int vlclua_player_seek_by_pos_(lua_State *L,
+                                      enum vlc_player_whence whence)
+{
+    float position = luaL_checknumber(L, 1);
+
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+    vlc_player_SeekByPos(player, position, VLC_PLAYER_SEEK_PRECISE, whence);
+    vlc_player_Unlock(player);
+
+    return 0;
+}
+
+static int vlclua_player_seek_by_pos_absolute(lua_State *L)
+{
+    return vlclua_player_seek_by_pos_(L, VLC_PLAYER_WHENCE_ABSOLUTE);
+}
+
+static int vlclua_player_seek_by_pos_relative(lua_State *L)
+{
+    return vlclua_player_seek_by_pos_(L, VLC_PLAYER_WHENCE_RELATIVE);
+}
+
+static int vlclua_player_seek_by_time_(lua_State *L,
+                                       enum vlc_player_whence whence)
+{
+    int usec = luaL_checkinteger(L, 1);
+    vlc_tick_t time = VLC_TICK_FROM_US(usec);
+
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+    vlc_player_SeekByTime(player, time, VLC_PLAYER_SEEK_PRECISE, whence);
+    vlc_player_Unlock(player);
+
+    return 0;
+}
+
+static int vlclua_player_seek_by_time_absolute(lua_State *L)
+{
+    return vlclua_player_seek_by_time_(L, VLC_PLAYER_WHENCE_ABSOLUTE);
+}
+
+static int vlclua_player_seek_by_time_relative(lua_State *L)
+{
+    return vlclua_player_seek_by_time_(L, VLC_PLAYER_WHENCE_RELATIVE);
+}
+
 static int vlclua_input_metas_internal( lua_State *L, input_item_t *p_item )
 {
     if( !p_item )
@@ -691,6 +740,10 @@ static const luaL_Reg vlclua_input_reg[] = {
     { "toggle_audio_track", vlclua_player_toggle_audio_track },
     { "toggle_spu_track", vlclua_player_toggle_spu_track },
     { "next_video_frame", vlclua_player_next_video_frame },
+    { "seek_by_pos_absolute", vlclua_player_seek_by_pos_absolute },
+    { "seek_by_pos_relative", vlclua_player_seek_by_pos_relative },
+    { "seek_by_time_absolute", vlclua_player_seek_by_time_absolute },
+    { "seek_by_time_relative", vlclua_player_seek_by_time_relative },
     { NULL, NULL }
 };
 
