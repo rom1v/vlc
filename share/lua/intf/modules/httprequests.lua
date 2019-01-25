@@ -180,9 +180,9 @@ processcommands = function ()
     elseif command == "setpreset" then
         vlc.equalizer.setpreset(val)
     elseif command == "title" then
-        vlc.var.set(vlc.object.input(), "title", val)
+        vlc.player.title_goto(val)
     elseif command == "chapter" then
-        vlc.var.set(vlc.object.input(), "chapter", val)
+        vlc.player.chapter_goto(val)
     elseif command == "audio_track" then
         vlc.player.toggle_audio_track(val)
     elseif command == "video_track" then
@@ -529,8 +529,8 @@ getstatus = function (includecategories)
             s.stats[tag]=v
         end
 
-        s.information.chapter=vlc.var.get(input, "chapter")
-        s.information.title=vlc.var.get(input, "title")
+        s.information.chapter = vlc.player.get_chapter_index()
+        s.information.title = vlc.player.get_title_index()
 
         s.information.chapters=vlc.var.get_list(input, "chapter")
         s.information.titles=vlc.var.get_list(input, "title")
