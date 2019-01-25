@@ -170,11 +170,37 @@ static int vlclua_playlist_repeat_(lua_State *L,
 
 static int vlclua_playlist_repeat(lua_State *L)
 {
+    vlc_playlist_t *playlist = vlclua_get_playlist_internal(L);
+    int top = lua_gettop(L);
+    if (top == 0)
+    {
+        // get current repeat
+        vlc_playlist_Lock(playlist);
+        enum vlc_playlist_playback_repeat repeat =
+                vlc_playlist_GetPlaybackRepeat(playlist);
+        vlc_playlist_Unlock(playlist);
+
+        lua_pushboolean(L, repeat != VLC_PLAYLIST_PLAYBACK_REPEAT_NONE);
+        return 1;
+    }
     return vlclua_playlist_repeat_(L, VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT);
 }
 
 static int vlclua_playlist_loop(lua_State *L)
 {
+    vlc_playlist_t *playlist = vlclua_get_playlist_internal(L);
+    int top = lua_gettop(L);
+    if (top == 0)
+    {
+        // get current loop
+        vlc_playlist_Lock(playlist);
+        enum vlc_playlist_playback_repeat repeat =
+                vlc_playlist_GetPlaybackRepeat(playlist);
+        vlc_playlist_Unlock(playlist);
+
+        lua_pushboolean(L, repeat == VLC_PLAYLIST_PLAYBACK_REPEAT_ALL);
+        return 1;
+    }
     return vlclua_playlist_repeat_(L, VLC_PLAYLIST_PLAYBACK_REPEAT_ALL);
 }
 
@@ -182,6 +208,19 @@ static int vlclua_playlist_random(lua_State *L)
 {
     vlc_playlist_t *playlist = vlclua_get_playlist_internal(L);
     int top = lua_gettop(L);
+
+    if (top == 0)
+    {
+        // get current random
+        vlc_playlist_Lock(playlist);
+        enum vlc_playlist_playback_repeat repeat =
+                vlc_playlist_GetPlaybackRepeat(playlist);
+        vlc_playlist_Unlock(playlist);
+
+        lua_pushboolean(L, repeat != VLC_PLAYLIST_PLAYBACK_REPEAT_NONE);
+        return 1;
+    }
+
     if (top > 1)
         return vlclua_error(L);
 
