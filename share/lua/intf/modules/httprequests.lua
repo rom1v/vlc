@@ -155,20 +155,16 @@ processcommands = function ()
     elseif command == "key" then
         common.hotkey("key-"..val)
     elseif command == "audiodelay" then
-        if vlc.object.input() and val then
-            val = common.us_tonumber(val)
-            vlc.var.set(vlc.object.input(),"audio-delay",val * 1000000)
-        end
+        val = common.us_tonumber(val)
+        vlc.player.set_audio_delay(val)
     elseif command == "rate" then
         val = common.us_tonumber(val)
         if val >= 0 then
             vlc.player.set_rate(val)
         end
     elseif command == "subdelay" then
-        if vlc.object.input() then
-            val = common.us_tonumber(val)
-            vlc.var.set(vlc.object.input(),"spu-delay",val * 1000000)
-        end
+        val = common.us_tonumber(val)
+        vlc.player.set_subtitle_delay(val)
     elseif command == "aspectratio" then
         if vlc.object.vout() then
             vlc.var.set(vlc.object.vout(),"aspect-ratio",val)
@@ -436,8 +432,7 @@ end
 getstatus = function (includecategories)
 
 
-    local input = vlc.object.input()
-    local item = vlc.input.item()
+    local item = vlc.player.item()
     local playlist = vlc.object.playlist()
     local vout = vlc.object.vout()
     local aout = vlc.object.aout()
@@ -450,12 +445,12 @@ getstatus = function (includecategories)
     s.volume=vlc.volume.get()
 
     if input then
-        s.time=math.floor(vlc.var.get(input,"time") / 1000000)
-        s.position=vlc.var.get(input,"position")
+        s.time = vlc.player.get_time()
+        s.position = vlc.player.get_position()
         s.currentplid=vlc.playlist.current()
-        s.audiodelay=vlc.var.get(input,"audio-delay") / 1000000
+        s.audiodelay = vlc.player.get_audio_delay()
         s.rate = vlc.player.get_rate()
-        s.subtitledelay=vlc.var.get(input,"spu-delay") / 1000000
+        s.subtitledelay = vlc.player.get_subtitle_delay()
     else
         s.time=0
         s.position=0
@@ -498,9 +493,9 @@ getstatus = function (includecategories)
     s.videoeffects.gamma=round(vlc.config.get("gamma"),2)
 
     s.state=vlc.playlist.status()
-    s.random=vlc.var.get(playlist,"random")
-    s.loop=vlc.var.get(playlist,"loop")
-    s["repeat"]=vlc.var.get(playlist,"repeat")
+    s.random = vlc.playlist.random()
+    s.loop = vlc.playlist.loop()
+    s["repeat"] = vlc.playlist.repeat_()
 
     s.equalizer={}
     s.equalizer.preamp=round(vlc.equalizer.preampget(),2)
