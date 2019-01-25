@@ -161,8 +161,8 @@ processcommands = function ()
         end
     elseif command == "rate" then
         val = common.us_tonumber(val)
-        if vlc.object.input() and val >= 0 then
-            vlc.var.set(vlc.object.input(),"rate",val)
+        if val >= 0 then
+            vlc.player.set_rate(val)
         end
     elseif command == "subdelay" then
         if vlc.object.input() then
@@ -454,7 +454,7 @@ getstatus = function (includecategories)
         s.position=vlc.var.get(input,"position")
         s.currentplid=vlc.playlist.current()
         s.audiodelay=vlc.var.get(input,"audio-delay") / 1000000
-        s.rate=vlc.var.get(input,"rate")
+        s.rate = vlc.player.get_rate()
         s.subtitledelay=vlc.var.get(input,"spu-delay") / 1000000
     else
         s.time=0
