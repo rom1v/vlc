@@ -184,11 +184,11 @@ processcommands = function ()
     elseif command == "chapter" then
         vlc.var.set(vlc.object.input(), "chapter", val)
     elseif command == "audio_track" then
-        vlc.var.set(vlc.object.input(), "audio-es", val)
+        vlc.player.toggle_audio_track(val)
     elseif command == "video_track" then
-        vlc.var.set(vlc.object.input(), "video-es", val)
+        vlc.player.toggle_video_track(val)
     elseif command == "subtitle_track" then
-        vlc.var.set(vlc.object.input(), "spu-es", val)
+        vlc.player.toggle_spu_track(val)
     end
 
     local input = nil
