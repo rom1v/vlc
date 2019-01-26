@@ -113,6 +113,20 @@ static int vlclua_player_get_title_index(lua_State *L)
     return 1;
 }
 
+static int vlclua_player_get_titles_count(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+    const struct vlc_player_title_list *titles =
+            vlc_player_GetTitleList(player);
+    size_t count = titles ? vlc_player_title_list_GetCount(titles) : 0;
+    vlc_player_Unlock(player);
+
+    lua_pushinteger(L, count);
+    return 1;
+}
+
 static int vlclua_player_title_next(lua_State *L)
 {
     vlc_player_t *player = vlclua_get_player_internal(L);
@@ -157,6 +171,21 @@ static int vlclua_player_get_chapter_index(lua_State *L)
     vlc_player_Unlock(player);
 
     lua_pushinteger(L, idx);
+    return 1;
+}
+
+static int vlclua_player_get_chapters_count(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+    const struct vlc_player_title *current_title =
+        vlc_player_GetSelectedTitle(player);
+
+    size_t count = current_title ? current_title->chapter_count : 0;
+    vlc_player_Unlock(player);
+
+    lua_pushinteger(L, count);
     return 1;
 }
 
@@ -789,10 +818,12 @@ static const luaL_Reg vlclua_input_reg[] = {
     { "add_subtitle", vlclua_input_add_subtitle_path },
     { "add_subtitle_mrl", vlclua_input_add_subtitle_mrl },
     { "get_title_index", vlclua_player_get_title_index },
+    { "get_titles_count", vlclua_player_get_titles_count },
     { "title_next", vlclua_player_title_next },
     { "title_prev", vlclua_player_title_prev },
     { "title_goto", vlclua_player_title_goto },
     { "get_chapter_index", vlclua_player_get_chapter_index },
+    { "get_chapters_count", vlclua_player_get_chapters_count },
     { "chapter_next", vlclua_player_chapter_next },
     { "chapter_prev", vlclua_player_chapter_prev },
     { "chapter_goto", vlclua_player_chapter_goto },
