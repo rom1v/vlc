@@ -108,11 +108,11 @@ h:handler( url, user, password, callback, data ) -- add a handler for given url.
 h:file( url, mime, user, password, callback, data ) -- add a file for given url with given mime type. If user and password are non nil, they will be used to authenticate connecting clients. callback will be called to handle connections. The callback function takes 2 arguments: data and request. It returns the reply as a string.
 h:redirect( url_dst, url_src ): Redirect all connections from url_src to url_dst.
 
-Input
------
-input.is_playing(): Return true if input exists.
-input.add_subtitle(url): Add a subtitle file (by path) to the current input
-input.item(): Get the current input item. Input item methods are:
+Player
+------
+player.is_playing(): Return true if input exists.
+player.add_subtitle(url): Add a subtitle file (by path) to the current input
+player.item(): Get the current input item. Input item methods are:
   :uri(): Get item's URI.
   :name(): Get item's name.
   :duration(): Get item's duration in seconds or negative value if unavailable.
@@ -231,7 +231,7 @@ net.opendir( path ): List a directory's contents.
 
 Objects
 -------
-object.input(): Get the current input object.
+object.player(): Get the player object.
 object.playlist(): Get the playlist object.
 object.libvlc(): Get the libvlc object.
 object.aout(): Get the audio output object.
