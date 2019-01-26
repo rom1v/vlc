@@ -532,8 +532,8 @@ getstatus = function (includecategories)
         s.information.chapter = vlc.player.get_chapter_index()
         s.information.title = vlc.player.get_title_index()
 
-        s.information.chapters=vlc.var.get_list(input, "chapter")
-        s.information.titles=vlc.var.get_list(input, "title")
+        s.information.chapters_count = vlc.player.get_chapters_count()
+        s.information.titles_count = vlc.player.get_titles_count()
 
     end
     return s
