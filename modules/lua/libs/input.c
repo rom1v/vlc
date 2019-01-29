@@ -400,6 +400,17 @@ static int vlclua_player_toggle_spu_track(lua_State *L)
     return vlclua_player_toggle_track_(L, SPU_ES, id);
 }
 
+static int vlclua_player_next_video_frame(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+    vlc_player_NextVideoFrame(player);
+    vlc_player_Unlock(player);
+
+    return 0;
+}
+
 static int vlclua_input_metas_internal( lua_State *L, input_item_t *p_item )
 {
     if( !p_item )
@@ -723,6 +734,7 @@ static const luaL_Reg vlclua_input_reg[] = {
     { "toggle_video_track", vlclua_player_toggle_video_track },
     { "toggle_audio_track", vlclua_player_toggle_audio_track },
     { "toggle_spu_track", vlclua_player_toggle_spu_track },
+    { "next_video_frame", vlclua_player_next_video_frame },
     { NULL, NULL }
 };
 
