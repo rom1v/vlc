@@ -211,48 +211,32 @@ function playlist_is_tree( client )
     end
 end
 
+function format_item(item, is_current)
+    local marker = ( item.id == current ) and "*" or " "
+    local str = "|"..marker..tostring(item.id).." - "..
+                    ( item.name or item.path )
+    if item.duration > 0 then
+        str = str.." ("..common.durationtostring(item.duration)..")"
+    end
+    return str
+end
+
 function playlist(name,client,arg)
     local current = vlc.playlist.current()
-    function playlist0(item,prefix)
-        local prefix = prefix or ""
-        if not item.flags.disabled then
-            local marker = ( item.id == current ) and "*" or " "
-            local str = "|"..prefix..marker..tostring(item.id).." - "..
-                            ( item.name or item.path )
-            if item.duration > 0 then
-                str = str.." ("..common.durationtostring(item.duration)..")"
-            end
-            if item.nb_played > 0 then
-                str = str.." [played "..tostring(item.nb_played).." time"
-                if item.nb_played > 1 then
-                    str = str .. "s"
-                end
-                str = str .. "]"
-            end
-            client:append(str)
-        end
-        if item.children then
-            for _, c in ipairs(item.children) do
-                playlist0(c,prefix.."  ")
-            end
-        end
-    end
-    local playlist
-    local tree = playlist_is_tree(client)
-    if tonumber(arg) then
-        playlist = vlc.playlist.get(tonumber(arg), tree)
-    elseif arg then
-        playlist = vlc.playlist.get(arg, tree)
-    else
-        playlist = vlc.playlist.get(nil, tree)
-    end
     client:append("+----[ Playlist - "..name.." ]")
-    if playlist.children then
-        for _, item in ipairs(playlist.children) do
-            playlist0(item)
+    if arg == nil then
+        -- print the whole playlist
+        local list = vlc.playlist.list()
+        for _, item in ipairs(list) do
+            client:append(format_item(item, item.id == current))
         end
     else
-        playlist0(playlist)
+        -- print the requested item (if it exists)
+        local id = tonumber(arg)
+        local item = vlc.playlist.get(id)
+        if item ~= nil then
+            client:append(format_item(item, false))
+        end
     end
     client:append("+----[ End of playlist ]")
 end
