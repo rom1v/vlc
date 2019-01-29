@@ -444,21 +444,12 @@ getstatus = function (includecategories)
     s.version=vlc.misc.version()
     s.volume=vlc.volume.get()
 
-    if input then
-        s.time = vlc.player.get_time()
-        s.position = vlc.player.get_position()
-        s.currentplid=vlc.playlist.current()
-        s.audiodelay = vlc.player.get_audio_delay()
-        s.rate = vlc.player.get_rate()
-        s.subtitledelay = vlc.player.get_subtitle_delay()
-    else
-        s.time=0
-        s.position=0
-        s.currentplid=-1
-        s.audiodelay=0
-        s.rate=1
-        s.subtitledelay=0
-    end
+    s.time = vlc.player.get_time() / 1000000
+    s.position = vlc.player.get_position()
+    s.currentplid = vlc.playlist.current()
+    s.audiodelay = vlc.player.get_audio_delay()
+    s.rate = vlc.player.get_rate()
+    s.subtitledelay = vlc.player.get_subtitle_delay()
 
     if item then
         s.length=math.floor(item:duration())
