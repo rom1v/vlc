@@ -460,6 +460,62 @@ static int vlclua_player_seek_by_time_relative(lua_State *L)
     return vlclua_player_seek_by_time_(L, VLC_PLAYER_WHENCE_RELATIVE);
 }
 
+static int vlclua_player_get_audio_delay(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+    vlc_tick_t delay = vlc_player_GetAudioDelay(player);
+    vlc_player_Unlock(player);
+
+    double delay_sec = secf_from_vlc_tick(delay);
+
+    lua_pushnumber(L, delay_sec);
+    return 1;
+}
+
+static int vlclua_player_set_audio_delay(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    double delay_sec = luaL_checknumber(L, 1);
+    vlc_tick_t delay = vlc_tick_from_sec(delay_sec);
+
+    vlc_player_Lock(player);
+    vlc_player_SetAudioDelay(player, delay, VLC_PLAYER_WHENCE_ABSOLUTE);
+    vlc_player_Unlock(player);
+
+    return 0;
+}
+
+static int vlclua_player_get_subtitle_delay(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    vlc_player_Lock(player);
+    vlc_tick_t delay = vlc_player_GetSubtitleDelay(player);
+    vlc_player_Unlock(player);
+
+    double delay_sec = secf_from_vlc_tick(delay);
+
+    lua_pushnumber(L, delay_sec);
+    return 1;
+}
+
+static int vlclua_player_set_subtitle_delay(lua_State *L)
+{
+    vlc_player_t *player = vlclua_get_player_internal(L);
+
+    double delay_sec = luaL_checknumber(L, 1);
+    vlc_tick_t delay = vlc_tick_from_sec(delay_sec);
+
+    vlc_player_Lock(player);
+    vlc_player_SetSubtitleDelay(player, delay, VLC_PLAYER_WHENCE_ABSOLUTE);
+    vlc_player_Unlock(player);
+
+    return 0;
+}
+
 static int vlclua_input_metas_internal( lua_State *L, input_item_t *p_item )
 {
     if( !p_item )
@@ -788,6 +844,10 @@ static const luaL_Reg vlclua_input_reg[] = {
     { "seek_by_pos_relative", vlclua_player_seek_by_pos_relative },
     { "seek_by_time_absolute", vlclua_player_seek_by_time_absolute },
     { "seek_by_time_relative", vlclua_player_seek_by_time_relative },
+    { "get_audio_delay", vlclua_player_get_audio_delay },
+    { "set_audio_delay", vlclua_player_set_audio_delay },
+    { "get_subtitle_delay", vlclua_player_get_subtitle_delay },
+    { "set_subtitle_delay", vlclua_player_set_subtitle_delay },
     { NULL, NULL }
 };
 
