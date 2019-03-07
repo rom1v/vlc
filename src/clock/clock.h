@@ -30,10 +30,17 @@ enum vlc_clock_master_source
 typedef struct vlc_clock_main_t vlc_clock_main_t;
 typedef struct vlc_clock_t vlc_clock_t;
 
+struct vlc_clock_main_cbs
+{
+    void (*on_clock_update)(const vlc_clock_main_t *main_clock,
+                            vlc_tick_t system_ts, vlc_tick_t ts, void *data);
+};
+
 /**
  * This function creates the vlc_clock_main_t of the program
  */
-vlc_clock_main_t *vlc_clock_main_New(void);
+vlc_clock_main_t *vlc_clock_main_New(const struct vlc_clock_main_cbs *cbs,
+                                     void *cbs_data);
 
 /**
  * Destroy the clock main
