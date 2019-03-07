@@ -100,6 +100,8 @@ struct vlc_player_input
 
     vlc_tick_t time;
     float position;
+    vlc_tick_t output_pts;
+    bool use_output_pts;
 
     bool recording;
 
@@ -263,12 +265,16 @@ vlc_player_get_input_locked(vlc_player_t *player)
 static inline vlc_tick_t
 vlc_player_input_get_time(struct vlc_player_input *input)
 {
-    return input->time;
+    return input->output_pts != VLC_TICK_INVALID ?
+            input->output_pts : input->time;
 }
 
 static inline float
 vlc_player_input_get_pos(struct vlc_player_input *input)
 {
+    if (input->output_pts != VLC_TICK_INVALID
+     && input->length != VLC_TICK_INVALID)
+        return input->output_pts / (float) input->length;
     return input->position;
 }
 
@@ -653,7 +659,7 @@ vlc_player_input_New(vlc_player_t *player, input_item_t *item)
     input->error = VLC_PLAYER_ERROR_NONE;
     input->rate = 1.f;
     input->capabilities = 0;
-    input->length = input->time = VLC_TICK_INVALID;
+    input->length = input->time = input->output_pts = VLC_TICK_INVALID;
     input->position = 0.f;
 
     input->recording = false;
@@ -1955,8 +1961,14 @@ input_thread_Events(input_thread_t *input_thread,
             {
                 input->time = event->position.ms;
                 input->position = event->position.percentage;
-                vlc_player_OnTimeUpdate(player);
+                if (input->output_pts == VLC_TICK_INVALID)
+                    vlc_player_OnTimeUpdate(player);
             }
+            break;
+        case INPUT_EVENT_OUTPUT_PTS:
+            input->output_pts = event->output_pts.pts;
+            if (input->output_pts != VLC_TICK_INVALID)
+                vlc_player_OnTimeUpdate(player);
             break;
         case INPUT_EVENT_LENGTH:
             if (input->length != event->length)
