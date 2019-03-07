@@ -64,6 +64,16 @@ static inline void input_SendEventTimes(input_thread_t *p_input,
     });
 }
 
+static inline void input_SendEventOutputClock(input_thread_t *p_input,
+                                              vlc_tick_t system_ts,
+                                              vlc_tick_t ts)
+{
+    input_SendEvent(p_input, &(struct vlc_input_event) {
+        .type = INPUT_EVENT_OUTPUT_CLOCK,
+        .output_clock = { system_ts, ts }
+    });
+}
+
 static inline void input_SendEventStatistics(input_thread_t *p_input,
                                              const struct input_stats_t *stats)
 {
