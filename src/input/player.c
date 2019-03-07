@@ -260,6 +260,18 @@ vlc_player_get_input_locked(vlc_player_t *player)
     return player->input;
 }
 
+static inline vlc_tick_t
+vlc_player_input_get_time(struct vlc_player_input *input)
+{
+    return input->time;
+}
+
+static inline float
+vlc_player_input_get_pos(struct vlc_player_input *input)
+{
+    return input->position;
+}
+
 static vout_thread_t **
 vlc_player_vout_OSDHoldAll(vlc_player_t *player, size_t *count)
 {
@@ -1874,15 +1886,32 @@ vlc_player_HandleAtoBLoop(vlc_player_t *player)
     assert(input);
     assert(input->abloop_state[0].set && input->abloop_state[1].set);
 
-    if (input->time != VLC_TICK_INVALID
+    const vlc_tick_t time = vlc_player_input_get_time(input);
+    const float pos = vlc_player_input_get_pos(input);
+    if (time != VLC_TICK_INVALID
      && input->abloop_state[0].time != VLC_TICK_INVALID
      && input->abloop_state[1].time != VLC_TICK_INVALID)
     {
-        if (input->time >= input->abloop_state[1].time)
+        if (time >= input->abloop_state[1].time)
             vlc_player_SetTime(player, input->abloop_state[0].time);
     }
-    else if (input->position >= input->abloop_state[1].pos)
+    else if (pos >= input->abloop_state[1].pos)
         vlc_player_SetPosition(player, input->abloop_state[0].pos);
+}
+
+static void
+vlc_player_OnTimeUpdate(vlc_player_t *player)
+{
+    struct vlc_player_input *input = vlc_player_get_input_locked(player);
+    assert(input);
+
+    vlc_player_SendEvent(player, on_position_changed,
+                         vlc_player_input_get_time(input),
+                         vlc_player_input_get_pos(input));
+
+    if (input->abloop_state[0].set && input->abloop_state[1].set
+     && input == player->input)
+        vlc_player_HandleAtoBLoop(player);
 }
 
 static void
@@ -1926,13 +1955,7 @@ input_thread_Events(input_thread_t *input_thread,
             {
                 input->time = event->position.ms;
                 input->position = event->position.percentage;
-                vlc_player_SendEvent(player, on_position_changed,
-                                     input->time,
-                                     input->position);
-
-                if (input->abloop_state[0].set && input->abloop_state[1].set
-                 && input == player->input)
-                    vlc_player_HandleAtoBLoop(player);
+                vlc_player_OnTimeUpdate(player);
             }
             break;
         case INPUT_EVENT_LENGTH:
@@ -2413,10 +2436,10 @@ vlc_player_GetTime(vlc_player_t *player)
 {
     struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
-    if (!input || input->time == VLC_TICK_INVALID)
+    if (!input)
         return VLC_TICK_INVALID;
 
-    return input->time;
+    return vlc_player_input_get_time(input);
 }
 
 float
@@ -2424,7 +2447,7 @@ vlc_player_GetPosition(vlc_player_t *player)
 {
     struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
-    return input ? input->position : -1.f;
+    return input ? vlc_player_input_get_pos(input) : -1.f;
 }
 
 static inline void
@@ -2458,7 +2481,7 @@ vlc_player_vout_OSDPosition(vlc_player_t *player,
     {
         if (whence == VLC_PLAYER_WHENCE_RELATIVE)
         {
-            time += input->time; /* XXX: TOCTOU */
+            time += vlc_player_input_get_time(input); /* XXX: TOCTOU */
             if (time < 0)
                 time = 0;
         }
@@ -2479,7 +2502,7 @@ vlc_player_vout_OSDPosition(vlc_player_t *player,
     {
         if (whence == VLC_PLAYER_WHENCE_RELATIVE)
         {
-            position += input->position; /* XXX: TOCTOU */
+            position += vlc_player_input_get_pos(input); /* XXX: TOCTOU */
             if (position < 0.f)
                 position = 0.f;
         }
@@ -2494,8 +2517,10 @@ vlc_player_DisplayPosition(vlc_player_t *player)
     struct vlc_player_input *input = vlc_player_get_input_locked(player);
     if (!input)
         return;
-    vlc_player_vout_OSDPosition(player, input, input->time, input->position,
-                                   VLC_PLAYER_WHENCE_ABSOLUTE);
+    vlc_player_vout_OSDPosition(player, input,
+                                vlc_player_input_get_time(input),
+                                vlc_player_input_get_pos(input),
+                                VLC_PLAYER_WHENCE_ABSOLUTE);
 }
 
 void
