@@ -64,6 +64,16 @@ static inline void input_SendEventPosition(input_thread_t *p_input,
     });
 }
 
+static inline void input_SendEventOutputPTS(input_thread_t *p_input,
+                                            vlc_tick_t system_now,
+                                            vlc_tick_t pts)
+{
+    input_SendEvent(p_input, &(struct vlc_input_event) {
+        .type = INPUT_EVENT_OUTPUT_PTS,
+        .output_pts = { system_now, pts }
+    });
+}
+
 static inline void input_SendEventLength(input_thread_t *p_input,
                                           vlc_tick_t i_length)
 {

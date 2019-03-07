@@ -1127,11 +1127,26 @@ static void EsOutProgramSelect( es_out_t *out, es_out_pgrm_t *p_pgrm )
     }
 }
 
+static void ClockMainUpdate(const vlc_clock_main_t *main_clock, void *data,
+                            vlc_tick_t system_now, vlc_tick_t pts)
+{
+    es_out_sys_t *p_sys = data;
+    assert(p_sys->p_pgrm);
+
+    if (p_sys->p_pgrm->p_main_clock != main_clock)
+        return;
+
+    input_SendEventOutputPTS(p_sys->p_input, system_now, pts);
+}
+
 /* EsOutAddProgram:
  *  Add a program
  */
 static es_out_pgrm_t *EsOutProgramAdd( es_out_t *out, int i_group )
 {
+    static struct vlc_clock_main_cbs clock_main_cbs = {
+        .on_clock_update = ClockMainUpdate
+    };
     es_out_sys_t *p_sys = container_of(out, es_out_sys_t, out);
     input_thread_t    *p_input = p_sys->p_input;
 
@@ -1148,7 +1163,7 @@ static es_out_pgrm_t *EsOutProgramAdd( es_out_t *out, int i_group )
 
     p_pgrm->p_master_clock = NULL;
     p_pgrm->p_input_clock = input_clock_New( p_sys->rate );
-    p_pgrm->p_main_clock = vlc_clock_main_New(NULL, NULL);
+    p_pgrm->p_main_clock = vlc_clock_main_New(&clock_main_cbs, p_sys);
     if( !p_pgrm->p_input_clock || !p_pgrm->p_main_clock )
     {
         if( p_pgrm->p_input_clock )

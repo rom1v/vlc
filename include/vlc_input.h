@@ -332,6 +332,9 @@ typedef enum input_event_type_e
     /* At least one of "position" or "time" */
     INPUT_EVENT_POSITION,
 
+    /* The output PTS changed */
+    INPUT_EVENT_OUTPUT_PTS,
+
     /* "length" has changed */
     INPUT_EVENT_LENGTH,
 
@@ -401,6 +404,12 @@ struct vlc_input_event_position
 {
     float percentage;
     vlc_tick_t ms;
+};
+
+struct vlc_input_event_output_pts
+{
+    vlc_tick_t system_now;
+    vlc_tick_t pts;
 };
 
 struct vlc_input_event_title
@@ -490,6 +499,8 @@ struct vlc_input_event
         int capabilities; /**< cf. VLC_INPUT_CAPABILITIES_* bitwise flags */
         /* INPUT_EVENT_POSITION */
         struct vlc_input_event_position position;
+        /* INPUT_EVENT_OUTPUT_PTS */
+        struct vlc_input_event_output_pts output_pts;
         /* INPUT_EVENT_LENGTH */
         vlc_tick_t length;
         /* INPUT_EVENT_TITLE */
