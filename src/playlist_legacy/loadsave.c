@@ -37,9 +37,25 @@
 #include <vlc_url.h>
 #include <vlc_modules.h>
 
+#include <vlc_playlist_export.h>
+
 int playlist_Export( playlist_t * p_playlist, const char *psz_filename,
                      const char *psz_type )
 {
+    vlc_playlist_t *playlist = vlc_playlist_New((vlc_object_t *)p_playlist);
+    vlc_playlist_Lock(playlist);
+    struct vlc_playlist_view *view = vlc_playlist_ConstView(playlist);
+    input_item_t *items[] = {
+        input_item_New("https://AAA.aaa", "AaA"),
+        input_item_New("https://BBB.bbb", "bBb"),
+    };
+
+    vlc_playlist_Append(playlist, items, 2);
+    int r = vlc_playlist_Export(view, psz_filename, psz_type);
+    vlc_playlist_view_Delete(view);
+    vlc_playlist_Unlock(playlist);
+    return r;
+
     playlist_export_t *p_export =
         vlc_custom_create( p_playlist, sizeof( *p_export ), "playlist export" );
     if( unlikely(p_export == NULL) )
