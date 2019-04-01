@@ -25,8 +25,8 @@
 #endif
 
 #include <vlc_common.h>
-#include <vlc_playlist_legacy.h>
 #include <vlc_input.h>
+#include <vlc_playlist_export.h>
 #include <vlc_strings.h>
 
 #include <assert.h>
@@ -41,47 +41,44 @@ int Export_HTML( vlc_object_t *p_this );
  * @param p_export: the export structure
  * @param p_root: the current node
  */
-static void DoChildren( playlist_export_t *p_export, playlist_item_t *p_root )
+static void DoExport(struct playlist_export *export)
 {
     /* Go through the playlist and add items */
-    for( int i = 0; i < p_root->i_children ; i++)
+    size_t count = vlc_playlist_view_Count(export->playlist_view);
+    for (size_t i = 0; i < count; ++i)
     {
-        playlist_item_t *p_current = p_root->pp_children[i];
-        assert( p_current );
+        vlc_playlist_item_t *item =
+            vlc_playlist_view_Get(export->playlist_view, i);
 
-        if( p_current->i_children >= 0 )
+        input_item_t *media = vlc_playlist_item_GetMedia(item);
+
+        char *name = NULL;
+        char *tmp = input_item_GetName(media);
+        if (tmp)
+            name = vlc_xml_encode(tmp);
+        free(tmp);
+
+        if (name)
         {
-            DoChildren( p_export, p_current );
-            continue;
-        }
+            char *artist = NULL;
+            tmp = input_item_GetArtist(media);
+            if (tmp)
+                artist = vlc_xml_encode(tmp);
+            free(tmp);
 
-        char* psz_name = NULL;
-        char *psz_tmp = input_item_GetName( p_current->p_input );
-        if( psz_tmp )
-            psz_name = vlc_xml_encode( psz_tmp );
-        free( psz_tmp );
-
-        if( psz_name )
-        {
-            char* psz_artist = NULL;
-            psz_tmp = input_item_GetArtist( p_current->p_input );
-            if( psz_tmp )
-                psz_artist = vlc_xml_encode( psz_tmp );
-            free( psz_tmp );
-
-            vlc_tick_t i_duration = input_item_GetDuration( p_current->p_input );
-            int min = SEC_FROM_VLC_TICK( i_duration ) / 60;
-            int sec = SEC_FROM_VLC_TICK( i_duration ) - min * 60;
+            vlc_tick_t duration = input_item_GetDuration(media);
+            int min = SEC_FROM_VLC_TICK(duration) / 60;
+            int sec = SEC_FROM_VLC_TICK(duration) - min * 60;
 
             // Print the artist if we have one
-            if( psz_artist && *psz_artist )
-                fprintf( p_export->p_file, "    <li>%s - %s (%02d:%02d)</li>\n", psz_artist, psz_name, min, sec );
+            if (artist && *artist)
+                fprintf(export->file, "    <li>%s - %s (%02d:%02d)</li>\n", artist, name, min, sec);
             else
-                fprintf( p_export->p_file, "    <li>%s (%2d:%2d)</li>\n", psz_name, min, sec );
+                fprintf(export->file, "    <li>%s (%2d:%2d)</li>\n", name, min, sec);
 
-            free( psz_artist );
+            free(artist);
         }
-        free( psz_name );
+        free(name);
     }
 }
 
@@ -93,12 +90,12 @@ static void DoChildren( playlist_export_t *p_export, playlist_item_t *p_root )
  */
 int Export_HTML( vlc_object_t *p_this )
 {
-    playlist_export_t *p_export = (playlist_export_t *)p_this;
+    struct playlist_export *export = (struct playlist_export *) p_this;
 
-    msg_Dbg( p_export, "saving using HTML format" );
+    msg_Dbg(export, "saving using HTML format");
 
     /* Write header */
-    fprintf( p_export->p_file, "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n"
+    fprintf(export->file, "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n"
 "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n"
 "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\">\n"
 "<head>\n"
@@ -127,10 +124,10 @@ int Export_HTML( vlc_object_t *p_this )
 "  <ol>\n" );
 
     // Call the playlist constructor
-    DoChildren( p_export, p_export->p_root );
+    DoExport(export);
 
     // Print the footer
-    fprintf( p_export->p_file, "  </ol>\n"
+    fprintf(export->file, "  </ol>\n"
 "  <hr />\n"
 "</body>\n"
 "</html>" );
