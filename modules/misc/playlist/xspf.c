@@ -30,8 +30,8 @@
 #endif
 
 #include <vlc_common.h>
-#include <vlc_playlist_legacy.h>
 #include <vlc_input.h>
+#include <vlc_playlist_export.h>
 #include <vlc_strings.h>
 #include <vlc_url.h>
 
@@ -55,165 +55,94 @@ static char *input_xml( input_item_t *p_item, char *(*func)(input_item_t *) )
  * \param p_file file to write xml-converted item to
  * \param p_i_count counter for track identifiers
  */
-static void xspf_export_item( playlist_item_t *p_item, FILE *p_file,
-                              int *p_i_count )
+static void xspf_export_item( input_item_t *media, FILE *file, uint64_t id)
 {
-    if( !p_item ) return;
-
-    /* if we get a node here, we must traverse it */
-    if( p_item->i_children > 0 )
-    {
-        for( int i = 0; i < p_item->i_children; i++ )
-            xspf_export_item( p_item->pp_children[i], p_file, p_i_count );
-        return;
-    }
-
-    /* don't write empty nodes */
-    if( p_item->i_children == 0 )
-        return;
-
-    input_item_t *p_input = p_item->p_input;
-    char *psz;
-    vlc_tick_t i_duration;
-
-    /* leaves can be written directly */
-    fputs( "\t\t<track>\n", p_file );
+    fputs("\t\t<track>\n", file);
 
     /* -> the location */
 
-    char *psz_uri = input_xml( p_input, input_item_GetURI );
-    if( psz_uri && *psz_uri )
-        fprintf( p_file, "\t\t\t<location>%s</location>\n", psz_uri );
+    char *uri = input_xml(media, input_item_GetURI);
+    if (uri && *uri)
+        fprintf(file, "\t\t\t<location>%s</location>\n", uri);
 
     /* -> the name/title (only if different from uri)*/
-    psz = input_xml( p_input, input_item_GetTitle );
-    if( psz && strcmp( psz_uri, psz ) )
-        fprintf( p_file, "\t\t\t<title>%s</title>\n", psz );
-    free( psz );
-    free( psz_uri );
+    char *title = input_xml(media, input_item_GetTitle);
+    if( title && strcmp(uri, title))
+        fprintf(file, "\t\t\t<title>%s</title>\n", title);
+    free(title);
 
-    if( p_item->p_input->p_meta == NULL )
-    {
-        goto xspfexportitem_end;
+    if (media->p_meta) {
+        /* -> the artist/creator */
+        char *artist = input_xml(media, input_item_GetArtist);
+        if (artist && *artist)
+            fprintf(file, "\t\t\t<creator>%s</creator>\n", artist);
+        free(artist);
+
+        /* -> the album */
+        char *album = input_xml(media, input_item_GetAlbum);
+        if (album && *album)
+            fprintf(file, "\t\t\t<album>%s</album>\n", album);
+        free(album);
+
+        /* -> the track number */
+        char *track = input_xml(media, input_item_GetTrackNum);
+        if (track)
+        {
+            int tracknum = atoi(track);
+
+            free(track);
+            if (tracknum > 0)
+                fprintf(file, "\t\t\t<trackNum>%i</trackNum>\n", tracknum);
+        }
+
+        /* -> the description */
+        char *desc = input_xml(media, input_item_GetDescription);
+        if (desc && *desc)
+            fprintf(file, "\t\t\t<annotation>%s</annotation>\n", desc);
+        free(desc);
+
+        char *url = input_xml(media, input_item_GetURL);
+        if (url && *url)
+            fprintf(file, "\t\t\t<info>%s</info>\n", url);
+        free(url);
+
+        char *art_url = input_xml(media, input_item_GetArtURL);
+        if (art_url && *art_url)
+            fprintf(file, "\t\t\t<image>%s</image>\n", art_url);
+        free(art_url);
     }
 
-    /* -> the artist/creator */
-    psz = input_xml( p_input, input_item_GetArtist );
-    if( psz && *psz )
-        fprintf( p_file, "\t\t\t<creator>%s</creator>\n", psz );
-    free( psz );
-
-    /* -> the album */
-    psz = input_xml( p_input, input_item_GetAlbum );
-    if( psz && *psz )
-        fprintf( p_file, "\t\t\t<album>%s</album>\n", psz );
-    free( psz );
-
-    /* -> the track number */
-    psz = input_xml( p_input, input_item_GetTrackNum );
-    if( psz )
-    {
-        int i_tracknum = atoi( psz );
-
-        free( psz );
-        if( i_tracknum > 0 )
-            fprintf( p_file, "\t\t\t<trackNum>%i</trackNum>\n", i_tracknum );
-    }
-
-    /* -> the description */
-    psz = input_xml( p_input, input_item_GetDescription );
-    if( psz && *psz )
-        fprintf( p_file, "\t\t\t<annotation>%s</annotation>\n", psz );
-    free( psz );
-
-    psz = input_xml( p_input, input_item_GetURL );
-    if( psz && *psz )
-        fprintf( p_file, "\t\t\t<info>%s</info>\n", psz );
-    free( psz );
-
-    psz = input_xml( p_input, input_item_GetArtURL );
-    if( psz && *psz )
-        fprintf( p_file, "\t\t\t<image>%s</image>\n", psz );
-    free( psz );
-
-xspfexportitem_end:
     /* -> the duration */
-    i_duration = input_item_GetDuration( p_item->p_input );
-    if( i_duration > 0 )
-        fprintf( p_file, "\t\t\t<duration>%"PRIu64"</duration>\n",
-                 MS_FROM_VLC_TICK(i_duration) );
+    vlc_tick_t duration = input_item_GetDuration(media);
+    if (duration > 0)
+        fprintf(file, "\t\t\t<duration>%"PRIu64"</duration>\n",
+                MS_FROM_VLC_TICK(duration));
 
     /* export the intenal id and the input's options (bookmarks, ...)
      * in <extension> */
-    fputs( "\t\t\t<extension application=\""
-           "http://www.videolan.org/vlc/playlist/0\">\n", p_file );
+    fputs("\t\t\t<extension application=\""
+          "http://www.videolan.org/vlc/playlist/0\">\n", file);
 
     /* print the id and increase the counter */
-    fprintf( p_file, "\t\t\t\t<vlc:id>%i</vlc:id>\n", *p_i_count );
-    ( *p_i_count )++;
+    fprintf(file, "\t\t\t\t<vlc:id>%"PRIu64"</vlc:id>\n", id);
 
-    for( int i = 0; i < p_item->p_input->i_options; i++ )
+    for (int i = 0; i < media->i_options; i++)
     {
-        char* psz_src = p_item->p_input->ppsz_options[i];
-        char* psz_ret = NULL;
+        char* src = media->ppsz_options[i];
+        char* ret = NULL;
 
-        if ( psz_src[0] == ':' )
-            psz_src++;
+        if (src[0] == ':')
+            src++;
 
-        psz_ret = vlc_xml_encode( psz_src );
-        if ( psz_ret == NULL )
+        ret = vlc_xml_encode(src);
+        if (!ret)
             continue;
 
-        fprintf( p_file, "\t\t\t\t<vlc:option>%s</vlc:option>\n", psz_ret );
-        free( psz_ret );
+        fprintf(file, "\t\t\t\t<vlc:option>%s</vlc:option>\n", ret);
+        free(ret);
     }
-    fputs( "\t\t\t</extension>\n", p_file );
-    fputs( "\t\t</track>\n", p_file );
-}
-
-/**
- * \brief exports one item in extension to file and traverse if item is a node
- * \param p_item playlist item to export
- * \param p_file file to write xml-converted item to
- * \param p_i_count counter for track identifiers
- * \param i_depth identation depth
- */
-static void xspf_extension_item( playlist_item_t *p_item, FILE *p_file,
-                                 int *p_i_count, int i_depth )
-{
-    if( !p_item ) return;
-
-    /* if we get a node here, we must traverse it */
-    if( p_item->i_children >= 0 )
-    {
-        int i;
-        char *psz_temp = NULL;
-        if( p_item->p_input->psz_name )
-            psz_temp = vlc_xml_encode( p_item->p_input->psz_name );
-        for(int j=0;j<i_depth;j++)
-            fprintf( p_file, "\t" );
-        fprintf( p_file, "<vlc:node title=\"%s\">\n",
-                 psz_temp ? psz_temp : "" );
-        free( psz_temp );
-
-        for( i = 0; i < p_item->i_children; i++ )
-        {
-            xspf_extension_item( p_item->pp_children[i], p_file, p_i_count, i_depth + 1 );
-        }
-
-        for(int j=0;j<i_depth;j++)
-            fprintf( p_file, "\t" );
-        fprintf( p_file, "</vlc:node>\n" );
-        return;
-    }
-
-    /* print leaf and increase the counter */
-    for(int j=0;j<i_depth;j++)
-        fprintf( p_file, "\t" );
-    fprintf( p_file, "<vlc:item tid=\"%i\"/>\n", *p_i_count );
-    ( *p_i_count )++;
-
-    return;
+    fputs("\t\t\t</extension>\n", file);
+    fputs("\t\t</track>\n", file);
 }
 
 /**
@@ -224,51 +153,30 @@ static void xspf_extension_item( playlist_item_t *p_item, FILE *p_file,
  */
 int xspf_export_playlist( vlc_object_t *p_this )
 {
-    const playlist_export_t *p_export = (playlist_export_t *)p_this;
-    int               i, i_count;
-    char             *psz_temp;
-    playlist_item_t  *p_node = p_export->p_root;
+    struct playlist_export *export = (struct playlist_export *) p_this;
 
     /* write XSPF XML header */
-    fprintf( p_export->p_file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" );
-    fprintf( p_export->p_file,
+    fprintf(export->file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" );
+    fprintf(export->file,
              "<playlist xmlns=\"http://xspf.org/ns/0/\" " \
               "xmlns:vlc=\"http://www.videolan.org/vlc/playlist/ns/0/\" " \
               "version=\"1\">\n" );
 
-    if( !p_node ) return VLC_SUCCESS;
-
-    /* save name of the playlist node */
-    psz_temp = vlc_xml_encode( p_node->p_input->psz_name );
-    if( *psz_temp )
+    fprintf(export->file, "\t<trackList>\n" );
+    size_t count = vlc_playlist_view_Count(export->playlist_view);
+    for (size_t i = 0; i < count; ++i)
     {
-        fprintf(  p_export->p_file, "\t<title>%s</title>\n", psz_temp );
-    }
-    free( psz_temp );
+        vlc_playlist_item_t *item =
+            vlc_playlist_view_Get(export->playlist_view, i);
+        input_item_t *media = vlc_playlist_item_GetMedia(item);
 
-    /* export all items in a flat format */
-    fprintf( p_export->p_file, "\t<trackList>\n" );
-    i_count = 0;
-    for( i = 0; i < p_node->i_children; i++ )
-    {
-        xspf_export_item( p_node->pp_children[i], p_export->p_file,
-                          &i_count );
+        xspf_export_item(media, export->file, i);
     }
-    fprintf( p_export->p_file, "\t</trackList>\n" );
 
-    /* export the tree structure in <extension> */
-    fprintf( p_export->p_file, "\t<extension application=\"" \
-             "http://www.videolan.org/vlc/playlist/0\">\n" );
-    i_count = 0;
-    for( i = 0; i < p_node->i_children; i++ )
-    {
-        xspf_extension_item( p_node->pp_children[i], p_export->p_file,
-                             &i_count, 2 );
-    }
-    fprintf( p_export->p_file, "\t</extension>\n" );
+    fprintf(export->file, "\t</trackList>\n");
 
     /* close the header elements */
-    fprintf( p_export->p_file, "</playlist>\n" );
+    fprintf(export->file, "</playlist>\n");
 
     return VLC_SUCCESS;
 }
