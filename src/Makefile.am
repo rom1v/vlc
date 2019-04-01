@@ -252,6 +252,7 @@ libvlccore_la_SOURCES = \
 	playlist/request.c \
 	playlist/shuffle.c \
 	playlist/sort.c \
+	playlist/view.c \
 	preparser/art.c \
 	preparser/art.h \
 	preparser/fetcher.c \

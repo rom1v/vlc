@@ -937,6 +937,9 @@ vlc_player_vout_Snapshot
 vlc_playlist_item_Hold
 vlc_playlist_item_Release
 vlc_playlist_item_GetMedia
+vlc_playlist_view_Delete
+vlc_playlist_view_Count
+vlc_playlist_view_Get
 vlc_playlist_New
 vlc_playlist_Delete
 vlc_playlist_Lock
@@ -945,6 +948,7 @@ vlc_playlist_AddListener
 vlc_playlist_RemoveListener
 vlc_playlist_Count
 vlc_playlist_Get
+vlc_playlist_ConstView
 vlc_playlist_Clear
 vlc_playlist_Insert
 vlc_playlist_Move

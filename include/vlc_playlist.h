@@ -317,6 +317,43 @@ vlc_playlist_item_Release(vlc_playlist_item_t *);
 VLC_API input_item_t *
 vlc_playlist_item_GetMedia(vlc_playlist_item_t *);
 
+/* Playlist view */
+
+/**
+ * Opaque structure giving a read-only view of a playlist.
+ *
+ * The view is only valid until the playlist lock is released.
+ *
+ * This is used by playlist export modules.
+ */
+struct vlc_playlist_view;
+
+/**
+ * Delete the playlist view.
+ */
+VLC_API void
+vlc_playlist_view_Delete(struct vlc_playlist_view *);
+
+/**
+ * Return the number of items in the view.
+ *
+ * \param view the playlist view
+ */
+VLC_API size_t
+vlc_playlist_view_Count(struct vlc_playlist_view *view);
+
+/**
+ * Return the item at a given index.
+ *
+ * The index must be in range (less than vlc_playlist_view_Count()).
+ *
+ * \param view  the playlist view
+ * \param index the index
+ * \return the playlist item
+ */
+VLC_API vlc_playlist_item_t *
+vlc_playlist_view_Get(struct vlc_playlist_view *view, size_t index);
+
 /* Playlist */
 
 /**
@@ -412,6 +449,19 @@ vlc_playlist_Count(vlc_playlist_t *playlist);
  */
 VLC_API vlc_playlist_item_t *
 vlc_playlist_Get(vlc_playlist_t *playlist, size_t index);
+
+/**
+ * Return a read-only view of the playlist.
+ *
+ * The view is only valid until the playlist lock is released.
+ *
+ * It must be deleted by vlc_playlist_view_Delete().
+ *
+ * \param playlist the playlist, locked
+ * \return the read-only view
+ */
+VLC_API struct vlc_playlist_view *
+vlc_playlist_ConstView(vlc_playlist_t *playlist);
 
 /**
  * Clear the playlist.
