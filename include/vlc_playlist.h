@@ -853,6 +853,18 @@ VLC_API void
 vlc_playlist_Preparse(vlc_playlist_t *playlist, libvlc_int_t *libvlc,
                       input_item_t *media);
 
+/**
+ * Export the playlist to a file.
+ *
+ * \param filename the location where the exported file will be saved
+ * \param type the type of the playlist file to create (m3u, m3u8, xspf, ...)
+ * \return VLC_SUCCESS on success, another value on error
+ */
+// XXX use vlc_memstream instead of filename?
+VLC_API int
+vlc_playlist_Export(vlc_playlist_t *playlist, const char *filename,
+                    const char *type);
+
 /** @} */
 # ifdef __cplusplus
 }
