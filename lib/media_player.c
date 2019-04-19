@@ -1381,49 +1381,45 @@ int libvlc_media_player_get_full_title_descriptions( libvlc_media_player_t *p_mi
 {
     assert( p_mi );
 
-    input_thread_t *p_input_thread = libvlc_get_input_thread( p_mi );
+    int ret = -1;
 
-    if( !p_input_thread )
-        return -1;
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
 
-    input_title_t **p_input_title;
-    int count;
+    vlc_player_title_list *titles = vlc_player_GetTitleList(player);
+    if (!titles)
+        goto end;
 
-    /* fetch data */
-    int ret = input_Control( p_input_thread, INPUT_GET_FULL_TITLE_INFO,
-                             &p_input_title, &count );
-    input_Release(p_input_thread);
-    if( ret != VLC_SUCCESS )
-        return -1;
+    size_t count = vlc_player_title_list_GetCount(titles);
 
-    libvlc_title_description_t **titles = vlc_alloc( count, sizeof (*titles) );
-    if( count > 0 && unlikely(titles == NULL) )
-        return -1;
+    libvlc_title_description_t **descs = vlc_alloc(count, sizeof(*descs));
+    if (count > 0 && !descs)
+        goto end;
 
-    /* fill array */
-    for( int i = 0; i < count; i++)
+    for (size_t i = 0; i < count; i++)
     {
-        libvlc_title_description_t *title = malloc( sizeof (*title) );
-        if( unlikely(title == NULL) )
+        const struct vlc_player_title *title =
+            vlc_player_title_list_GetAt(titles, i);
+        libvlc_title_description_t *desc = malloc(sizeof(*desc));
+        if (!desc)
         {
-            libvlc_title_descriptions_release( titles, i );
-            return -1;
+            libvlc_title_descriptions_release(descs, i);
+            goto end;
         }
-        titles[i] = title;
+
+        descs[i] = desc;
 
         /* we want to return milliseconds to match the rest of the API */
-        title->i_duration = MS_FROM_VLC_TICK(p_input_title[i]->i_length);
-        title->i_flags = p_input_title[i]->i_flags;
-        if( p_input_title[i]->psz_name )
-            title->psz_name = strdup( p_input_title[i]->psz_name );
-        else
-            title->psz_name = NULL;
-        vlc_input_title_Delete( p_input_title[i] );
+        desc->i_duration = MS_FROM_VLC_TICK(title->length);
+        desc->i_flags = title->flags;
+        desc->psz_name = title->name ? strdup(title->name) : NULL;
     }
-    free( p_input_title );
 
-    *pp_titles = titles;
-    return count;
+    ret = count;
+
+end:
+    vlc_player_Unlock(player);
+    return ret;
 }
 
 void libvlc_title_descriptions_release( libvlc_title_description_t **p_titles,
