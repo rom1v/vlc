@@ -1537,19 +1537,24 @@ int libvlc_media_player_will_play( libvlc_media_player_t *p_mi )
 
 int libvlc_media_player_set_rate( libvlc_media_player_t *p_mi, float rate )
 {
-    var_SetFloat (p_mi, "rate", rate);
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
 
-    input_thread_t *p_input_thread = libvlc_get_input_thread ( p_mi );
-    if( !p_input_thread )
-        return 0;
-    var_SetFloat( p_input_thread, "rate", rate );
-    input_Release(p_input_thread);
+    vlc_player_ChangeRate(player, rate);
+
+    vlc_player_Unlock(player);
     return 0;
 }
 
 float libvlc_media_player_get_rate( libvlc_media_player_t *p_mi )
 {
-    return var_GetFloat (p_mi, "rate");
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
+
+    float rate = vlc_player_GetRate(player);
+
+    vlc_player_Unlock(player);
+    return rate;
 }
 
 libvlc_state_t libvlc_media_player_get_state( libvlc_media_player_t *p_mi )
