@@ -1344,7 +1344,7 @@ int libvlc_media_player_get_chapter_count( libvlc_media_player_t *p_mi )
     vlc_player_Lock(player);
 
     const struct vlc_player_title *title = vlc_player_GetSelectedTitle(player);
-    int ret = title ? title->chapter_count : -1;
+    int ret = title ? (int) title->chapter_count : -1;
 
     vlc_player_Unlock(player);
     return ret;
@@ -1408,7 +1408,7 @@ int libvlc_media_player_get_title_count( libvlc_media_player_t *p_mi )
     vlc_player_Lock(player);
 
     vlc_player_title_list *titles = vlc_player_GetTitleList(player);
-    int ret = titles ? vlc_player_title_list_GetCount(titles) : -1;
+    int ret = titles ? (int) vlc_player_title_list_GetCount(titles) : -1;
 
     vlc_player_Unlock(player);
     return ret;
@@ -1454,6 +1454,7 @@ int libvlc_media_player_get_full_title_descriptions( libvlc_media_player_t *p_mi
     }
 
     ret = count;
+    *pp_titles = descs;
 
 end:
     vlc_player_Unlock(player);
@@ -1480,82 +1481,56 @@ int libvlc_media_player_get_full_chapter_descriptions( libvlc_media_player_t *p_
 {
     assert( p_mi );
 
-    input_thread_t *p_input_thread = libvlc_get_input_thread( p_mi );
+    int ret = -1;
 
-    if( !p_input_thread )
-        return -1;
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
 
-    seekpoint_t **p_seekpoint = NULL;
-    input_title_t **pp_title, *p_title = NULL;
-    int i_title_count = 0, ci_chapter_count = 0;
-    int ret = input_Control( p_input_thread, INPUT_GET_FULL_TITLE_INFO, &pp_title,
-                             &i_title_count );
-    input_Release(p_input_thread);
+    vlc_player_title_list *titles = vlc_player_GetTitleList(player);
+    if (!titles)
+        goto end;
 
-    if( ret != VLC_SUCCESS || i_chapters_of_title >= i_title_count )
-        goto error;
+    size_t titles_count = vlc_player_title_list_GetCount(titles);
+    if (i_chapters_of_title < (int) titles_count)
+       goto end;
 
-    p_title = pp_title[i_chapters_of_title];
-    int64_t i_title_duration = MS_FROM_VLC_TICK(p_title->i_length);
-    p_seekpoint = p_title->seekpoint;
-    ci_chapter_count = p_title->i_seekpoint;
+    const struct vlc_player_title *title =
+        vlc_player_title_list_GetAt(titles, i_chapters_of_title);
+    assert(title);
 
-    if( ci_chapter_count == 0 || p_seekpoint == NULL)
-        goto error;
+    size_t i_chapter_count = title->chapter_count;
 
-    *pp_chapters = calloc( ci_chapter_count, sizeof(**pp_chapters) );
-    if( !*pp_chapters )
+    libvlc_chapter_description_t **descs =
+        vlc_alloc(i_chapter_count, sizeof(*descs));
+    if (i_chapter_count > 0 && !descs)
+        goto end;
+
+    for (size_t i = 0; i < i_chapter_count; i++)
     {
-        goto error;
+        const struct vlc_player_chapter *chapter = &title->chapters[i];
+        libvlc_chapter_description_t *desc = malloc(sizeof(*desc));
+        if (!desc)
+        {
+            libvlc_chapter_descriptions_release(descs, i);
+            goto end;
+        }
+
+        descs[i] = desc;
+
+        vlc_tick_t chapter_end = i < i_chapter_count - 1
+                               ? title->chapters[i + 1].time
+                               : title->length;
+        desc->i_time_offset = MS_FROM_VLC_TICK(chapter->time);
+        desc->psz_name = chapter->name ? strdup(chapter->name) : NULL;
+        desc->i_duration = MS_FROM_VLC_TICK(chapter_end) - desc->i_time_offset;
     }
 
-    /* fill array */
-    for( int i = 0; i < ci_chapter_count; ++i )
-    {
-        libvlc_chapter_description_t *p_chapter = malloc( sizeof(*p_chapter) );
-        if( unlikely(p_chapter == NULL) )
-        {
-            goto error;
-        }
-        (*pp_chapters)[i] = p_chapter;
+    ret = i_chapter_count;
+    *pp_chapters = descs;
 
-        p_chapter->i_time_offset = MS_FROM_VLC_TICK( p_seekpoint[i]->i_time_offset );
-
-        if( i < ci_chapter_count - 1 )
-        {
-            p_chapter->i_duration = MS_FROM_VLC_TICK( p_seekpoint[i + 1]->i_time_offset ) -
-                                    p_chapter->i_time_offset;
-        }
-        else
-        {
-            if ( i_title_duration )
-                p_chapter->i_duration = i_title_duration - p_chapter->i_time_offset;
-            else
-                p_chapter->i_duration = 0;
-        }
-
-        if( p_seekpoint[i]->psz_name )
-        {
-            p_chapter->psz_name = strdup( p_seekpoint[i]->psz_name );
-        }
-        else
-        {
-            p_chapter->psz_name = NULL;
-        }
-        vlc_seekpoint_Delete( p_seekpoint[i] );
-        p_seekpoint[i] = NULL;
-    }
-
-    free( p_seekpoint );
-    return ci_chapter_count;
-
-error:
-    if( *pp_chapters )
-        libvlc_chapter_descriptions_release( *pp_chapters, ci_chapter_count );
-    for( int i = 0; i < i_title_count; i++ )
-        vlc_input_title_Delete( pp_title[i] );
-    free( pp_title ) ;
-    return -1;
+end:
+    vlc_player_Unlock(player);
+    return ret;
 }
 
 void libvlc_chapter_descriptions_release( libvlc_chapter_description_t **p_chapters,
