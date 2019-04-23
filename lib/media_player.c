@@ -1549,45 +1549,28 @@ void libvlc_chapter_descriptions_release( libvlc_chapter_description_t **p_chapt
 
 void libvlc_media_player_next_chapter( libvlc_media_player_t *p_mi )
 {
-    input_thread_t *p_input_thread;
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
 
-    p_input_thread = libvlc_get_input_thread ( p_mi );
-    if( !p_input_thread )
-        return;
+    vlc_player_SelectNextChapter(player);
 
-    int i_type = var_Type( p_input_thread, "next-chapter" );
-    var_TriggerCallback( p_input_thread, (i_type & VLC_VAR_TYPE) != 0 ?
-                            "next-chapter":"next-title" );
-
-    input_Release(p_input_thread);
+    vlc_player_Unlock(player);
 }
 
 void libvlc_media_player_previous_chapter( libvlc_media_player_t *p_mi )
 {
-    input_thread_t *p_input_thread;
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
 
-    p_input_thread = libvlc_get_input_thread ( p_mi );
-    if( !p_input_thread )
-        return;
+    vlc_player_SelectPrevChapter(player);
 
-    int i_type = var_Type( p_input_thread, "next-chapter" );
-    var_TriggerCallback( p_input_thread, (i_type & VLC_VAR_TYPE) != 0 ?
-                            "prev-chapter":"prev-title" );
-
-    input_Release(p_input_thread);
+    vlc_player_Unlock(player);
 }
 
 int libvlc_media_player_will_play( libvlc_media_player_t *p_mi )
 {
-    input_thread_t *p_input_thread =
-                            libvlc_get_input_thread ( p_mi );
-    if ( !p_input_thread )
-        return false;
-
-    int state = var_GetInteger( p_input_thread, "state" );
-    input_Release(p_input_thread);
-
-    return state != END_S && state != ERROR_S;
+    (void) p_mi;
+    return true;
 }
 
 int libvlc_media_player_set_rate( libvlc_media_player_t *p_mi, float rate )
