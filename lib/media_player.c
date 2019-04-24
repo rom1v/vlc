@@ -1717,15 +1717,19 @@ int libvlc_media_player_can_pause( libvlc_media_player_t *p_mi )
 
 int libvlc_media_player_program_scrambled( libvlc_media_player_t *p_mi )
 {
-    input_thread_t *p_input_thread;
-    bool b_program_scrambled;
+    bool b_program_scrambled = false;
 
-    p_input_thread = libvlc_get_input_thread ( p_mi );
-    if ( !p_input_thread )
-        return false;
-    b_program_scrambled = var_GetBool( p_input_thread, "program-scrambled" );
-    input_Release(p_input_thread);
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
 
+    struct vlc_player_program *program = vlc_player_GetSelectedProgram(player);
+    if (!program)
+        goto end;
+
+    b_program_scrambled = program->scrambled;
+
+    vlc_player_Unlock(player);
+end:
     return b_program_scrambled;
 }
 
