@@ -1559,44 +1559,57 @@ float libvlc_media_player_get_rate( libvlc_media_player_t *p_mi )
 
 libvlc_state_t libvlc_media_player_get_state( libvlc_media_player_t *p_mi )
 {
-    lock(p_mi);
-    libvlc_state_t state = p_mi->state;
-    unlock(p_mi);
-    return state;
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
+
+    enum vlc_player_state state = vlc_player_GetState(player);
+
+    vlc_player_Unlock(player);
+
+    switch (state) {
+        case VLC_PLAYER_STATE_STOPPED:
+        case VLC_PLAYER_STATE_STOPPING:
+            return libvlc_Stopped;
+        case VLC_PLAYER_STATE_STARTED:
+            return libvlc_Opening;
+        case VLC_PLAYER_STATE_PLAYING:
+            return libvlc_Playing;
+        case VLC_PLAYER_STATE_PAUSED:
+            return libvlc_Paused;
+        default:
+            vlc_assert_unreachable();
+    }
 }
 
 int libvlc_media_player_is_seekable( libvlc_media_player_t *p_mi )
 {
-    input_thread_t *p_input_thread;
-    bool b_seekable;
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
 
-    p_input_thread = libvlc_get_input_thread ( p_mi );
-    if ( !p_input_thread )
-        return false;
-    b_seekable = var_GetBool( p_input_thread, "can-seek" );
-    input_Release(p_input_thread);
+    bool b_seekable = vlc_player_CanSeek(player);
 
+    vlc_player_Unlock(player);
     return b_seekable;
 }
 
 void libvlc_media_player_navigate( libvlc_media_player_t* p_mi,
                                    unsigned navigate )
 {
-    static const int map[] =
+    static const enum vlc_player_nav map[] =
     {
-        INPUT_NAV_ACTIVATE, INPUT_NAV_UP, INPUT_NAV_DOWN,
-        INPUT_NAV_LEFT, INPUT_NAV_RIGHT, INPUT_NAV_POPUP,
+        VLC_PLAYER_NAV_ACTIVATE, VLC_PLAYER_NAV_UP, VLC_PLAYER_NAV_DOWN,
+        VLC_PLAYER_NAV_LEFT, VLC_PLAYER_NAV_RIGHT, VLC_PLAYER_NAV_POPUP,
     };
 
     if( navigate >= sizeof(map) / sizeof(map[0]) )
       return;
 
-    input_thread_t *p_input = libvlc_get_input_thread ( p_mi );
-    if ( p_input == NULL )
-      return;
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
 
-    input_Control( p_input, map[navigate], NULL );
-    input_Release(p_input);
+    vlc_player_Navigate(player, map[navigate]);
+
+    vlc_player_Unlock(player);
 }
 
 /* internal function, used by audio, video */
@@ -1655,15 +1668,12 @@ void libvlc_track_description_list_release( libvlc_track_description_t *p_td )
 
 int libvlc_media_player_can_pause( libvlc_media_player_t *p_mi )
 {
-    input_thread_t *p_input_thread;
-    bool b_can_pause;
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
 
-    p_input_thread = libvlc_get_input_thread ( p_mi );
-    if ( !p_input_thread )
-        return false;
-    b_can_pause = var_GetBool( p_input_thread, "can-pause" );
-    input_Release(p_input_thread);
+    bool b_can_pause = vlc_player_CanPause(player);
 
+    vlc_player_Unlock(player);
     return b_can_pause;
 }
 
