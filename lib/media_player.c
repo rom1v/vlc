@@ -1735,12 +1735,12 @@ end:
 
 void libvlc_media_player_next_frame( libvlc_media_player_t *p_mi )
 {
-    input_thread_t *p_input_thread = libvlc_get_input_thread ( p_mi );
-    if( p_input_thread != NULL )
-    {
-        var_TriggerCallback( p_input_thread, "frame-next" );
-        input_Release(p_input_thread);
-    }
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
+
+    vlc_player_NextVideoFrame(player);
+
+    vlc_player_Unlock(player);
 }
 
 /**
@@ -1779,26 +1779,18 @@ int libvlc_media_player_add_slave( libvlc_media_player_t *p_mi,
                                    libvlc_media_slave_type_t i_type,
                                    const char *psz_uri, bool b_select )
 {
-    input_thread_t *p_input_thread = libvlc_get_input_thread ( p_mi );
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
 
-    if( p_input_thread == NULL )
-    {
-        libvlc_media_t *p_media = libvlc_media_player_get_media( p_mi );
-        if( p_media == NULL )
-            return -1;
+    enum es_format_category_e cat = i_type == libvlc_media_slave_type_subtitle
+                                  ? SPU_ES
+                                  : AUDIO_ES;
 
-        int i_ret = libvlc_media_slaves_add( p_media, i_type, 4, psz_uri );
-        libvlc_media_release( p_media );
-        return i_ret;
-    }
-    else
-    {
-        int i_ret = input_AddSlave( p_input_thread, (enum slave_type) i_type,
-                                    psz_uri, b_select, false, false );
-        input_Release(p_input_thread);
+    int ret = vlc_player_AddAssociatedMedia(player, cat, psz_uri, b_select,
+                                            false, false);
 
-        return i_ret == VLC_SUCCESS ? 0 : -1;
-    }
+    vlc_player_Unlock(player);
+    return ret;
 }
 
 /**
