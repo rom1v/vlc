@@ -92,49 +92,65 @@ snapshot_was_taken( vlc_object_t *p_this, char const *psz_cmd,
 
 static void libvlc_media_player_destroy( libvlc_media_player_t *p_mi );
 
+// player callbacks
 
-void
+static void
 on_current_media_changed(vlc_player_t *player, input_item_t *new_media,
                          void *data)
 {
 
 }
 
-void
+static void
 on_state_changed(vlc_player_t *player, enum vlc_player_state new_state,
                  void *data)
 {
 
 }
 
-void
+static void
 on_error_changed(vlc_player_t *player, enum vlc_player_error error, void *data)
 {
 
 }
 
-void
+static void
 on_buffering_changed(vlc_player_t *player, float new_buffering, void *data)
 {
 
 }
 
-void
+static void
 on_position_changed(vlc_player_t *player, vlc_tick_t new_time, float new_pos,
                     void *data)
 {
 
 }
 
-void
+static void
 on_length_changed(vlc_player_t *player, vlc_tick_t new_length, void *data)
 {
 
 }
 
-void on_track_selection_changed(vlc_player_t *player,
-                                vlc_es_id_t *unselected_id,
-                                vlc_es_id_t *selected_id, void *data)
+static void
+on_track_selection_changed(vlc_player_t *player,
+                           vlc_es_id_t *unselected_id,
+                           vlc_es_id_t *selected_id, void *data)
+{
+
+}
+
+// player aout callbacks
+
+static void
+on_volume_changed(vlc_player_t *player, float new_volume, void *data)
+{
+
+}
+
+static void
+on_mute_changed(vlc_player_t *player, bool new_muted, void *data)
 {
 
 }
@@ -147,6 +163,11 @@ static const struct vlc_player_cbs vlc_player_cbs = {
     .on_position_changed = on_position_changed,
     .on_length_changed = on_length_changed,
     .on_track_selection_changed = on_track_selection_changed,
+};
+
+static const struct vlc_player_aout_cbs vlc_player_aout_cbs = {
+    .on_volume_changed = on_volume_changed,
+    .on_mute_changed = on_mute_changed,
 };
 
 /*
