@@ -116,6 +116,12 @@ on_buffering_changed(vlc_player_t *player, float new_buffering, void *data)
 }
 
 static void
+on_capabilities_changed(vlc_player_t *player, int new_caps, void *data)
+{
+
+}
+
+static void
 on_position_changed(vlc_player_t *player, vlc_tick_t new_time, float new_pos,
                     void *data)
 {
@@ -132,6 +138,13 @@ static void
 on_track_selection_changed(vlc_player_t *player,
                            vlc_es_id_t *unselected_id,
                            vlc_es_id_t *selected_id, void *data)
+{
+
+}
+
+static void
+on_program_selection_changed(vlc_player_t *player, int unselected_id,
+                             int selected_id, void *data)
 {
 
 }
@@ -155,9 +168,11 @@ static const struct vlc_player_cbs vlc_player_cbs = {
     .on_state_changed = on_state_changed,
     .on_error_changed = on_error_changed,
     .on_buffering_changed = on_buffering_changed,
+    .on_capabilities_changed = on_capabilities_changed,
     .on_position_changed = on_position_changed,
     .on_length_changed = on_length_changed,
     .on_track_selection_changed = on_track_selection_changed,
+    .on_program_selection_changed = on_program_selection_changed,
 };
 
 static const struct vlc_player_aout_cbs vlc_player_aout_cbs = {
