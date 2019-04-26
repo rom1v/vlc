@@ -47,14 +47,6 @@
 #define ES_INIT (-2) /* -1 is reserved for ES deselect */
 
 static int
-input_seekable_changed( vlc_object_t * p_this, char const * psz_cmd,
-                        vlc_value_t oldval, vlc_value_t newval,
-                        void * p_userdata );
-static int
-input_pausable_changed( vlc_object_t * p_this, char const * psz_cmd,
-                        vlc_value_t oldval, vlc_value_t newval,
-                        void * p_userdata );
-static int
 input_scrambled_changed( vlc_object_t * p_this, char const * psz_cmd,
                         vlc_value_t oldval, vlc_value_t newval,
                         void * p_userdata );
@@ -108,8 +100,29 @@ on_buffering_changed(vlc_player_t *player, float new_buffering, void *data)
 }
 
 static void
-on_capabilities_changed(vlc_player_t *player, int new_caps, void *data)
+on_capabilities_changed(vlc_player_t *player, int old_caps, int new_caps, void *data)
 {
+    libvlc_media_player_t *mp = data;
+
+    libvlc_event_t event;
+
+    bool old_seekable = old_caps & VLC_INPUT_CAPABILITIES_SEEKABLE;
+    bool new_seekable = new_caps & VLC_INPUT_CAPABILITIES_SEEKABLE;
+    if (new_seekable != old_seekable)
+    {
+        event.type = libvlc_MediaPlayerSeekableChanged;
+        event.u.media_player_seekable_changed.new_seekable = new_seekable;
+        libvlc_event_send(&mp->event_manager, &event);
+    }
+
+    bool old_pauseable = old_caps & VLC_INPUT_CAPABILITIES_PAUSEABLE;
+    bool new_pauseable = new_caps & VLC_INPUT_CAPABILITIES_PAUSEABLE;
+    if (new_pauseable != old_pauseable)
+    {
+        event.type = libvlc_MediaPlayerPausableChanged;
+        event.u.media_player_pausable_changed.new_pausable = new_pauseable;
+        libvlc_event_send(&mp->event_manager, &event);
+    }
 
 }
 
@@ -234,42 +247,6 @@ static void media_detach_preparsed_event( libvlc_media_t *p_md )
                       vlc_InputItemPreparsedChanged,
                       input_item_preparsed_changed,
                       p_md );
-}
-
-static int
-input_seekable_changed( vlc_object_t * p_this, char const * psz_cmd,
-                        vlc_value_t oldval, vlc_value_t newval,
-                        void * p_userdata )
-{
-    VLC_UNUSED(oldval);
-    VLC_UNUSED(p_this);
-    VLC_UNUSED(psz_cmd);
-    libvlc_media_player_t * p_mi = p_userdata;
-    libvlc_event_t event;
-
-    event.type = libvlc_MediaPlayerSeekableChanged;
-    event.u.media_player_seekable_changed.new_seekable = newval.b_bool;
-
-    libvlc_event_send( &p_mi->event_manager, &event );
-    return VLC_SUCCESS;
-}
-
-static int
-input_pausable_changed( vlc_object_t * p_this, char const * psz_cmd,
-                        vlc_value_t oldval, vlc_value_t newval,
-                        void * p_userdata )
-{
-    VLC_UNUSED(oldval);
-    VLC_UNUSED(p_this);
-    VLC_UNUSED(psz_cmd);
-    libvlc_media_player_t * p_mi = p_userdata;
-    libvlc_event_t event;
-
-    event.type = libvlc_MediaPlayerPausableChanged;
-    event.u.media_player_pausable_changed.new_pausable = newval.b_bool;
-
-    libvlc_event_send( &p_mi->event_manager, &event );
-    return VLC_SUCCESS;
 }
 
 static int
