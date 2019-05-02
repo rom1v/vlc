@@ -232,29 +232,6 @@ static const struct vlc_player_vout_cbs vlc_player_vout_cbs = {
     0
 };
 
-/*
- * Shortcuts
- */
-
-/*
- * The input lock protects the input and input resource pointer.
- * It MUST NOT be used from callbacks.
- *
- * The object lock protects the reset, namely the media and the player state.
- * It can, and usually needs to be taken from callbacks.
- * The object lock can be acquired under the input lock... and consequently
- * the opposite order is STRICTLY PROHIBITED.
- */
-static inline void lock(libvlc_media_player_t *mp)
-{
-    vlc_player_Lock(mp->player);
-}
-
-static inline void unlock(libvlc_media_player_t *mp)
-{
-    vlc_player_Unlock(mp->player);
-}
-
 static void input_item_preparsed_changed( const vlc_event_t *p_event,
                                           void * user_data )
 {
@@ -586,9 +563,9 @@ void libvlc_media_player_release( libvlc_media_player_t *p_mi )
     bool destroy;
 
     assert( p_mi );
-    lock(p_mi);
+    vlc_player_Lock(p_mi->player);
     destroy = !--p_mi->i_refcount;
-    unlock(p_mi);
+    vlc_player_Unlock(p_mi->player);
 
     if( destroy )
         libvlc_media_player_destroy( p_mi );
@@ -603,9 +580,9 @@ void libvlc_media_player_retain( libvlc_media_player_t *p_mi )
 {
     assert( p_mi );
 
-    lock(p_mi);
+    vlc_player_Lock(p_mi->player);
     p_mi->i_refcount++;
-    unlock(p_mi);
+    vlc_player_Unlock(p_mi->player);
 }
 
 /**************************************************************************
@@ -617,7 +594,7 @@ void libvlc_media_player_set_media(
                             libvlc_media_player_t *p_mi,
                             libvlc_media_t *p_md )
 {
-    lock(p_mi);
+    vlc_player_Lock(p_mi->player);
 
     vlc_player_SetCurrentMedia(p_mi->player, p_md->p_input_item);
 
@@ -626,7 +603,7 @@ void libvlc_media_player_set_media(
     if( !p_md )
     {
         p_mi->p_md = NULL;
-        unlock(p_mi);
+        vlc_player_Unlock(p_mi->player);
         return; /* It is ok to pass a NULL md */
     }
 
@@ -637,7 +614,7 @@ void libvlc_media_player_set_media(
      * libvlc_instance, because we don't really care */
     p_mi->p_libvlc_instance = p_md->p_libvlc_instance;
 
-    unlock(p_mi);
+    vlc_player_Unlock(p_mi->player);
 }
 
 /**************************************************************************
@@ -648,11 +625,11 @@ libvlc_media_player_get_media( libvlc_media_player_t *p_mi )
 {
     libvlc_media_t *p_m;
 
-    lock( p_mi );
+    vlc_player_Lock(p_mi->player);
     p_m = p_mi->p_md;
     if( p_m )
         libvlc_media_retain( p_m );
-    unlock( p_mi );
+    vlc_player_Unlock(p_mi->player);
 
     return p_m;
 }
