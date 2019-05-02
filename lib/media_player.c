@@ -50,20 +50,10 @@ static int
 input_scrambled_changed( vlc_object_t * p_this, char const * psz_cmd,
                         vlc_value_t oldval, vlc_value_t newval,
                         void * p_userdata );
-static int
-input_es_changed( vlc_object_t * p_this, char const * psz_cmd,
-                  int action, vlc_value_t *p_val,
-                  void *p_userdata);
 
 static int
 corks_changed(vlc_object_t *obj, const char *name, vlc_value_t old,
               vlc_value_t cur, void *opaque);
-
-static void
-add_es_callbacks( input_thread_t *p_input_thread, libvlc_media_player_t *p_mi );
-
-static void
-del_es_callbacks( input_thread_t *p_input_thread, libvlc_media_player_t *p_mi );
 
 static int
 snapshot_was_taken( vlc_object_t *p_this, char const *psz_cmd,
@@ -138,6 +128,44 @@ on_length_changed(vlc_player_t *player, vlc_tick_t new_length, void *data)
 
 }
 
+static int
+track_type_from_cat(enum es_format_category_e cat)
+{
+    switch (cat)
+    {
+        case VIDEO_ES:
+            return libvlc_track_video;
+        case AUDIO_ES:
+            return libvlc_track_audio;
+        case SPU_ES:
+            return libvlc_track_text;
+        default:
+            return libvlc_track_unknown;
+    }
+}
+
+static void
+on_track_list_changed(vlc_player_t *player, enum vlc_player_list_action action,
+                      const struct vlc_player_track *track, void *data)
+{
+    libvlc_media_player_t *mp = data;
+
+    libvlc_event_t event;
+    if (action == VLC_PLAYER_LIST_ADDED)
+        event.type = libvlc_MediaPlayerESAdded;
+    else if (action == VLC_PLAYER_LIST_REMOVED)
+        event.type = libvlc_MediaPlayerESDeleted;
+    else
+        /* no event to forward */
+        return;
+
+    event.u.media_player_es_changed.i_type =
+        track_type_from_cat(track->fmt.i_cat);
+    event.u.media_player_es_changed.i_id = vlc_es_id_GetInputId(track->es_id);
+
+    libvlc_event_send(&mp->event_manager, &event);
+}
+
 static void
 on_track_selection_changed(vlc_player_t *player,
                            vlc_es_id_t *unselected_id,
@@ -187,6 +215,7 @@ static const struct vlc_player_cbs vlc_player_cbs = {
     .on_capabilities_changed = on_capabilities_changed,
     .on_position_changed = on_position_changed,
     .on_length_changed = on_length_changed,
+    .on_track_list_changed = on_track_list_changed,
     .on_track_selection_changed = on_track_selection_changed,
     .on_program_selection_changed = on_program_selection_changed,
 };
@@ -263,66 +292,6 @@ input_scrambled_changed( vlc_object_t * p_this, char const * psz_cmd,
     event.u.media_player_scrambled_changed.new_scrambled = newval.b_bool;
 
     libvlc_event_send( &p_mi->event_manager, &event );
-    return VLC_SUCCESS;
-}
-
-static int track_type_from_name(const char *psz_name)
-{
-   if( !strcmp( psz_name, "video-es" ) )
-       return libvlc_track_video;
-    else if( !strcmp( psz_name, "audio-es" ) )
-        return libvlc_track_audio;
-    else if( !strcmp( psz_name, "spu-es" ) )
-        return libvlc_track_text;
-    else
-        return libvlc_track_unknown;
-}
-
-static int input_es_changed( vlc_object_t *p_this,
-                             char const *psz_cmd,
-                             int action,
-                             vlc_value_t *p_val,
-                             void *p_userdata )
-{
-    VLC_UNUSED(p_this);
-    libvlc_media_player_t *mp = p_userdata;
-    libvlc_event_t event;
-
-    /* Ignore the "Disable" element */
-    if (p_val && p_val->i_int < 0)
-        return VLC_EGENERIC;
-
-    switch (action)
-    {
-    case VLC_VAR_ADDCHOICE:
-        event.type = libvlc_MediaPlayerESAdded;
-        break;
-    case VLC_VAR_DELCHOICE:
-    case VLC_VAR_CLEARCHOICES:
-        event.type = libvlc_MediaPlayerESDeleted;
-        break;
-    default:
-        return VLC_EGENERIC;
-    }
-
-    event.u.media_player_es_changed.i_type = track_type_from_name(psz_cmd);
-
-    int i_id;
-    if (action != VLC_VAR_CLEARCHOICES)
-    {
-        if (!p_val)
-            return VLC_EGENERIC;
-        i_id = p_val->i_int;
-    }
-    else
-    {
-        /* -1 means all ES tracks of this type were deleted. */
-        i_id = -1;
-    }
-    event.u.media_player_es_changed.i_id = i_id;
-
-    libvlc_event_send(&mp->event_manager, &event);
-
     return VLC_SUCCESS;
 }
 
@@ -705,20 +674,6 @@ libvlc_event_manager_t *
 libvlc_media_player_event_manager( libvlc_media_player_t *p_mi )
 {
     return &p_mi->event_manager;
-}
-
-static void add_es_callbacks( input_thread_t *p_input_thread, libvlc_media_player_t *p_mi )
-{
-    var_AddListCallback( p_input_thread, "video-es", input_es_changed, p_mi );
-    var_AddListCallback( p_input_thread, "audio-es", input_es_changed, p_mi );
-    var_AddListCallback( p_input_thread, "spu-es", input_es_changed, p_mi );
-}
-
-static void del_es_callbacks( input_thread_t *p_input_thread, libvlc_media_player_t *p_mi )
-{
-    var_DelListCallback( p_input_thread, "video-es", input_es_changed, p_mi );
-    var_DelListCallback( p_input_thread, "audio-es", input_es_changed, p_mi );
-    var_DelListCallback( p_input_thread, "spu-es", input_es_changed, p_mi );
 }
 
 static void on_input_event(input_thread_t *input,
