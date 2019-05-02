@@ -63,7 +63,27 @@ static void
 on_current_media_changed(vlc_player_t *player, input_item_t *new_media,
                          void *data)
 {
+    libvlc_media_player_t *mp = data;
 
+    libvlc_media_t *md = mp->p_md;
+
+    if ((!new_media && !md) || (new_media == md->p_input_item))
+        /* no changes */
+        return;
+
+    if (new_media)
+    {
+        mp->p_md = libvlc_media_new_from_input_item(mp->p_libvlc_instance,
+                                                    new_media);
+        if (!mp->p_md)
+            /* error already printed by the function call */
+            return;
+    }
+
+    libvlc_event_t event;
+    event.type = libvlc_MediaPlayerMediaChanged;
+    event.u.media_player_media_changed.new_media = mp->p_md;
+    libvlc_event_send(&mp->event_manager, &event);
 }
 
 static void
@@ -596,19 +616,13 @@ void libvlc_media_player_set_media(
 {
     vlc_player_Lock(p_mi->player);
 
-    vlc_player_SetCurrentMedia(p_mi->player, p_md->p_input_item);
-
     libvlc_media_release( p_mi->p_md );
 
-    if( !p_md )
-    {
-        p_mi->p_md = NULL;
-        vlc_player_Unlock(p_mi->player);
-        return; /* It is ok to pass a NULL md */
-    }
-
-    libvlc_media_retain( p_md );
+    if( p_md )
+        libvlc_media_retain( p_md );
     p_mi->p_md = p_md;
+
+    vlc_player_SetCurrentMedia(p_mi->player, p_md->p_input_item);
 
     /* The policy here is to ignore that we were created using a different
      * libvlc_instance, because we don't really care */
