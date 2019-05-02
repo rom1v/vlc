@@ -181,6 +181,12 @@ on_program_selection_changed(vlc_player_t *player, int unselected_id,
 
 }
 
+static void
+on_cork_changed(vlc_player_t *player, unsigned cork_count, void *data)
+{
+
+}
+
 // player aout callbacks
 
 static void
@@ -218,6 +224,7 @@ static const struct vlc_player_cbs vlc_player_cbs = {
     .on_track_list_changed = on_track_list_changed,
     .on_track_selection_changed = on_track_selection_changed,
     .on_program_selection_changed = on_program_selection_changed,
+    .on_cork_changed = on_cork_changed,
 };
 
 static const struct vlc_player_aout_cbs vlc_player_aout_cbs = {
