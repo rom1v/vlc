@@ -228,6 +228,10 @@ static const struct vlc_player_aout_cbs vlc_player_aout_cbs = {
     .on_mute_changed = on_mute_changed,
 };
 
+static const struct vlc_player_vout_cbs vlc_player_vout_cbs = {
+    0
+};
+
 /*
  * Shortcuts
  */
@@ -485,17 +489,21 @@ libvlc_media_player_new( libvlc_instance_t *instance )
     mp->p_libvlc_instance = instance;
     mp->player = vlc_player_New(VLC_OBJECT(mp), NULL, NULL);
     if (unlikely(!mp->player))
-    {
-        vlc_object_delete(mp);
-        return NULL;
-    }
+        goto error1;
 
     mp->listener = vlc_player_AddListener(mp->player, &vlc_player_cbs, mp);
-    if (unlikely(mp->listener))
-    {
-        vlc_player_Delete(mp->player);
-        vlc_object_delete(mp);
-    }
+    if (unlikely(!mp->listener))
+        goto error2;
+
+    mp->aout_listener =
+        vlc_player_aout_AddListener(mp->player, &vlc_player_aout_cbs, mp);
+    if (unlikely(!mp->aout_listener))
+        goto error3;
+
+    mp->vout_listener =
+        vlc_player_vout_AddListener(mp->player, &vlc_player_vout_cbs, mp);
+    if (unlikely(!mp->vout_listener))
+        goto error4;
 
     mp->i_refcount = 1;
     libvlc_event_manager_init(&mp->event_manager, mp);
@@ -505,6 +513,16 @@ libvlc_media_player_new( libvlc_instance_t *instance )
 
     libvlc_retain(instance);
     return mp;
+
+error4:
+    vlc_player_aout_RemoveListener(mp->player, mp->aout_listener);
+error3:
+    vlc_player_RemoveListener(mp->player, mp->listener);
+error2:
+    vlc_player_Delete(mp->player);
+error1:
+    vlc_object_delete(mp);
+    return NULL;
 }
 
 /**************************************************************************
@@ -538,6 +556,9 @@ static void libvlc_media_player_destroy( libvlc_media_player_t *p_mi )
     var_DelCallback( p_mi, "audio-device", audio_device_changed, NULL );
     var_DelCallback( p_mi, "corks", corks_changed, NULL );
 
+    vlc_player_vout_RemoveListener(p_mi->player, p_mi->vout_listener);
+    vlc_player_aout_RemoveListener(p_mi->player, p_mi->aout_listener);
+    vlc_player_RemoveListener(p_mi->player, p_mi->listener);
     vlc_player_Delete(p_mi->player);
 
     libvlc_event_manager_destroy(&p_mi->event_manager);
