@@ -86,10 +86,6 @@ add_es_callbacks( input_thread_t *p_input_thread, libvlc_media_player_t *p_mi );
 static void
 del_es_callbacks( input_thread_t *p_input_thread, libvlc_media_player_t *p_mi );
 
-static int
-snapshot_was_taken( vlc_object_t *p_this, char const *psz_cmd,
-                    vlc_value_t oldval, vlc_value_t newval, void *p_data );
-
 static void libvlc_media_player_destroy( libvlc_media_player_t *p_mi );
 
 /*
@@ -511,25 +507,6 @@ static int input_es_changed( vlc_object_t *p_this,
     return VLC_SUCCESS;
 }
 
-/**************************************************************************
- * Snapshot Taken Event.
- *
- * FIXME: This snapshot API interface makes no sense in media_player.
- *************************************************************************/
-static int snapshot_was_taken(vlc_object_t *p_this, char const *psz_cmd,
-                              vlc_value_t oldval, vlc_value_t newval, void *p_data )
-{
-    VLC_UNUSED(psz_cmd); VLC_UNUSED(oldval); VLC_UNUSED(p_this);
-
-    libvlc_media_player_t *mp = p_data;
-    libvlc_event_t event;
-    event.type = libvlc_MediaPlayerSnapshotTaken;
-    event.u.media_player_snapshot_taken.psz_filename = newval.psz_string;
-    libvlc_event_send(&mp->event_manager, &event);
-
-    return VLC_SUCCESS;
-}
-
 static int corks_changed(vlc_object_t *obj, const char *name, vlc_value_t old,
                          vlc_value_t cur, void *opaque)
 {
@@ -772,17 +749,6 @@ libvlc_media_player_new( libvlc_instance_t *instance )
     var_AddCallback(mp, "mute", mute_changed, NULL);
     var_AddCallback(mp, "volume", volume_changed, NULL);
 
-    /* Snapshot initialization */
-    /* Attach a var callback to the global object to provide the glue between
-     * vout_thread that generates the event and media_player that re-emits it
-     * with its own event manager
-     *
-     * FIXME: It's unclear why we want to put this in public API, and why we
-     * want to expose it in such a limiting and ugly way.
-     */
-    var_AddCallback(vlc_object_instance(mp),
-                    "snapshot-file", snapshot_was_taken, mp);
-
     libvlc_retain(instance);
     return mp;
 }
@@ -813,10 +779,6 @@ libvlc_media_player_new_from_media( libvlc_media_t * p_md )
 static void libvlc_media_player_destroy( libvlc_media_player_t *p_mi )
 {
     assert( p_mi );
-
-    /* Detach Callback from the main libvlc object */
-    var_DelCallback( vlc_object_instance(p_mi),
-                     "snapshot-file", snapshot_was_taken, p_mi );
 
     /* Detach callback from the media player / input manager object */
     var_DelCallback( p_mi, "volume", volume_changed, NULL );
