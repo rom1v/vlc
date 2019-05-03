@@ -51,10 +51,6 @@ input_scrambled_changed( vlc_object_t * p_this, char const * psz_cmd,
                         vlc_value_t oldval, vlc_value_t newval,
                         void * p_userdata );
 
-static int
-corks_changed(vlc_object_t *obj, const char *name, vlc_value_t old,
-              vlc_value_t cur, void *opaque);
-
 static void libvlc_media_player_destroy( libvlc_media_player_t *p_mi );
 
 // player callbacks
@@ -200,7 +196,13 @@ on_program_selection_changed(vlc_player_t *player, int unselected_id,
 static void
 on_cork_changed(vlc_player_t *player, unsigned cork_count, void *data)
 {
+    libvlc_media_player_t *mp = data;
 
+    libvlc_event_t event;
+    event.type = cork_count ? libvlc_MediaPlayerCorked
+                            : libvlc_MediaPlayerUncorked;
+
+    libvlc_event_send(&mp->event_manager, &event);
 }
 
 // player aout callbacks
@@ -296,23 +298,6 @@ input_scrambled_changed( vlc_object_t * p_this, char const * psz_cmd,
     event.u.media_player_scrambled_changed.new_scrambled = newval.b_bool;
 
     libvlc_event_send( &p_mi->event_manager, &event );
-    return VLC_SUCCESS;
-}
-
-static int corks_changed(vlc_object_t *obj, const char *name, vlc_value_t old,
-                         vlc_value_t cur, void *opaque)
-{
-    libvlc_media_player_t *mp = (libvlc_media_player_t *)obj;
-
-    if (!old.i_int != !cur.i_int)
-    {
-        libvlc_event_t event;
-
-        event.type = cur.i_int ? libvlc_MediaPlayerCorked
-                               : libvlc_MediaPlayerUncorked;
-        libvlc_event_send(&mp->event_manager, &event);
-    }
-    VLC_UNUSED(name); VLC_UNUSED(opaque);
     return VLC_SUCCESS;
 }
 
@@ -505,7 +490,6 @@ libvlc_media_player_new( libvlc_instance_t *instance )
     mp->i_refcount = 1;
     libvlc_event_manager_init(&mp->event_manager, mp);
 
-    var_AddCallback(mp, "corks", corks_changed, NULL);
     var_AddCallback(mp, "audio-device", audio_device_changed, NULL);
 
     libvlc_retain(instance);
@@ -551,7 +535,6 @@ static void libvlc_media_player_destroy( libvlc_media_player_t *p_mi )
 
     /* Detach callback from the media player / input manager object */
     var_DelCallback( p_mi, "audio-device", audio_device_changed, NULL );
-    var_DelCallback( p_mi, "corks", corks_changed, NULL );
 
     vlc_player_vout_RemoveListener(p_mi->player, p_mi->vout_listener);
     vlc_player_aout_RemoveListener(p_mi->player, p_mi->aout_listener);
