@@ -421,6 +421,20 @@ on_mute_changed(vlc_player_t *player, bool new_muted, void *data)
     libvlc_event_send(&mp->event_manager, &event);
 }
 
+static void
+on_audio_device_changed(vlc_player_t *player, const char *device, void *data)
+{
+    (void) player;
+
+    libvlc_media_player_t *mp = data;
+
+    libvlc_event_t event;
+    event.type = libvlc_MediaPlayerAudioDevice;
+    event.u.media_player_audio_device.device = device;
+
+    libvlc_event_send(&mp->event_manager, &event);
+}
+
 static const struct vlc_player_cbs vlc_player_cbs = {
     .on_current_media_changed = on_current_media_changed,
     .on_state_changed = on_state_changed,
@@ -442,24 +456,12 @@ static const struct vlc_player_cbs vlc_player_cbs = {
 static const struct vlc_player_aout_cbs vlc_player_aout_cbs = {
     .on_volume_changed = on_volume_changed,
     .on_mute_changed = on_mute_changed,
+    .on_device_changed = on_audio_device_changed,
 };
 
 static const struct vlc_player_vout_cbs vlc_player_vout_cbs = {
     0
 };
-
-static int audio_device_changed(vlc_object_t *obj, const char *name,
-                                vlc_value_t old, vlc_value_t cur, void *opaque)
-{
-    libvlc_media_player_t *mp = (libvlc_media_player_t *)obj;
-    libvlc_event_t event;
-
-    event.type = libvlc_MediaPlayerAudioDevice;
-    event.u.media_player_audio_device.device = cur.psz_string;
-    libvlc_event_send(&mp->event_manager, &event);
-    VLC_UNUSED(name); VLC_UNUSED(old); VLC_UNUSED(opaque);
-    return VLC_SUCCESS;
-}
 
 /**************************************************************************
  * Create a Media Instance object.
@@ -637,8 +639,6 @@ libvlc_media_player_new( libvlc_instance_t *instance )
     mp->i_refcount = 1;
     libvlc_event_manager_init(&mp->event_manager, mp);
 
-    var_AddCallback(mp, "audio-device", audio_device_changed, NULL);
-
     libvlc_retain(instance);
     return mp;
 
@@ -679,9 +679,6 @@ libvlc_media_player_new_from_media( libvlc_media_t * p_md )
 static void libvlc_media_player_destroy( libvlc_media_player_t *p_mi )
 {
     assert( p_mi );
-
-    /* Detach callback from the media player / input manager object */
-    var_DelCallback( p_mi, "audio-device", audio_device_changed, NULL );
 
     vlc_player_vout_RemoveListener(p_mi->player, p_mi->vout_listener);
     vlc_player_aout_RemoveListener(p_mi->player, p_mi->aout_listener);
