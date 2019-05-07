@@ -447,22 +447,6 @@ input_event_changed( vlc_object_t * p_this, char const * psz_cmd,
             }
         }
     }
-    else if ( newval.i_int == INPUT_EVENT_RECORD )
-    {
-        bool recording = var_GetBool( p_input, "record" );
-        char *file_path = NULL;
-
-        if ( !recording )
-            file_path = var_GetString( p_mi, "record-file" );
-
-        event.type = libvlc_MediaPlayerRecordChanged;
-        event.u.media_player_record_changed.file_path = file_path;
-        event.u.media_player_record_changed.recording = recording;
-
-        libvlc_event_send( &p_mi->event_manager, &event );
-
-        free( file_path );
-    }
 
     return VLC_SUCCESS;
 }
