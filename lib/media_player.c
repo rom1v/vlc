@@ -622,6 +622,8 @@ libvlc_media_player_new( libvlc_instance_t *instance )
     if (unlikely(!mp->player))
         goto error1;
 
+    vlc_player_Lock(mp->player);
+
     mp->listener = vlc_player_AddListener(mp->player, &vlc_player_cbs, mp);
     if (unlikely(!mp->listener))
         goto error2;
@@ -636,6 +638,8 @@ libvlc_media_player_new( libvlc_instance_t *instance )
     if (unlikely(!mp->vout_listener))
         goto error4;
 
+    vlc_player_Unlock(mp->player);
+
     mp->i_refcount = 1;
     libvlc_event_manager_init(&mp->event_manager, mp);
 
@@ -647,6 +651,7 @@ error4:
 error3:
     vlc_player_RemoveListener(mp->player, mp->listener);
 error2:
+    vlc_player_Unlock(mp->player);
     vlc_player_Delete(mp->player);
 error1:
     vlc_object_delete(mp);
