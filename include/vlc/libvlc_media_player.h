@@ -1181,6 +1181,7 @@ LIBVLC_API int libvlc_media_player_get_chapter_count( libvlc_media_player_t *p_m
  *
  * \libvlc_return_bool
  */
+LIBVLC_DEPRECATED
 LIBVLC_API int libvlc_media_player_will_play( libvlc_media_player_t *p_mi );
 
 /**
