@@ -111,6 +111,17 @@ LIBVLC_DEPRECATED LIBVLC_API int
 LIBVLC_DEPRECATED LIBVLC_API
 void libvlc_playlist_play( libvlc_instance_t *p_instance );
 
+/**
+ * Is the player able to play
+ *
+ * \param p_mi the Media Player
+ * \return boolean
+ *
+ * \libvlc_return_bool
+ */
+LIBVLC_DEPRECATED
+LIBVLC_API int libvlc_media_player_will_play( libvlc_media_player_t *p_mi );
+
 /** @}*/
 
 # ifdef __cplusplus
