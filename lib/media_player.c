@@ -698,15 +698,19 @@ libvlc_media_player_new_from_media( libvlc_media_t * p_md )
     if( !p_mi )
         return NULL;
 
+    libvlc_media_retain( p_md );
+    p_mi->p_md = p_md;
+
     vlc_player_Lock(p_mi->player);
     int ret = vlc_player_SetCurrentMedia(p_mi->player, p_md->p_input_item);
     vlc_player_Unlock(p_mi->player);
 
     if (ret != VLC_SUCCESS)
+    {
+        libvlc_media_release(p_md);
+        p_mi->p_md = NULL;
         return NULL;
-
-    libvlc_media_retain( p_md );
-    p_mi->p_md = p_md;
+    }
 
     return p_mi;
 }
