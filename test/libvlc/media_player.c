@@ -28,11 +28,10 @@ static void wait_playing(libvlc_media_player_t *mp)
     do {
         state = libvlc_media_player_get_state (mp);
     } while(state != libvlc_Playing &&
-            state != libvlc_Error &&
-            state != libvlc_Ended );
+            state != libvlc_Stopped);
 
     state = libvlc_media_player_get_state (mp);
-    assert(state == libvlc_Playing || state == libvlc_Ended);
+    assert(state == libvlc_Playing || state == libvlc_Stopped);
 }
 
 static void wait_paused(libvlc_media_player_t *mp)
@@ -41,10 +40,10 @@ static void wait_paused(libvlc_media_player_t *mp)
     do {
         state = libvlc_media_player_get_state (mp);
     } while(state != libvlc_Paused &&
-            state != libvlc_Ended );
+            state != libvlc_Stopped );
 
     state = libvlc_media_player_get_state (mp);
-    assert(state == libvlc_Paused || state == libvlc_Ended);
+    assert(state == libvlc_Paused || state == libvlc_Stopped);
 }
 
 /* Test a bunch of A/V properties. This most does nothing since the current
