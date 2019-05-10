@@ -3046,7 +3046,10 @@ vlc_player_AoutCallback(vlc_object_t *this, const char *var,
     }
     else if (strcmp(var, "device") == 0)
     {
-        if (strcmp(oldval.psz_string, newval.psz_string) != 0)
+        const char *old = oldval.psz_string;
+        const char *new = newval.psz_string;
+        /* support NULL values for string comparison */
+        if (old != new && (!old || !new || strcmp(old, new)))
             vlc_player_aout_SendEvent(player, on_device_changed,
                                       newval.psz_string);
     }
