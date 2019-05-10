@@ -64,7 +64,8 @@ on_current_media_changed(vlc_player_t *player, input_item_t *new_media,
 
     libvlc_media_t *md = mp->p_md;
 
-    if ((!new_media && !md) || (new_media == md->p_input_item))
+    input_item_t *media = md ? md->p_input_item : NULL;
+    if (new_media == media)
         /* no changes */
         return;
 
@@ -691,6 +692,13 @@ libvlc_media_player_new_from_media( libvlc_media_t * p_md )
 
     p_mi = libvlc_media_player_new( p_md->p_libvlc_instance );
     if( !p_mi )
+        return NULL;
+
+    vlc_player_Lock(p_mi->player);
+    int ret = vlc_player_SetCurrentMedia(p_mi->player, p_md->p_input_item);
+    vlc_player_Unlock(p_mi->player);
+
+    if (ret != VLC_SUCCESS)
         return NULL;
 
     libvlc_media_retain( p_md );
