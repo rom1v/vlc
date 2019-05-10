@@ -85,6 +85,10 @@ on_current_media_changed(vlc_player_t *player, input_item_t *new_media,
 
         media_attach_preparsed_event(mp->p_md);
     }
+    else
+        mp->p_md = NULL;
+
+    libvlc_media_release(md);
 
     libvlc_event_t event;
     event.type = libvlc_MediaPlayerMediaChanged;
