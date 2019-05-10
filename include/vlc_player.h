@@ -1206,8 +1206,10 @@ vlc_player_Start(vlc_player_t *player);
  * STOPPED state event to know when the stop is finished.
  *
  * @param player locked player instance
+ * @return false if already stopped, true if the player is stopping
+ * asynchronously
  */
-VLC_API void
+VLC_API bool
 vlc_player_Stop(vlc_player_t *player);
 
 /**
