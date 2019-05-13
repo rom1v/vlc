@@ -50,6 +50,9 @@ static int
 snapshot_was_taken( vlc_object_t *p_this, char const *psz_cmd,
                     vlc_value_t oldval, vlc_value_t newval, void *p_data );
 
+static void media_attach_preparsed_event(libvlc_media_t *);
+static void media_detach_preparsed_event(libvlc_media_t *);
+
 static void libvlc_media_player_destroy( libvlc_media_player_t *p_mi );
 
 // player callbacks
@@ -68,6 +71,9 @@ on_current_media_changed(vlc_player_t *player, input_item_t *new_media,
         /* no changes */
         return;
 
+    if (md)
+        media_detach_preparsed_event(md);
+
     if (new_media)
     {
         mp->p_md = libvlc_media_new_from_input_item(mp->p_libvlc_instance,
@@ -75,6 +81,8 @@ on_current_media_changed(vlc_player_t *player, input_item_t *new_media,
         if (!mp->p_md)
             /* error already printed by the function call */
             return;
+
+        media_attach_preparsed_event(mp->p_md);
     }
 
     libvlc_event_t event;
@@ -807,10 +815,16 @@ void libvlc_media_player_set_media(
 {
     vlc_player_Lock(p_mi->player);
 
+    if (p_mi->p_md)
+        media_detach_preparsed_event(p_mi->p_md);
+
     libvlc_media_release( p_mi->p_md );
 
     if( p_md )
+    {
         libvlc_media_retain( p_md );
+        media_attach_preparsed_event(p_md);
+    }
     p_mi->p_md = p_md;
 
     vlc_player_SetCurrentMedia(p_mi->player, p_md->p_input_item);
