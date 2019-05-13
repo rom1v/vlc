@@ -371,6 +371,19 @@ on_chapter_selection_changed(vlc_player_t *player,
 }
 
 static void
+on_media_subitems_changed(vlc_player_t *player, input_item_t *media,
+                          input_item_node_t *new_subitems, void *data)
+{
+    (void) player;
+
+    libvlc_media_player_t *mp = data;
+
+    input_item_t *current = mp->p_md ? mp->p_md->p_input_item : NULL;
+    if (media == current)
+        libvlc_media_add_subtree(mp->p_md, new_subitems);
+}
+
+static void
 on_cork_changed(vlc_player_t *player, unsigned cork_count, void *data)
 {
     (void) player;
@@ -466,6 +479,7 @@ static const struct vlc_player_cbs vlc_player_cbs = {
     .on_program_selection_changed = on_program_selection_changed,
     .on_title_selection_changed = on_title_selection_changed,
     .on_chapter_selection_changed = on_chapter_selection_changed,
+    .on_media_subitems_changed = on_media_subitems_changed,
     .on_cork_changed = on_cork_changed,
     .on_vout_changed = on_vout_changed,
 };
