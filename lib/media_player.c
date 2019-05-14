@@ -108,6 +108,8 @@ on_state_changed(vlc_player_t *player, enum vlc_player_state new_state,
     switch (new_state) {
         case VLC_PLAYER_STATE_STOPPED:
             event.type = libvlc_MediaPlayerStopped;
+            if (mp->stop_requested)
+                vlc_sem_post(&mp->sem_stop);
             break;
         case VLC_PLAYER_STATE_STOPPING:
             event.type = libvlc_MediaPlayerEndReached;
@@ -715,6 +717,9 @@ libvlc_media_player_new( libvlc_instance_t *instance )
 
     vlc_player_Unlock(mp->player);
 
+    vlc_sem_init(&mp->sem_stop, 0);
+    mp->stop_requested = false;
+
     mp->i_refcount = 1;
     libvlc_event_manager_init(&mp->event_manager, mp);
 
@@ -795,6 +800,8 @@ static void libvlc_media_player_destroy( libvlc_media_player_t *p_mi )
 
     libvlc_event_manager_destroy(&p_mi->event_manager);
     libvlc_media_release( p_mi->p_md );
+
+    vlc_sem_destroy(&p_mi->sem_stop);
 
     vlc_http_cookie_jar_t *cookies = var_GetAddress( p_mi, "http-cookies" );
     if ( cookies )
@@ -972,9 +979,13 @@ void libvlc_media_player_stop( libvlc_media_player_t *p_mi )
     vlc_player_t *player = p_mi->player;
     vlc_player_Lock(player);
 
-    vlc_player_Stop(player);
+    bool stop_async = vlc_player_Stop(player);
+    p_mi->stop_requested = stop_async;
 
     vlc_player_Unlock(player);
+
+    if (stop_async)
+        vlc_sem_wait(&p_mi->sem_stop);
 }
 
 int libvlc_media_player_set_renderer( libvlc_media_player_t *p_mi,
