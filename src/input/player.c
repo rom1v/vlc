@@ -923,12 +923,6 @@ vlc_player_input_HandleState(struct vlc_player_input *input,
 {
     vlc_player_t *player = input->player;
 
-    /* The STOPPING state can be set earlier by the player. In that case,
-     * ignore all future events except the STOPPED one */
-    if (input->state == VLC_PLAYER_STATE_STOPPING
-     && state != VLC_PLAYER_STATE_STOPPED)
-        return;
-
     input->state = state;
 
     /* Override the global state if the player is still playing and has a next
@@ -1990,8 +1984,7 @@ input_thread_Events(input_thread_t *input_thread,
                                  input_GetItem(input->thread), event->subitems);
             break;
         case INPUT_EVENT_DEAD:
-            if (input->started) /* Can happen with early input_thread fails */
-                vlc_player_input_HandleState(input, VLC_PLAYER_STATE_STOPPING);
+            vlc_player_input_HandleState(input, VLC_PLAYER_STATE_STOPPING);
             vlc_player_destructor_AddJoinableInput(player, input);
             break;
         case INPUT_EVENT_VBI_PAGE:
