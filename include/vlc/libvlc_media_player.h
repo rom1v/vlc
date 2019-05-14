@@ -267,11 +267,21 @@ LIBVLC_API void libvlc_media_player_set_pause ( libvlc_media_player_t *mp,
 LIBVLC_API void libvlc_media_player_pause ( libvlc_media_player_t *p_mi );
 
 /**
- * Stop (no effect if there is no media)
+ * Stop synchronously (no effect if there is no media)
+ *
+ * This function blocks until the input thread is actually stopped.
+ * Prefer libvlc_media_player_stop_async().
  *
  * \param p_mi the Media Player
  */
 LIBVLC_API void libvlc_media_player_stop ( libvlc_media_player_t *p_mi );
+
+/**
+ * Stop (no effect if there is no media)
+ *
+ * \param p_mi the Media Player
+ */
+LIBVLC_API void libvlc_media_player_stop_async ( libvlc_media_player_t *p_mi );
 
 /**
  * Set a renderer to the media player

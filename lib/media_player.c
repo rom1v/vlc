@@ -974,6 +974,16 @@ int libvlc_media_player_is_playing( libvlc_media_player_t *p_mi )
 /**************************************************************************
  * Stop playing.
  **************************************************************************/
+void libvlc_media_player_stop_async( libvlc_media_player_t *p_mi )
+{
+    vlc_player_t *player = p_mi->player;
+    vlc_player_Lock(player);
+
+    vlc_player_Stop(player);
+
+    vlc_player_Unlock(player);
+}
+
 void libvlc_media_player_stop( libvlc_media_player_t *p_mi )
 {
     vlc_player_t *player = p_mi->player;
