@@ -22,13 +22,15 @@
 # include "config.h"
 #endif
 
+#include <vlc_common.h>
+#include <vlc_atomic.h>
+#include <vlc_playlist.h>
+#include <vlc/libvlc.h>
+#include <vlc/libvlc_picture.h>
 #include <vlc/libvlc_playlist.h>
 #include <vlc/libvlc_media.h>
 
-#include <vlc_atomic.h>
 #include "media_internal.h"
-#include "../src/playlist/item.h"
-#include "../src/playlist/playlist.h"
 
 struct libvlc_playlist
 {
@@ -81,8 +83,9 @@ libvlc_playlist_item_Wrap(libvlc_instance_t *libvlc, vlc_playlist_item_t *item)
     if (unlikely(!wrapper))
         return NULL;
 
+    input_item_t *media_item = vlc_playlist_item_GetMedia(item);
     libvlc_media_t *media =
-        libvlc_media_new_from_input_item(libvlc, item->media);
+        libvlc_media_new_from_input_item(libvlc, media_item);
     if (unlikely(!media))
     {
         free(wrapper);
