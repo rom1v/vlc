@@ -27,8 +27,8 @@
 
 #include <vlc_atomic.h>
 #include "media_internal.h"
-#include "../src/playlist_new/item.h"
-#include "../src/playlist_new/playlist.h"
+#include "../src/playlist/item.h"
+#include "../src/playlist/playlist.h"
 
 struct libvlc_playlist
 {
@@ -81,8 +81,8 @@ libvlc_playlist_item_Wrap(libvlc_instance_t *libvlc, vlc_playlist_item_t *item)
     if (unlikely(!wrapper))
         return NULL;
 
-    libvlc_media_t *media = libvlc_media_new_from_input_item(libvlc,
-                                                             item->media);
+    libvlc_media_t *media =
+        libvlc_media_new_from_input_item(libvlc, item->media);
     if (unlikely(!media))
     {
         free(wrapper);
