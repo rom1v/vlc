@@ -18,6 +18,7 @@ pkginclude_HEADERS = \
 	../include/vlc/libvlc_media_list.h \
 	../include/vlc/libvlc_media_list_player.h \
 	../include/vlc/libvlc_media_player.h \
+	../include/vlc/libvlc_playlist.h \
 	../include/vlc/libvlc_renderer_discoverer.h \
 	../include/vlc/libvlc_picture.h \
 	../include/vlc/vlc.h
