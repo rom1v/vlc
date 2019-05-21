@@ -30,13 +30,14 @@ extern "C" {
 # endif
 
 /**
- * \defgroup playlist playlist
- * \ingroup playlist
- * @{
+ * \defgroup playlist LibVLC playlist
+ * \ingroup interface
  */
 
+/* forward declarations */
 typedef struct libvlc_media_t libvlc_media_t;
 
+/* opaque types */
 typedef struct libvlc_playlist libvlc_playlist_t;
 typedef struct libvlc_playlist_item libvlc_playlist_item_t;
 typedef struct libvlc_playlist_listener_id libvlc_playlist_listener_id;
@@ -84,10 +85,11 @@ struct libvlc_playlist_sort_criterion
 /**
  * Playlist callbacks.
  *
- * A client may register a listener using libvlc_playlist_AddListener() to listen
- * playlist events.
+ * A client may register a listener using libvlc_playlist_AddListener() to
+ * listen playlist events.
  *
- * All callbacks are called with the playlist locked (see libvlc_playlist_Lock()).
+ * All callbacks are called with the playlist locked (see
+ * libvlc_playlist_Lock()).
  */
 struct libvlc_playlist_callbacks
 {
@@ -101,7 +103,7 @@ struct libvlc_playlist_callbacks
      * \param userdata userdata provided to AddListener()
      */
     void
-    (*on_items_reset)(libvlc_playlist_t *playlist,
+    (*on_items_reset)(libvlc_playlist_t *,
                       libvlc_playlist_item_t *const items[], size_t count,
                       void *userdata);
 
@@ -136,7 +138,6 @@ struct libvlc_playlist_callbacks
      *
      * \param playlist the playlist
      * \param index    the index of the first removed item
-     * \param items    the array of removed items
      * \param count    the number of items removed
      * \param userdata userdata provided to AddListener()
      */
@@ -247,6 +248,12 @@ libvlc_playlist_item_Release(libvlc_playlist_item_t *);
 LIBVLC_API libvlc_media_t *
 libvlc_playlist_item_GetMedia(libvlc_playlist_item_t *);
 
+/**
+ * Return a unique id for the playlist item instance.
+ */
+LIBVLC_API uint64_t
+libvlc_playlist_item_GetId(libvlc_playlist_item_t *);
+
 /* Playlist */
 
 /**
@@ -300,7 +307,7 @@ libvlc_playlist_Unlock(libvlc_playlist_t *);
  * registers to the playlist, it may already contain items. Calling callbacks
  * is a convenient way to initialize the client automatically.
  *
- * \param playlist             the playlist
+ * \param playlist             the playlist, locked
  * \param cbs                  the callbacks (must be valid until the listener
  *                             is removed)
  * \param userdata             userdata provided as a parameter in callbacks
@@ -316,7 +323,7 @@ libvlc_playlist_AddListener(libvlc_playlist_t *playlist,
 /**
  * Remove a player listener.
  *
- * \param playlist the playlist
+ * \param playlist the playlist, locked
  * \param id       the listener identifier returned by
  *                 libvlc_playlist_AddListener()
  */
@@ -475,8 +482,8 @@ libvlc_playlist_RemoveOne(libvlc_playlist_t *playlist, size_t index)
 /**
  * Insert a list of media at a given index (if in range), or append.
  *
- * Contrary to libvlc_playlist_Insert(), the index need not be in range: if it is
- * out of bounds, items will be appended.
+ * Contrary to libvlc_playlist_Insert(), the index need not be in range: if it
+ * is out of bounds, items will be appended.
  *
  * This is an helper to apply a desynchronized insert request, i.e. the
  * playlist content may have changed since the request had been submitted.
@@ -544,8 +551,8 @@ libvlc_playlist_RequestMove(libvlc_playlist_t *playlist,
  */
 LIBVLC_API int
 libvlc_playlist_RequestRemove(libvlc_playlist_t *playlist,
-                              libvlc_playlist_item_t *const items[], size_t count,
-                              ssize_t index_hint);
+                              libvlc_playlist_item_t *const items[],
+                              size_t count, ssize_t index_hint);
 
 /**
  * Shuffle the playlist.
@@ -589,6 +596,16 @@ libvlc_playlist_IndexOf(libvlc_playlist_t *playlist,
 LIBVLC_API ssize_t
 libvlc_playlist_IndexOfMedia(libvlc_playlist_t *playlist,
                              const libvlc_media_t *media);
+
+/**
+ * Return the index of a given item id.
+ *
+ * \param playlist the playlist, locked
+ * \param id       the id to locate
+ * \return the index of the playlist item having the id (-1 if not found)
+ */
+LIBVLC_API ssize_t
+libvlc_playlist_IndexOfId(libvlc_playlist_t *playlist, uint64_t id);
 
 /**
  * Return the playback "repeat" mode.
@@ -721,7 +738,7 @@ libvlc_playlist_RequestGoTo(libvlc_playlist_t *playlist,
  * \param playlist the playlist (not necessarily locked)
  * \return the player
  */
-//LIBVLC_API libvlc_player_t *
+//LIBVLC_API vlc_player_t *
 //libvlc_playlist_GetPlayer(libvlc_playlist_t *playlist);
 
 /**
@@ -768,8 +785,7 @@ libvlc_playlist_Resume(libvlc_playlist_t *playlist);
  * \param media the media to preparse
  */
 LIBVLC_API void
-libvlc_playlist_Preparse(libvlc_playlist_t *playlist, libvlc_instance_t *libvlc,
-                         libvlc_media_t *media);
+libvlc_playlist_Preparse(libvlc_playlist_t *playlist, libvlc_media_t *media);
 
 /** @} */
 
@@ -777,4 +793,4 @@ libvlc_playlist_Preparse(libvlc_playlist_t *playlist, libvlc_instance_t *libvlc,
 }
 # endif
 
- #endif
+#endif
