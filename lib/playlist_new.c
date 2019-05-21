@@ -32,11 +32,22 @@
 
 #include "media_internal.h"
 
+typedef struct VLC_VECTOR(libvlc_playlist_item_t *) \
+        libvlc_playlist_item_vector_t;
+
 struct libvlc_playlist
 {
     vlc_playlist_t *playlist;
     libvlc_instance_t *libvlc;
+    libvlc_playlist_item_vector_t items;
     bool owned;
+    /**
+     * On core playlist events, a memory allocation error cannot be recovered
+     * for the whole lifetime of the playlist.
+     *
+     * Mark the libvlc playlist as dead in that case.
+     */
+    bool dead;
 };
 
 struct libvlc_playlist_item
@@ -63,15 +74,18 @@ libvlc_playlist_Wrap(vlc_playlist_t *playlist, libvlc_instance_t *libvlc,
 
     wrapper->playlist = playlist;
     wrapper->libvlc = libvlc;
+    vlc_vector_init(&wrapper->items);
     wrapper->owned = owned;
+    wrapper->dead = false;
     return wrapper;
 }
 
-static void
-libvlc_playlist_DeleteWrapper(libvlc_playlist_t *wrapper)
+void
+libvlc_playlist_Delete(libvlc_playlist_t *wrapper)
 {
     if (wrapper->owned)
         vlc_playlist_Delete(wrapper->playlist);
+    vlc_vector_destroy(&wrapper->items);
     libvlc_release(wrapper->libvlc);
     free(wrapper);
 }
@@ -96,14 +110,13 @@ libvlc_playlist_item_Wrap(libvlc_instance_t *libvlc, vlc_playlist_item_t *item)
 
     wrapper->item = item;
     wrapper->media = media;
-
     vlc_atomic_rc_init(&wrapper->rc);
 
     return wrapper;
 }
 
 static void
-libvlc_playlist_item_DeleteWrapper(libvlc_playlist_item_t *wrapper)
+libvlc_playlist_item_Delete(libvlc_playlist_item_t *wrapper)
 {
     vlc_playlist_item_Release(wrapper->item);
     libvlc_media_release(wrapper->media);
@@ -122,7 +135,7 @@ libvlc_playlist_listener_Wrap(vlc_playlist_listener_id *listener)
 }
 
 static void
-libvlc_playlist_listener_DeleteWrapper(libvlc_playlist_listener_id *wrapper)
+libvlc_playlist_listener_Delete(libvlc_playlist_listener_id *wrapper)
 {
     free(wrapper);
 }
@@ -168,12 +181,6 @@ libvlc_playlist_New(libvlc_instance_t *libvlc)
 }
 
 void
-libvlc_playlist_Delete(libvlc_playlist_t *playlist)
-{
-    libvlc_playlist_DeleteWrapper(playlist);
-}
-
-void
 libvlc_playlist_Lock(libvlc_playlist_t *playlist)
 {
     vlc_playlist_Lock(playlist->playlist);
@@ -185,39 +192,39 @@ libvlc_playlist_Unlock(libvlc_playlist_t *playlist)
     vlc_playlist_Unlock(playlist->playlist);
 }
 
-static void
-libvlc_playlist_DeleteItemsArray(libvlc_playlist_item_t *array[],
-                                 size_t count)
-{
-    while (count--)
-        libvlc_playlist_item_DeleteWrapper(array[count]);
-    free(array);
-}
-
-static libvlc_playlist_item_t *const *
-libvlc_playlist_WrapItemsArray(libvlc_playlist_t *playlist,
-                               vlc_playlist_item_t *const items[], size_t count)
-{
-    libvlc_playlist_item_t **array = vlc_alloc(count, sizeof(*array));
-    if (unlikely(!array))
-        return NULL;
-
-    size_t i;
-    for (i = 0; i < count; ++i)
-    {
-        array[i] = libvlc_playlist_item_Wrap(playlist->libvlc, items[i]);
-        if (unlikely(!array[i]))
-            break;
-    }
-
-    if (i < count)
-    {
-        libvlc_playlist_DeleteItemsArray(array, i);
-        return NULL;
-    }
-
-    return array;
-}
+//static void
+//libvlc_playlist_DeleteItemsArray(libvlc_playlist_item_t *array[],
+//                                 size_t count)
+//{
+//    while (count--)
+//        libvlc_playlist_item_DeleteWrapper(array[count]);
+//    free(array);
+//}
+//
+//static libvlc_playlist_item_t *const *
+//libvlc_playlist_WrapItemsArray(libvlc_playlist_t *playlist,
+//                               vlc_playlist_item_t *const items[], size_t count)
+//{
+//    libvlc_playlist_item_t **array = vlc_alloc(count, sizeof(*array));
+//    if (unlikely(!array))
+//        return NULL;
+//
+//    size_t i;
+//    for (i = 0; i < count; ++i)
+//    {
+//        array[i] = libvlc_playlist_item_Wrap(playlist->libvlc, items[i]);
+//        if (unlikely(!array[i]))
+//            break;
+//    }
+//
+//    if (i < count)
+//    {
+//        libvlc_playlist_DeleteItemsArray(array, i);
+//        return NULL;
+//    }
+//
+//    return array;
+//}
 
 struct libvlc_callback_context {
     libvlc_playlist_t *playlist;
@@ -232,7 +239,13 @@ on_items_reset(vlc_playlist_t *playlist, vlc_playlist_item_t *const items[],
     VLC_UNUSED(playlist);
 
     struct libvlc_callback_context *ctx = userdata;
+    libvlc_playlist_t *playlist = ctx->playlist;
 
+    for (size_t i = 0; i < playlist->items.size; ++i)
+        libvlc_playlist_item_Delete(playlist->items[i];
+    vlc_vector_clear(&playlist->items);
+
+    
     libvlc_playlist_item_t *const *array =
             libvlc_playlist_WrapItemsArray(ctx->playlist, items, count);
     /* XXX if array is NULL, we must still notify, otherwise the sequence of
