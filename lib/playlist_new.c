@@ -25,6 +25,7 @@
 #include <vlc_common.h>
 #include <vlc_atomic.h>
 #include <vlc_playlist.h>
+#include <vlc_vector.h>
 #include <vlc/libvlc.h>
 #include <vlc/libvlc_picture.h>
 #include <vlc/libvlc_playlist.h>
@@ -239,11 +240,10 @@ on_items_reset(vlc_playlist_t *playlist, vlc_playlist_item_t *const items[],
     VLC_UNUSED(playlist);
 
     struct libvlc_callback_context *ctx = userdata;
-    libvlc_playlist_t *playlist = ctx->playlist;
 
-    for (size_t i = 0; i < playlist->items.size; ++i)
-        libvlc_playlist_item_Delete(playlist->items[i];
-    vlc_vector_clear(&playlist->items);
+    for (size_t i = 0; i < ctx->playlist->items.size; ++i)
+        libvlc_playlist_item_Delete(ctx->playlist->items.data[i]);
+    vlc_vector_clear(&ctx->playlist->items);
 
     
     libvlc_playlist_item_t *const *array =
