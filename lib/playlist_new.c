@@ -24,6 +24,7 @@
 
 #include <vlc_common.h>
 #include <vlc_atomic.h>
+#include <vlc_list.h>
 #include <vlc_playlist.h>
 #include <vlc_vector.h>
 #include <vlc/libvlc.h>
@@ -41,14 +42,18 @@ struct libvlc_playlist
     vlc_playlist_t *playlist;
     libvlc_instance_t *libvlc;
     libvlc_playlist_item_vector_t items;
+    struct vlc_list listeners; /**< list of libvlc_playlist_listener_id.node */
+    /** listener to the core playlist */
+    struct vlc_playlist_listener_id *listener;
     bool owned;
+
     /**
-     * On core playlist events, a memory allocation error cannot be recovered
-     * for the whole lifetime of the playlist.
+     * On core playlist events, a memory allocation error may happen, which
+     * desynchronize the libvlc playlist and the core playlist.
      *
-     * Mark the libvlc playlist as dead in that case.
+     * Set a flag to retry a resync on the next playlist event.
      */
-    bool dead;
+    bool must_resync;
 };
 
 struct libvlc_playlist_item
@@ -60,36 +65,10 @@ struct libvlc_playlist_item
 
 struct libvlc_playlist_listener_id
 {
-    vlc_playlist_listener_id *listener; /* owned by the playlist */
+    const struct libvlc_playlist_callbacks *cbs;
+    void *userdata;
+    struct vlc_list node; /**< node of libvlc_playlist.listeners */
 };
-
-static libvlc_playlist_t *
-libvlc_playlist_Wrap(vlc_playlist_t *playlist, libvlc_instance_t *libvlc,
-                     bool owned)
-{
-    libvlc_playlist_t *wrapper = malloc(sizeof(*wrapper));
-    if (unlikely(!wrapper))
-        return NULL;
-
-    libvlc_retain(libvlc);
-
-    wrapper->playlist = playlist;
-    wrapper->libvlc = libvlc;
-    vlc_vector_init(&wrapper->items);
-    wrapper->owned = owned;
-    wrapper->dead = false;
-    return wrapper;
-}
-
-void
-libvlc_playlist_Delete(libvlc_playlist_t *wrapper)
-{
-    if (wrapper->owned)
-        vlc_playlist_Delete(wrapper->playlist);
-    vlc_vector_destroy(&wrapper->items);
-    libvlc_release(wrapper->libvlc);
-    free(wrapper);
-}
 
 static libvlc_playlist_item_t *
 libvlc_playlist_item_Wrap(libvlc_instance_t *libvlc, vlc_playlist_item_t *item)
@@ -124,23 +103,6 @@ libvlc_playlist_item_Delete(libvlc_playlist_item_t *wrapper)
     free(wrapper);
 }
 
-static libvlc_playlist_listener_id *
-libvlc_playlist_listener_Wrap(vlc_playlist_listener_id *listener)
-{
-    libvlc_playlist_listener_id *wrapper = malloc(sizeof(*wrapper));
-    if (unlikely(!wrapper))
-        return NULL;
-
-    wrapper->listener = listener;
-    return wrapper;
-}
-
-static void
-libvlc_playlist_listener_Delete(libvlc_playlist_listener_id *wrapper)
-{
-    free(wrapper);
-}
-
 void
 libvlc_playlist_item_Hold(libvlc_playlist_item_t *item)
 {
@@ -163,22 +125,48 @@ libvlc_playlist_item_GetMedia(libvlc_playlist_item_t *item)
     return item->media;
 }
 
-libvlc_playlist_t *
-libvlc_playlist_New(libvlc_instance_t *libvlc)
+#define libvlc_playlist_listener_foreach(listener, playlist) \
+    vlc_list_foreach(listener, &(playlist)->listeners, node)
+
+#define libvlc_playlist_NotifyListener(playlist, listener, event, ...) \
+do { \
+    if (listener->cbs->event) \
+        listener->cbs->event(playlist, ##__VA_ARGS__, listener->userdata); \
+} while (0)
+
+#define libvlc_playlist_Notify(playlist, event, ...) \
+do { \
+    libvlc_playlist_listener_id *listener; \
+    libvlc_playlist_listener_foreach(listener, playlist) \
+        libvlc_playlist_NotifyListener(playlist, listener, event, \
+                                       ##__VA_ARGS__); \
+} while(0)
+
+libvlc_playlist_listener_id *
+libvlc_playlist_AddListener(libvlc_playlist_t *playlist,
+                            const struct libvlc_playlist_callbacks *cbs,
+                            void *userdata, bool notify_current_state)
 {
-    vlc_object_t *obj = VLC_OBJECT(libvlc->p_libvlc_int);
-    vlc_playlist_t *playlist = vlc_playlist_New(obj);
-    if (unlikely(!playlist))
+    struct libvlc_playlist_listener_id *listener = malloc(sizeof(*listener));
+    if (unlikely(!listener))
         return NULL;
 
-    libvlc_playlist_t *wrapper = libvlc_playlist_Wrap(playlist, libvlc, true);
-    if (unlikely(!wrapper))
-    {
-        free(playlist);
-        return NULL;
-    }
+    listener->cbs = cbs;
+    listener->userdata = userdata;
+    vlc_list_append(&listener->node, &playlist->listeners);
 
-    return wrapper;
+    if (notify_current_state)
+        libvlc_playlist_NotifyCurrentState(playlist, listener);
+
+    return listener;
+}
+
+void
+libvlc_playlist_RemoveListener(libvlc_playlist_t *playlist,
+                               libvlc_playlist_listener_id *listener)
+{
+    vlc_list_remove(&listener->node);
+    free(listener);
 }
 
 void
@@ -227,11 +215,13 @@ libvlc_playlist_Unlock(libvlc_playlist_t *playlist)
 //    return array;
 //}
 
-struct libvlc_callback_context {
-    libvlc_playlist_t *playlist;
-    const struct libvlc_playlist_callbacks *callbacks;
-    void *userdata;
-};
+static void
+libvlc_playlist_ClearAll(libvlc_playlist_t *playlist)
+{
+    for (size_t i = 0; i < playlist->items.size; ++i)
+        libvlc_playlist_item_Delete(playlist->items.data[i]);
+    vlc_vector_clear(&playlist->items);
+}
 
 static void
 on_items_reset(vlc_playlist_t *playlist, vlc_playlist_item_t *const items[],
@@ -239,20 +229,26 @@ on_items_reset(vlc_playlist_t *playlist, vlc_playlist_item_t *const items[],
 {
     VLC_UNUSED(playlist);
 
-    struct libvlc_callback_context *ctx = userdata;
+    struct libvlc_playlist *libvlc_playlist = userdata;
 
-    for (size_t i = 0; i < ctx->playlist->items.size; ++i)
-        libvlc_playlist_item_Delete(ctx->playlist->items.data[i]);
-    vlc_vector_clear(&ctx->playlist->items);
+    libvlc_playlist_ClearAll(libvlc_playlist);
 
-    
-    libvlc_playlist_item_t *const *array =
-            libvlc_playlist_WrapItemsArray(ctx->playlist, items, count);
-    /* XXX if array is NULL, we must still notify, otherwise the sequence of
-     * events will provide invalid indices.
-     * An alternative would be to stop reporting events at the first allocation
-     * failure, but how to notify the client?*/
-    ctx->callbacks->on_items_reset(ctx->playlist, array, count, ctx->userdata);
+    for (size_t i = 0; i < count; ++i)
+    {
+        libvlc_playlist_item_t *libvlc_item =
+            libvlc_playlist_item_Wrap(libvlc_playlist->libvlc, items[i]);
+        if (!libvlc_item)
+        {
+            /* allocation failure */
+            libvlc_playlist->must_resync = true;
+            libvlc_playlist_ClearAll(libvlc_playlist);
+            break;
+        }
+    }
+
+    libvlc_playlist_Notify(libvlc_playlist, on_items_reset,
+                           libvlc_playlist->items.data,
+                           libvlc_playlist->items.size);
 }
 
 static void
@@ -317,47 +313,63 @@ static const struct vlc_playlist_callbacks vlc_playlist_callbacks_wrapper = {
     .on_items_moved = on_items_moved,
     .on_items_removed = on_items_removed,
     .on_items_updated = on_items_updated,
+    .on_playback_repeat_changed = on_playback_repeat_changed,
+    .on_current_index_changed = on_current_index_changed,
+    .on_has_prev_changed = on_has_prev_changed,
+    .on_has_next_changed = on_has_next_changed,
 };
 
-
-libvlc_playlist_listener_id *
-libvlc_playlist_AddListener(libvlc_playlist_t *playlist,
-                            const struct libvlc_playlist_callbacks *cbs,
-                            void *userdata, bool notify_current_state)
+static libvlc_playlist_t *
+libvlc_playlist_Wrap(vlc_playlist_t *playlist, libvlc_instance_t *libvlc,
+                     bool owned)
 {
-    struct libvlc_callback_context *ctx = malloc(sizeof(*ctx));
-    if (unlikely(!ctx))
+    libvlc_playlist_t *libvlc_playlist = malloc(sizeof(*libvlc_playlist));
+    if (unlikely(!libvlc_playlist))
         return NULL;
-    ctx->playlist = playlist;
-    ctx->callbacks = cbs;
-    ctx->userdata = userdata;
 
-    vlc_playlist_listener_id *listener =
-            vlc_playlist_AddListener(playlist->playlist,
-                                     &vlc_playlist_callbacks_wrapper, ctx,
-                                     notify_current_state);
-    if (unlikely(!listener))
+    libvlc_playlist->playlist = playlist;
+    libvlc_playlist->libvlc = libvlc;
+    vlc_vector_init(&libvlc_playlist->items);
+    libvlc_playlist->owned = owned;
+
+    libvlc_playlist->listener =
+        vlc_playlist_AddListener(playlist, &vlc_playlist_callbacks_wrapper,
+                                 libvlc_playlist, true);
+    if (unlikely(!libvlc_playlist->listener))
     {
-        free(ctx);
+        free(libvlc_playlist);
         return NULL;
     }
 
-    libvlc_playlist_listener_id *wrapper =
-            libvlc_playlist_listener_Wrap(listener);
+    libvlc_retain(libvlc);
+
+    return libvlc_playlist;
+}
+
+void
+libvlc_playlist_Delete(libvlc_playlist_t *wrapper)
+{
+    if (wrapper->owned)
+        vlc_playlist_Delete(wrapper->playlist);
+    vlc_vector_destroy(&wrapper->items);
+    libvlc_release(wrapper->libvlc);
+    free(wrapper);
+}
+
+libvlc_playlist_t *
+libvlc_playlist_New(libvlc_instance_t *libvlc)
+{
+    vlc_object_t *obj = VLC_OBJECT(libvlc->p_libvlc_int);
+    vlc_playlist_t *playlist = vlc_playlist_New(obj);
+    if (unlikely(!playlist))
+        return NULL;
+
+    libvlc_playlist_t *wrapper = libvlc_playlist_Wrap(playlist, libvlc, true);
     if (unlikely(!wrapper))
     {
-        vlc_playlist_RemoveListener(playlist->playlist, listener);
-        free(ctx);
+        vlc_playlist_Delete(playlist);
         return NULL;
     }
 
     return wrapper;
-}
-
-void
-libvlc_playlist_RemoveListener(libvlc_playlist_t *playlist,
-                               libvlc_playlist_listener_id *listener)
-{
-    vlc_playlist_RemoveListener(playlist->playlist, listener->listener);
-    libvlc_playlist_listener_DeleteWrapper(listener);
 }
