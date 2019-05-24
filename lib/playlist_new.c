@@ -255,8 +255,68 @@ on_items_reset(vlc_playlist_t *playlist, vlc_playlist_item_t *const items[],
     ctx->callbacks->on_items_reset(ctx->playlist, array, count, ctx->userdata);
 }
 
+static void
+on_items_added(vlc_playlist_t *playlist, size_t index,
+               vlc_playlist_item_t *const items[], size_t count, void *userdata)
+{
+
+}
+
+static void
+on_items_moved(vlc_playlist_t *playlist, size_t index, size_t count,
+               size_t target, void *userdata)
+{
+
+}
+
+static void
+on_items_removed(vlc_playlist_t *playlist, size_t index, size_t count,
+                 void *userdata)
+{
+
+}
+
+static void
+on_items_updated(vlc_playlist_t *playlist, size_t index,
+                 vlc_playlist_item_t *const items[], size_t count,
+                 void *userdata)
+{
+
+}
+
+static void
+on_playback_repeat_changed(vlc_playlist_t *playlist,
+                           enum vlc_playlist_playback_repeat repeat,
+                           void *userdata)
+{
+
+}
+
+static void
+on_current_index_changed(vlc_playlist_t *playlist, ssize_t index,
+                         void *userdata)
+{
+
+}
+
+static void
+on_has_prev_changed(vlc_playlist_t *playlist, bool has_prev, void *userdata)
+{
+
+}
+
+static void
+on_has_next_changed(vlc_playlist_t *playlist, bool has_next, void *userdata)
+{
+
+}
+
 static const struct vlc_playlist_callbacks vlc_playlist_callbacks_wrapper = {
     .on_items_reset = on_items_reset,
+    .on_items_added = on_items_added,
+    .on_items_moved = on_items_moved,
+    .on_items_removed = on_items_removed,
+    .on_items_updated = on_items_updated,
 };
 
 
