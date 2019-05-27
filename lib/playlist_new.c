@@ -165,6 +165,7 @@ void
 libvlc_playlist_RemoveListener(libvlc_playlist_t *playlist,
                                libvlc_playlist_listener_id *listener)
 {
+    (void) playlist;
     vlc_list_remove(&listener->node);
     free(listener);
 }
@@ -189,28 +190,78 @@ libvlc_playlist_ClearAll(libvlc_playlist_t *playlist)
     vlc_vector_clear(&playlist->items);
 }
 
-static void
-on_items_reset(vlc_playlist_t *playlist, vlc_playlist_item_t *const items[],
-               size_t count, void *userdata)
+static bool
+libvlc_playlist_WrapAll(libvlc_playlist_t *libvlc_playlist,
+                        vlc_playlist_item_t *const items[], size_t count,
+                        libvlc_playlist_item_t *dest[])
 {
-    VLC_UNUSED(playlist);
-
-    struct libvlc_playlist *libvlc_playlist = userdata;
-
-    libvlc_playlist_ClearAll(libvlc_playlist);
-
     for (size_t i = 0; i < count; ++i)
     {
         libvlc_playlist_item_t *libvlc_item =
             libvlc_playlist_item_Wrap(libvlc_playlist->libvlc, items[i]);
         if (!libvlc_item)
         {
-            /* allocation failure */
-            libvlc_playlist->must_resync = true;
-            libvlc_playlist_ClearAll(libvlc_playlist);
-            break;
+            /* allocation failure, delete inserted items */
+            /* ok if i == 0, it wraps (size_t is unsigned) but does not enter
+             * the loop */
+            while (i--)
+                libvlc_playlist_item_Delete(dest[i]);
+            return false;
         }
     }
+    return true;
+}
+
+static bool
+libvlc_playlist_WrapInsertAll(libvlc_playlist_t *libvlc_playlist, size_t index,
+                              vlc_playlist_item_t *const items[], size_t count)
+{
+    if (!vlc_vector_insert_hole(&libvlc_playlist->items, index, count))
+        return false;
+
+    if (!libvlc_playlist_WrapAll(libvlc_playlist, items, count,
+                                 &libvlc_playlist->items.data[index]))
+    {
+        /* we were optimistic, but it failed */
+        vlc_vector_remove_slice(&libvlc_playlist->items, index, count);
+        return false;
+    }
+
+    return true;
+}
+
+static void
+libvlc_playlist_Resync(libvlc_playlist_t *playlist)
+{
+    assert(playlist->must_resync);
+    assert(playlist->items.size == 0);
+
+
+    libvlc_playlist_Notify(playlist, on_items_reset, playlist->items.data,
+                           playlist->items.size);
+    libvlc_playlist_Notify(playlist, on_current_index_changed,
+                           vlc_playlist_GetCurrentIndex(playlist->playlist));
+    libvlc_playlist_Notify(playlist, on_has_prev_changed,
+                           vlc_playlist_HasPrev(playlist->playlist));
+    libvlc_playlist_Notify(playlist, on_has_next_changed,
+                           vlc_playlist_HasNext(playlist->playlist));
+}
+
+static void
+on_items_reset(vlc_playlist_t *playlist, vlc_playlist_item_t *const items[],
+               size_t count, void *userdata)
+{
+    (void) playlist;
+
+    struct libvlc_playlist *libvlc_playlist = userdata;
+
+    /* a reset necessarily resyncs the content with the core playlist */
+    libvlc_playlist->must_resync = false;
+
+    libvlc_playlist_ClearAll(libvlc_playlist);
+    /* if insertion fails, the libvlc playlist must resync later */
+    libvlc_playlist->must_resync =
+        !libvlc_playlist_WrapInsertAll(libvlc_playlist, 0, items, count);
 
     libvlc_playlist_Notify(libvlc_playlist, on_items_reset,
                            libvlc_playlist->items.data,
@@ -221,7 +272,12 @@ static void
 on_items_added(vlc_playlist_t *playlist, size_t index,
                vlc_playlist_item_t *const items[], size_t count, void *userdata)
 {
+    struct libvlc_playlist *libvlc_playlist = userdata;
 
+    if (libvlc_playlist->must_resync) {
+        libvlc_playlist_Resync(playlist);
+        return;
+    }
 }
 
 static void
