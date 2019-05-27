@@ -181,40 +181,6 @@ libvlc_playlist_Unlock(libvlc_playlist_t *playlist)
     vlc_playlist_Unlock(playlist->playlist);
 }
 
-//static void
-//libvlc_playlist_DeleteItemsArray(libvlc_playlist_item_t *array[],
-//                                 size_t count)
-//{
-//    while (count--)
-//        libvlc_playlist_item_DeleteWrapper(array[count]);
-//    free(array);
-//}
-//
-//static libvlc_playlist_item_t *const *
-//libvlc_playlist_WrapItemsArray(libvlc_playlist_t *playlist,
-//                               vlc_playlist_item_t *const items[], size_t count)
-//{
-//    libvlc_playlist_item_t **array = vlc_alloc(count, sizeof(*array));
-//    if (unlikely(!array))
-//        return NULL;
-//
-//    size_t i;
-//    for (i = 0; i < count; ++i)
-//    {
-//        array[i] = libvlc_playlist_item_Wrap(playlist->libvlc, items[i]);
-//        if (unlikely(!array[i]))
-//            break;
-//    }
-//
-//    if (i < count)
-//    {
-//        libvlc_playlist_DeleteItemsArray(array, i);
-//        return NULL;
-//    }
-//
-//    return array;
-//}
-
 static void
 libvlc_playlist_ClearAll(libvlc_playlist_t *playlist)
 {
