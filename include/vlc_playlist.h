@@ -419,6 +419,15 @@ VLC_API vlc_playlist_item_t *
 vlc_playlist_Get(vlc_playlist_t *playlist, size_t index);
 
 /**
+ * Return the underlying array of items.
+ *
+ * \param playlist the playlist, locked
+ * \return the array of items
+ */
+VLC_API vlc_playlist_item_t *const *
+vlc_playlist_GetItems(vlc_playlist_t *playlist);
+
+/**
  * Clear the playlist.
  *
  * \param playlist the playlist, locked
