@@ -893,6 +893,7 @@ vlc_playlist_AddListener
 vlc_playlist_RemoveListener
 vlc_playlist_Count
 vlc_playlist_Get
+vlc_playlist_GetItems
 vlc_playlist_Clear
 vlc_playlist_Insert
 vlc_playlist_Move

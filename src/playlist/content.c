@@ -192,6 +192,13 @@ vlc_playlist_Get(vlc_playlist_t *playlist, size_t index)
     return playlist->items.data[index];
 }
 
+vlc_playlist_item_t *const *
+vlc_playlist_GetItems(vlc_playlist_t *playlist)
+{
+    vlc_playlist_AssertLocked(playlist);
+    return playlist->items.data;
+}
+
 ssize_t
 vlc_playlist_IndexOf(vlc_playlist_t *playlist, const vlc_playlist_item_t *item)
 {
