@@ -1001,3 +1001,5 @@ libvlc_playlist_RequestGoTo(libvlc_playlist_t *libvlc_playlist,
     vlc_playlist_t *playlist = libvlc_playlist->playlist;
     return vlc_playlist_RequestGoTo(playlist, libvlc_item->item, index_hint);
 }
+
+// TODO interaction with libvlc_player
