@@ -104,7 +104,8 @@ libvlc_GetMainPlaylist(libvlc_int_t *libvlc)
     vlc_playlist_t *playlist = priv->main_playlist;
     if (priv->main_playlist == NULL)
     {
-        playlist = priv->main_playlist = vlc_playlist_New(VLC_OBJECT(libvlc));
+        playlist = priv->main_playlist
+            = vlc_playlist_New(VLC_OBJECT(libvlc), VLC_PLAYER_LOCK_NORMAL);
         if (playlist)
             PlaylistConfigureFromVariables(playlist, VLC_OBJECT(libvlc));
     }

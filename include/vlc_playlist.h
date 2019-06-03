@@ -22,6 +22,7 @@
 #define VLC_PLAYLIST_NEW_H
 
 #include <vlc_common.h>
+#include <vlc_player.h>
 
 # ifdef __cplusplus
 extern "C" {
@@ -105,7 +106,6 @@ extern "C" {
 
 /* forward declarations */
 typedef struct input_item_t input_item_t;
-typedef struct vlc_player_t vlc_player_t;
 
 /* opaque types */
 typedef struct vlc_playlist vlc_playlist_t;
@@ -328,10 +328,11 @@ vlc_playlist_item_GetId(vlc_playlist_item_t *);
  * Create a new playlist.
  *
  * \param parent   a VLC object
+ * @param lock_type whether the lock should be reentrant
  * \return a pointer to a valid playlist instance, or NULL if an error occurred
  */
 VLC_API VLC_USED vlc_playlist_t *
-vlc_playlist_New(vlc_object_t *parent);
+vlc_playlist_New(vlc_object_t *parent, enum vlc_player_lock_type lock_type);
 
 /**
  * Delete a playlist.

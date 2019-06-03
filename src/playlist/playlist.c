@@ -31,13 +31,13 @@
 #include "player.h"
 
 vlc_playlist_t *
-vlc_playlist_New(vlc_object_t *parent)
+vlc_playlist_New(vlc_object_t *parent, enum vlc_player_lock_type lock_type)
 {
     vlc_playlist_t *playlist = malloc(sizeof(*playlist));
     if (unlikely(!playlist))
         return NULL;
 
-    bool ok = vlc_playlist_PlayerInit(playlist, parent);
+    bool ok = vlc_playlist_PlayerInit(playlist, parent, lock_type);
     if (unlikely(!ok))
     {
         free(playlist);
