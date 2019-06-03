@@ -132,9 +132,10 @@ static const struct vlc_player_cbs player_callbacks = {
 };
 
 bool
-vlc_playlist_PlayerInit(vlc_playlist_t *playlist, vlc_object_t *parent)
+vlc_playlist_PlayerInit(vlc_playlist_t *playlist, vlc_object_t *parent,
+                        enum vlc_player_lock_type lock_type)
 {
-    playlist->player = vlc_player_New(parent, VLC_PLAYER_LOCK_NORMAL,
+    playlist->player = vlc_player_New(parent, lock_type,
                                       &player_media_provider, playlist);
     if (unlikely(!playlist->player))
         return false;
