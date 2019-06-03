@@ -24,9 +24,11 @@
 #include <vlc_common.h>
 
 typedef struct vlc_playlist vlc_playlist_t;
+enum vlc_player_lock_type;
 
 bool
-vlc_playlist_PlayerInit(vlc_playlist_t *playlist, vlc_object_t *parent);
+vlc_playlist_PlayerInit(vlc_playlist_t *playlist, vlc_object_t *parent,
+                        enum vlc_player_lock_type lock_type);
 
 void
 vlc_playlist_PlayerDestroy(vlc_playlist_t *playlist);

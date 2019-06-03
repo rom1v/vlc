@@ -1033,6 +1033,7 @@ vlc_player_title_list_GetAt(vlc_player_title_list *titles, size_t idx);
  * Create a new player instance
  *
  * @param parent parent VLC object
+ * @param lock_type whether the lock should be reentrant
  * @param media_provider pointer to a media_provider structure or NULL, the
  * structure must be valid during the lifetime of the player
  * @param media_provider_data opaque data used by provider callbacks
