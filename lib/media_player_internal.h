@@ -64,4 +64,8 @@ struct libvlc_equalizer_t
     float f_amp[EQZ_BANDS_MAX];
 };
 
+libvlc_media_player_t *
+libvlc_media_player_NewWithPlayer(libvlc_instance_t *instance,
+                                  vlc_player_t *player);
+
 #endif
