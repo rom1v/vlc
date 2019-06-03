@@ -49,6 +49,8 @@ struct libvlc_media_player_t
     struct libvlc_instance_t * p_libvlc_instance; /* Parent instance */
     libvlc_media_t * p_md; /* current media descriptor */
     libvlc_event_manager_t event_manager;
+
+    bool owned;
 };
 
 libvlc_track_description_t * libvlc_get_track_description(
@@ -63,5 +65,9 @@ struct libvlc_equalizer_t
     float f_preamp;
     float f_amp[EQZ_BANDS_MAX];
 };
+
+libvlc_media_player_t *
+libvlc_media_player_NewWithPlayer(libvlc_instance_t *instance,
+                                  vlc_player_t *player, bool owned);
 
 #endif

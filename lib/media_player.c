@@ -541,22 +541,49 @@ static void media_detach_preparsed_event( libvlc_media_t *p_md )
                       p_md );
 }
 
-/**************************************************************************
- * Create a Media Instance object.
- *
- * Refcount strategy:
- * - All items created by _new start with a refcount set to 1.
- * - Accessor _release decrease the refcount by 1, if after that
- *   operation the refcount is 0, the object is destroyed.
- * - Accessor _retain increase the refcount by 1 (XXX: to implement)
- *
- * Object locking strategy:
- * - No lock held while in constructor.
- * - When accessing any member variable this lock is held. (XXX who locks?)
- * - When attempting to destroy the object the lock is also held.
- **************************************************************************/
+static bool
+libvlc_media_player_InitPlayer(libvlc_media_player_t *mp, vlc_player_t *player)
+{
+    if (!player)
+    {
+        /* if the player was provided by the caller, create a new one */
+        /* use a reentrant lock to allow calling libvlc functions from
+         * callbacks */
+        mp->player = vlc_player_New(VLC_OBJECT(mp), VLC_PLAYER_LOCK_REENTRANT,
+                                NULL, NULL);
+        if (!mp->player)
+            return false;
+    }
+    else
+        mp->player = player;
+
+    vlc_player_Lock(mp->player);
+
+    mp->listener = vlc_player_AddListener(mp->player, &vlc_player_cbs, mp);
+    if (unlikely(!mp->listener))
+        goto error1;
+
+    mp->aout_listener =
+        vlc_player_aout_AddListener(mp->player, &vlc_player_aout_cbs, mp);
+    if (unlikely(!mp->aout_listener))
+        goto error2;
+
+    vlc_player_Unlock(mp->player);
+    return true;
+
+error2:
+    vlc_player_RemoveListener(mp->player, mp->listener);
+error1:
+    vlc_player_Unlock(mp->player);
+    if (player)
+        /* if the player was provided by the caller */
+        vlc_player_Delete(mp->player);
+    return false;
+}
+
 libvlc_media_player_t *
-libvlc_media_player_new( libvlc_instance_t *instance )
+libvlc_media_player_NewWithPlayer(libvlc_instance_t *instance,
+                                  vlc_player_t *player, bool owned)
 {
     libvlc_media_player_t * mp;
 
@@ -697,24 +724,12 @@ libvlc_media_player_new( libvlc_instance_t *instance )
 
     mp->p_md = NULL;
     mp->p_libvlc_instance = instance;
-    /* use a reentrant lock to allow calling libvlc functions from callbacks */
-    mp->player = vlc_player_New(VLC_OBJECT(mp), VLC_PLAYER_LOCK_REENTRANT,
-                                NULL, NULL);
-    if (unlikely(!mp->player))
-        goto error1;
 
-    vlc_player_Lock(mp->player);
-
-    mp->listener = vlc_player_AddListener(mp->player, &vlc_player_cbs, mp);
-    if (unlikely(!mp->listener))
-        goto error2;
-
-    mp->aout_listener =
-        vlc_player_aout_AddListener(mp->player, &vlc_player_aout_cbs, mp);
-    if (unlikely(!mp->aout_listener))
-        goto error3;
-
-    vlc_player_Unlock(mp->player);
+    if (!libvlc_media_player_InitPlayer(mp, player))
+    {
+        vlc_object_delete(mp);
+        return NULL;
+    }
 
     mp->i_refcount = 1;
     libvlc_event_manager_init(&mp->event_manager, mp);
@@ -730,17 +745,30 @@ libvlc_media_player_new( libvlc_instance_t *instance )
     var_AddCallback(vlc_object_instance(mp),
                     "snapshot-file", snapshot_was_taken, mp);
 
+    mp->owned = owned;
+
     libvlc_retain(instance);
     return mp;
+}
 
-error3:
-    vlc_player_RemoveListener(mp->player, mp->listener);
-error2:
-    vlc_player_Unlock(mp->player);
-    vlc_player_Delete(mp->player);
-error1:
-    vlc_object_delete(mp);
-    return NULL;
+/**************************************************************************
+ * Create a Media Instance object.
+ *
+ * Refcount strategy:
+ * - All items created by _new start with a refcount set to 1.
+ * - Accessor _release decrease the refcount by 1, if after that
+ *   operation the refcount is 0, the object is destroyed.
+ * - Accessor _retain increase the refcount by 1 (XXX: to implement)
+ *
+ * Object locking strategy:
+ * - No lock held while in constructor.
+ * - When accessing any member variable this lock is held. (XXX who locks?)
+ * - When attempting to destroy the object the lock is also held.
+ **************************************************************************/
+libvlc_media_player_t *
+libvlc_media_player_new( libvlc_instance_t *instance )
+{
+    return libvlc_media_player_NewWithPlayer(instance, NULL, true);
 }
 
 /**************************************************************************
@@ -792,7 +820,8 @@ static void libvlc_media_player_destroy( libvlc_media_player_t *p_mi )
     vlc_player_RemoveListener(p_mi->player, p_mi->listener);
     vlc_player_Unlock(p_mi->player);
 
-    vlc_player_Delete(p_mi->player);
+    if (p_mi->owned)
+        vlc_player_Delete(p_mi->player);
 
     libvlc_event_manager_destroy(&p_mi->event_manager);
     libvlc_media_release( p_mi->p_md );
