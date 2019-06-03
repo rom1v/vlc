@@ -25,6 +25,9 @@
 #ifndef VLC_LIBVLC_MEDIA_PLAYER_H
 #define VLC_LIBVLC_MEDIA_PLAYER_H 1
 
+#include <vlc/libvlc_picture.h>
+#include <vlc/libvlc_media.h>
+
 # ifdef __cplusplus
 extern "C" {
 # else
@@ -40,6 +43,8 @@ extern "C" {
  */
 
 typedef struct libvlc_media_player_t libvlc_media_player_t;
+typedef struct libvlc_renderer_item_t libvlc_renderer_item_t;
+typedef struct libvlc_video_viewpoint_t libvlc_video_viewpoint_t;
 
 /**
  * Description for video, audio tracks and subtitles. It contains
