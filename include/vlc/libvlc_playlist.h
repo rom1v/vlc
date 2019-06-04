@@ -377,7 +377,7 @@ libvlc_playlist_Clear(libvlc_playlist_t *playlist);
  * \index index    the index where the media are to be inserted
  * \param media    the array of media to insert
  * \param count    the number of media to insert
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 LIBVLC_API int
 libvlc_playlist_Insert(libvlc_playlist_t *playlist, size_t index,
@@ -391,7 +391,7 @@ libvlc_playlist_Insert(libvlc_playlist_t *playlist, size_t index,
  * \param playlist the playlist, locked
  * \index index    the index where the media is to be inserted
  * \param media    the media to insert
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 static inline int
 libvlc_playlist_InsertOne(libvlc_playlist_t *playlist, size_t index,
@@ -406,7 +406,7 @@ libvlc_playlist_InsertOne(libvlc_playlist_t *playlist, size_t index,
  * \param playlist the playlist, locked
  * \param media    the array of media to append
  * \param count    the number of media to append
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 static inline int
 libvlc_playlist_Append(libvlc_playlist_t *playlist, libvlc_media_t *const media[],
@@ -421,7 +421,7 @@ libvlc_playlist_Append(libvlc_playlist_t *playlist, libvlc_media_t *const media[
  *
  * \param playlist the playlist, locked
  * \param media    the media to append
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 static inline int
 libvlc_playlist_AppendOne(libvlc_playlist_t *playlist, libvlc_media_t *media)
@@ -504,7 +504,7 @@ libvlc_playlist_RemoveOne(libvlc_playlist_t *playlist, size_t index)
  * \index index    the index where the media are to be inserted
  * \param media    the array of media to insert
  * \param count    the number of media to insert
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 LIBVLC_API int
 libvlc_playlist_RequestInsert(libvlc_playlist_t *playlist, size_t index,
@@ -530,7 +530,7 @@ libvlc_playlist_RequestInsert(libvlc_playlist_t *playlist, size_t index,
  * \param count      the number of items to move
  * \param target     the new index of the moved slice
  * \param index_hint the expected index of the first item (-1 for none)
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 LIBVLC_API int
 libvlc_playlist_RequestMove(libvlc_playlist_t *playlist,
@@ -556,7 +556,7 @@ libvlc_playlist_RequestMove(libvlc_playlist_t *playlist,
  * \param items      the array of items to remove
  * \param count      the number of items to remove
  * \param index_hint the expected index of the first item (-1 for none)
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 LIBVLC_API int
 libvlc_playlist_RequestRemove(libvlc_playlist_t *playlist,
@@ -577,7 +577,7 @@ libvlc_playlist_Shuffle(libvlc_playlist_t *playlist);
  * \param playlist the playlist, locked
  * \param criteria the sort criteria (in order)
  * \param count    the number of criteria
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 LIBVLC_API int
 libvlc_playlist_Sort(libvlc_playlist_t *playlist,
@@ -689,7 +689,7 @@ libvlc_playlist_HasNext(libvlc_playlist_t *playlist);
  * Return LIBVLC_EGENERIC if libvlc_playlist_HasPrev() returns false.
  *
  * \param playlist the playlist, locked
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 LIBVLC_API int
 libvlc_playlist_Prev(libvlc_playlist_t *playlist);
@@ -700,7 +700,7 @@ libvlc_playlist_Prev(libvlc_playlist_t *playlist);
  * Return LIBVLC_EGENERIC if libvlc_playlist_HasNext() returns false.
  *
  * \param playlist the playlist, locked
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 LIBVLC_API int
 libvlc_playlist_Next(libvlc_playlist_t *playlist);
@@ -712,7 +712,7 @@ libvlc_playlist_Next(libvlc_playlist_t *playlist);
  *
  * \param playlist the playlist, locked
  * \param index    the index to go to (-1 to none)
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 LIBVLC_API int
 libvlc_playlist_GoTo(libvlc_playlist_t *playlist, ssize_t index);
@@ -735,7 +735,7 @@ libvlc_playlist_GoTo(libvlc_playlist_t *playlist, ssize_t index);
  * \param playlist   the playlist, locked
  * \param item       the item to go to (NULL for none)
  * \param index_hint the expected index of the item (-1 for none)
- * \return LIBVLC_SUCCESS on success, another value on error
+ * \return 0 on success, another value on error
  */
 LIBVLC_API int
 libvlc_playlist_RequestGoTo(libvlc_playlist_t *playlist,
