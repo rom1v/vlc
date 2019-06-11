@@ -31,11 +31,23 @@
 #include <stdio.h>
 
 #include "test.h"
+#include "../lib/libvlc_internal.h"
 
 static inline libvlc_instance_t *
 CreateLibvlc(void)
 {
-    return libvlc_new(test_defaults_nargs, test_defaults_args);
+    libvlc_instance_t *libvlc =
+        libvlc_new(test_defaults_nargs, test_defaults_args);
+    assert(libvlc);
+
+    // disable auto-preparsing in tests (media are dummy)
+    vlc_object_t *obj = VLC_OBJECT(libvlc->p_libvlc_int);
+    int ret = var_Create(obj, "auto-preparse", VLC_VAR_BOOL);
+    assert(ret == VLC_SUCCESS);
+    ret = var_SetBool(obj, "auto-preparse", false);
+    assert(ret == VLC_SUCCESS);
+
+    return libvlc;
 }
 
 static libvlc_media_t *
