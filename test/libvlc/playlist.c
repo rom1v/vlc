@@ -2543,7 +2543,7 @@ int main(void)
     test_items_reset_callbacks();
     test_playback_repeat_changed_callbacks();
     test_playback_order_changed_callbacks();
-    //test_callbacks_on_add_listener();
+    test_callbacks_on_add_listener();
     test_index_of();
     test_prev();
     test_next();

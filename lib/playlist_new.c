@@ -162,6 +162,26 @@ do { \
                                        ##__VA_ARGS__); \
 } while(0)
 
+static void
+libvlc_playlist_NotifyCurrentState(libvlc_playlist_t *playlist,
+                                   struct libvlc_playlist_listener_id *listener)
+{
+    libvlc_playlist_NotifyListener(playlist, listener, on_items_reset,
+                                   playlist->items.data, playlist->items.size);
+    libvlc_playlist_NotifyListener(playlist, listener,
+                                   on_playback_repeat_changed,
+                                   libvlc_playlist_GetPlaybackRepeat(playlist));
+    libvlc_playlist_NotifyListener(playlist, listener,
+                                   on_playback_order_changed,
+                                   libvlc_playlist_GetPlaybackOrder(playlist));
+    libvlc_playlist_NotifyListener(playlist, listener, on_current_index_changed,
+                                   libvlc_playlist_GetCurrentIndex(playlist));
+    libvlc_playlist_NotifyListener(playlist, listener, on_has_prev_changed,
+                                   libvlc_playlist_HasPrev(playlist));
+    libvlc_playlist_NotifyListener(playlist, listener, on_has_next_changed,
+                                   libvlc_playlist_HasNext(playlist));
+}
+
 libvlc_playlist_listener_id *
 libvlc_playlist_AddListener(libvlc_playlist_t *playlist,
                             const struct libvlc_playlist_callbacks *cbs,
@@ -176,9 +196,9 @@ libvlc_playlist_AddListener(libvlc_playlist_t *playlist,
     vlc_list_append(&listener->node, &playlist->listeners);
 
     (void) notify_current_state;
-    // TODO
-    // if (notify_current_state)
-    //     libvlc_playlist_NotifyCurrentState(playlist, listener);
+
+    if (notify_current_state)
+        libvlc_playlist_NotifyCurrentState(playlist, listener);
 
     return listener;
 }
