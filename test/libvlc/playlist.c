@@ -32,6 +32,7 @@
 
 #include "test.h"
 #include "../lib/libvlc_internal.h"
+#include "../lib/media_internal.h"
 
 static inline libvlc_instance_t *
 CreateLibvlc(void)
@@ -2417,113 +2418,137 @@ test_shuffle(void)
     libvlc_release(libvlc);
 }
 
-//static void
-//test_sort(void)
-//{
-//    libvlc_instance_t *libvlc = CreateLibvlc();
-//    assert(libvlc);
-//
-//    libvlc_playlist_t *playlist = libvlc_playlist_New(libvlc);
-//    assert(playlist);
-//
-//    libvlc_media_t *media[10];
-//    media[0] = CreateDummyMedia(libvlc, 4); media[0]->i_duration = 42;
-//    media[1] = CreateDummyMedia(libvlc, 1); media[1]->i_duration = 5;
-//    media[2] = CreateDummyMedia(libvlc, 6); media[2]->i_duration = 100;
-//    media[3] = CreateDummyMedia(libvlc, 2); media[3]->i_duration = 1;
-//    media[4] = CreateDummyMedia(libvlc, 1); media[4]->i_duration = 8;
-//    media[5] = CreateDummyMedia(libvlc, 4); media[5]->i_duration = 23;
-//    media[6] = CreateDummyMedia(libvlc, 3); media[6]->i_duration = 60;
-//    media[7] = CreateDummyMedia(libvlc, 3); media[7]->i_duration = 40;
-//    media[8] = CreateDummyMedia(libvlc, 0); media[8]->i_duration = 42;
-//    media[9] = CreateDummyMedia(libvlc, 5); media[9]->i_duration = 42;
-//
-//    /* initial playlist with 10 items */
-//    int ret = libvlc_playlist_Append(playlist, media, 10);
-//    assert(ret == 0);
-//
-//    struct libvlc_playlist_callbacks cbs = {
-//        .on_items_reset = callback_on_items_reset,
-//        .on_current_index_changed = callback_on_current_index_changed,
-//        .on_has_prev_changed = callback_on_has_prev_changed,
-//        .on_has_next_changed = callback_on_has_next_changed,
-//    };
-//
-//    struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
-//    libvlc_playlist_listener_id *listener =
-//            libvlc_playlist_AddListener(playlist, &cbs, &ctx, false);
-//    assert(listener);
-//
-//    ret = libvlc_playlist_GoTo(playlist, 0);
-//    assert(ret == 0);
-//
-//    struct libvlc_playlist_sort_criterion criteria1[] = {
-//        { LIBVLC_PLAYLIST_SORT_KEY_TITLE, LIBVLC_PLAYLIST_SORT_ORDER_ASCENDING },
-//        { LIBVLC_PLAYLIST_SORT_KEY_DURATION, LIBVLC_PLAYLIST_SORT_ORDER_ASCENDING },
-//    };
-//    libvlc_playlist_Sort(playlist, criteria1, 2);
-//
-//    EXPECT_AT(0, 8);
-//    EXPECT_AT(1, 1);
-//    EXPECT_AT(2, 4);
-//    EXPECT_AT(3, 3);
-//    EXPECT_AT(4, 7);
-//    EXPECT_AT(5, 6);
-//    EXPECT_AT(6, 5);
-//    EXPECT_AT(7, 0);
-//    EXPECT_AT(8, 9);
-//    EXPECT_AT(9, 2);
-//
-//    ssize_t index = libvlc_playlist_IndexOfMedia(playlist, media[0]);
-//    assert(index == 7);
-//    assert(playlist->current == 7);
-//
-//    assert(ctx.vec_items_reset.size == 1);
-//    assert(ctx.vec_items_reset.data[0].count == 10);
-//    assert(ctx.vec_items_reset.data[0].state.playlist_size == 10);
-//    assert(ctx.vec_items_reset.data[0].state.current == 7);
-//    assert(ctx.vec_items_reset.data[0].state.has_prev);
-//    assert(ctx.vec_items_reset.data[0].state.has_next);
-//
-//    assert(ctx.vec_current_index_changed.size == 1);
-//    assert(ctx.vec_current_index_changed.data[0].current == 7);
-//
-//    assert(ctx.vec_has_prev_changed.size == 1);
-//    assert(ctx.vec_has_prev_changed.data[0].has_prev);
-//
-//    assert(ctx.vec_has_next_changed.size == 0);
-//
-//    callback_ctx_reset(&ctx);
-//
-//    struct libvlc_playlist_sort_criterion criteria2[] = {
-//        { LIBVLC_PLAYLIST_SORT_KEY_DURATION, LIBVLC_PLAYLIST_SORT_ORDER_DESCENDING },
-//        { LIBVLC_PLAYLIST_SORT_KEY_TITLE, LIBVLC_PLAYLIST_SORT_ORDER_ASCENDING },
-//    };
-//
-//    libvlc_playlist_Sort(playlist, criteria2, 2);
-//
-//    EXPECT_AT(0, 2);
-//    EXPECT_AT(1, 6);
-//    EXPECT_AT(2, 8);
-//    EXPECT_AT(3, 0);
-//    EXPECT_AT(4, 9);
-//    EXPECT_AT(5, 7);
-//    EXPECT_AT(6, 5);
-//    EXPECT_AT(7, 4);
-//    EXPECT_AT(8, 1);
-//    EXPECT_AT(9, 3);
-//
-//    assert(ctx.vec_items_reset.size == 1);
-//    assert(ctx.vec_items_reset.data[0].count == 10);
-//    assert(ctx.vec_items_reset.data[0].state.playlist_size == 10);
-//
-//    callback_ctx_destroy(&ctx);
-//    libvlc_playlist_RemoveListener(playlist, listener);
-//    ReleaseMedias(media, 10);
-//    libvlc_playlist_Delete(playlist;
-//
-//    libvlc_release(libvlc);
-//}
+static void
+test_sort(void)
+{
+    libvlc_instance_t *libvlc = CreateLibvlc();
+    assert(libvlc);
+
+    libvlc_playlist_t *playlist = libvlc_playlist_New(libvlc);
+    assert(playlist);
+
+    libvlc_playlist_Lock(playlist);
+
+    libvlc_media_t *media[10];
+
+    media[0] = CreateDummyMedia(libvlc, 4);
+    media[0]->p_input_item->i_duration = 42;
+
+    media[1] = CreateDummyMedia(libvlc, 1);
+    media[1]->p_input_item->i_duration = 5;
+
+    media[2] = CreateDummyMedia(libvlc, 6);
+    media[2]->p_input_item->i_duration = 100;
+
+    media[3] = CreateDummyMedia(libvlc, 2);
+    media[3]->p_input_item->i_duration = 1;
+
+    media[4] = CreateDummyMedia(libvlc, 1);
+    media[4]->p_input_item->i_duration = 8;
+
+    media[5] = CreateDummyMedia(libvlc, 4);
+    media[5]->p_input_item->i_duration = 23;
+
+    media[6] = CreateDummyMedia(libvlc, 3);
+    media[6]->p_input_item->i_duration = 60;
+
+    media[7] = CreateDummyMedia(libvlc, 3);
+    media[7]->p_input_item->i_duration = 40;
+
+    media[8] = CreateDummyMedia(libvlc, 0);
+    media[8]->p_input_item->i_duration = 42;
+
+    media[9] = CreateDummyMedia(libvlc, 5);
+    media[9]->p_input_item->i_duration = 42;
+
+    /* initial playlist with 10 items */
+    int ret = libvlc_playlist_Append(playlist, media, 10);
+    assert(ret == 0);
+
+    struct libvlc_playlist_callbacks cbs = {
+        .on_items_reset = callback_on_items_reset,
+        .on_current_index_changed = callback_on_current_index_changed,
+        .on_has_prev_changed = callback_on_has_prev_changed,
+        .on_has_next_changed = callback_on_has_next_changed,
+    };
+
+    ret = libvlc_playlist_GoTo(playlist, 0);
+    assert(ret == 0);
+
+    struct callback_ctx ctx = CALLBACK_CTX_INITIALIZER;
+    libvlc_playlist_listener_id *listener =
+            libvlc_playlist_AddListener(playlist, &cbs, &ctx, false);
+    assert(listener);
+
+    struct libvlc_playlist_sort_criterion criteria1[] = {
+        { LIBVLC_PLAYLIST_SORT_KEY_TITLE, LIBVLC_PLAYLIST_SORT_ORDER_ASCENDING },
+        { LIBVLC_PLAYLIST_SORT_KEY_DURATION, LIBVLC_PLAYLIST_SORT_ORDER_ASCENDING },
+    };
+    libvlc_playlist_Sort(playlist, criteria1, 2);
+
+    EXPECT_AT(0, 8);
+    EXPECT_AT(1, 1);
+    EXPECT_AT(2, 4);
+    EXPECT_AT(3, 3);
+    EXPECT_AT(4, 7);
+    EXPECT_AT(5, 6);
+    EXPECT_AT(6, 5);
+    EXPECT_AT(7, 0);
+    EXPECT_AT(8, 9);
+    EXPECT_AT(9, 2);
+
+    ssize_t index = libvlc_playlist_IndexOfMedia(playlist, media[0]);
+    assert(index == 7);
+    assert(libvlc_playlist_GetCurrentIndex(playlist) == 7);
+
+    assert(ctx.vec_items_reset.size == 1);
+    assert(ctx.vec_items_reset.data[0].count == 10);
+    assert(ctx.vec_items_reset.data[0].state.playlist_size == 10);
+    assert(ctx.vec_items_reset.data[0].state.current == 7);
+    assert(ctx.vec_items_reset.data[0].state.has_prev);
+    assert(ctx.vec_items_reset.data[0].state.has_next);
+
+    assert(ctx.vec_current_index_changed.size == 1);
+    assert(ctx.vec_current_index_changed.data[0].current == 7);
+
+    assert(ctx.vec_has_prev_changed.size == 1);
+    assert(ctx.vec_has_prev_changed.data[0].has_prev);
+
+    assert(ctx.vec_has_next_changed.size == 0);
+
+    callback_ctx_reset(&ctx);
+
+    struct libvlc_playlist_sort_criterion criteria2[] = {
+        { LIBVLC_PLAYLIST_SORT_KEY_DURATION, LIBVLC_PLAYLIST_SORT_ORDER_DESCENDING },
+        { LIBVLC_PLAYLIST_SORT_KEY_TITLE, LIBVLC_PLAYLIST_SORT_ORDER_ASCENDING },
+    };
+
+    libvlc_playlist_Sort(playlist, criteria2, 2);
+
+    EXPECT_AT(0, 2);
+    EXPECT_AT(1, 6);
+    EXPECT_AT(2, 8);
+    EXPECT_AT(3, 0);
+    EXPECT_AT(4, 9);
+    EXPECT_AT(5, 7);
+    EXPECT_AT(6, 5);
+    EXPECT_AT(7, 4);
+    EXPECT_AT(8, 1);
+    EXPECT_AT(9, 3);
+
+    assert(ctx.vec_items_reset.size == 1);
+    assert(ctx.vec_items_reset.data[0].count == 10);
+    assert(ctx.vec_items_reset.data[0].state.playlist_size == 10);
+
+    libvlc_playlist_Unlock(playlist);
+
+    callback_ctx_destroy(&ctx);
+    libvlc_playlist_RemoveListener(playlist, listener);
+    ReleaseMedias(media, 10);
+    libvlc_playlist_Delete(playlist);
+
+    libvlc_release(libvlc);
+}
 
 #undef EXPECT_AT
 
@@ -2560,6 +2585,6 @@ int main(void)
     test_request_goto_adapt();
     test_random();
     test_shuffle();
-    //test_sort();
+    test_sort();
     return 0;
 }
