@@ -315,72 +315,6 @@ test_clear(void)
     libvlc_release(libvlc);
 }
 
-//static void
-//test_expand_item(void)
-//{
-//    libvlc_instance_t *libvlc = CreateLibvlc();
-//    assert(libvlc);
-//
-//    libvlc_playlist_t *playlist = libvlc_playlist_New(libvlc);
-//    assert(playlist);
-//
-//    libvlc_media_t *media[16];
-//    CreateDummyMedias(libvlc, media, 16);
-//
-//    /* initial playlist with 10 items */
-//    int ret = libvlc_playlist_Append(playlist, media, 10);
-//    assert(ret == 0);
-//
-//    /* create a subtree for item 8 with 4 children */
-//    libvlc_media_t *item_to_expand =
-//        libvlc_playlist_item_GetMedia(libvlc_playlist_Get(playlist, 8));
-//    input_item_node_t *root = input_item_node_Create(item_to_expand);
-//    for (int i = 0; i < 4; ++i)
-//    {
-//        input_item_node_t *node = input_item_node_AppendItem(root,
-//                                                             media[i + 10]);
-//        assert(node);
-//    }
-//
-//    /* on the 3rd children, add 2 grand-children */
-//    input_item_node_t *parent = root->pp_children[2];
-//    for (int i = 0; i < 2; ++i)
-//    {
-//        input_item_node_t *node = input_item_node_AppendItem(parent,
-//                                                             media[i + 14]);
-//        assert(node);
-//    }
-//
-//    playlist->current = 8;
-//    playlist->has_prev = true;
-//    playlist->has_next = true;
-//
-//    ret = libvlc_playlist_ExpandItem(playlist, 8, root);
-//    assert(ret == 0);
-//    assert(libvlc_playlist_Count(playlist) == 15);
-//    EXPECT_AT(7, 7);
-//
-//    EXPECT_AT(8, 10);
-//    EXPECT_AT(9, 11);
-//    EXPECT_AT(10, 12);
-//
-//    EXPECT_AT(11, 14);
-//    EXPECT_AT(12, 15);
-//
-//    EXPECT_AT(13, 13);
-//
-//    EXPECT_AT(14, 9);
-//
-//    /* item 8 will be replaced, the current must stay the same */
-//    assert(playlist->current == 8);
-//
-//    input_item_node_Delete(root);
-//    ReleaseMedias(media, 16);
-//    libvlc_playlist_Delete(playlist);
-//
-//    libvlc_release(libvlc);
-//}
-
 struct playlist_state
 {
     size_t playlist_size;
@@ -2561,7 +2495,6 @@ int main(void)
     test_move();
     test_remove();
     test_clear();
-    //test_expand_item();
     test_items_added_callbacks();
     test_items_moved_callbacks();
     test_items_removed_callbacks();
