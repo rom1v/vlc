@@ -23,6 +23,7 @@
 
 #include <vlc_input.h>
 #include <vlc_aout.h>
+#include <vlc_player_info.h>
 
 /**
  * @defgroup player Player
@@ -2869,6 +2870,8 @@ vlc_player_vout_Snapshot(vlc_player_t *player);
 VLC_API void
 vlc_player_vout_OSDMessage(vlc_player_t *player, const char *fmt, ...);
 
+VLC_API struct vlc_pi_input *
+vlc_player_GetInputInfo(vlc_player_t *player);
 
 /** @} */
 #endif

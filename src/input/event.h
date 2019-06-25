@@ -25,7 +25,7 @@
 
 #include <vlc_common.h>
 #include <vlc_input.h>
-#include "input_internal.h"
+#include "player_info.h"
 
 static inline void input_SendEvent(input_thread_t *p_input,
                                    const struct vlc_input_event *event)
@@ -268,6 +268,16 @@ static inline void input_SendEventVbiTransparency(input_thread_t *p_input,
         .vbi_transparent = transparent,
     });
 }
+
+static inline void
+input_SendEventInfo(input_thread_t *input, struct vlc_input_event_info *info)
+{
+    input_SendEvent(input, &(struct vlc_input_event) {
+        .type = INPUT_EVENT_INFO,
+        .info = info,
+    });
+}
+
 
 /*****************************************************************************
  * Event for resource.c

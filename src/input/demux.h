@@ -62,4 +62,6 @@ demux_t *demux_FilterChainNew( demux_t *source, const char *list ) VLC_USED;
 bool demux_FilterEnable( demux_t *p_demux_chain, const char* psz_demux );
 bool demux_FilterDisable( demux_t *p_demux_chain, const char* psz_demux );
 
+const char *demux_GetModuleName(demux_t *demux, bool longname);
+
 #endif

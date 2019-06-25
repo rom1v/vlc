@@ -150,6 +150,12 @@ struct vlc_demux_private
     module_t *module;
 };
 
+const char *demux_GetModuleName(demux_t *demux, bool longname)
+{
+    struct vlc_demux_private *priv = vlc_stream_Private(demux);
+    return module_get_name(priv->module, longname);
+}
+
 static void demux_DestroyDemux(demux_t *demux)
 {
     struct vlc_demux_private *priv = vlc_stream_Private(demux);

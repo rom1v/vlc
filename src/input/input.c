@@ -1278,6 +1278,11 @@ static int Init( input_thread_t * p_input )
         goto error;
     priv->master = master;
 
+    struct vlc_input_event_info info;
+    info.type = VLC_INPUT_EVENT_INFO_INPUT_SOURCE_ADDED;
+    info.source = master;
+    input_SendEventInfo(p_input, &info);
+
     InitTitle( p_input, false );
 
     /* Load master infos */
@@ -1780,7 +1785,14 @@ static void ControlInsertDemuxFilter( input_thread_t* p_input, const char* psz_d
     input_source_t *p_inputSource = input_priv(p_input)->master;
     demux_t *p_filtered_demux = demux_FilterChainNew( p_inputSource->p_demux, psz_demux_chain );
     if ( p_filtered_demux != NULL )
+    {
         p_inputSource->p_demux = p_filtered_demux;
+
+        struct vlc_input_event_info info;
+        info.type = VLC_INPUT_EVENT_INFO_INPUT_SOURCE_DEMUX_UPDATED;
+        info.source = p_inputSource;
+        input_SendEventInfo(p_input, &info);
+    }
     else if ( psz_demux_chain != NULL )
         msg_Dbg(p_input, "Failed to create demux filter %s", psz_demux_chain);
 }
@@ -3248,6 +3260,11 @@ static int input_SlaveSourceAdd( input_thread_t *p_input,
                     priv->i_last_es_id );
     es_out_Control( priv->p_es_out_display, ES_OUT_SET_ES_BY_ID,
                     priv->i_last_es_id, false );
+
+    struct vlc_input_event_info info;
+    info.type = VLC_INPUT_EVENT_INFO_INPUT_SOURCE_ADDED;
+    info.source = p_source;
+    input_SendEventInfo(p_input, &info);
 
     return VLC_SUCCESS;
 }

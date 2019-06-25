@@ -34,6 +34,8 @@
 #include "input_interface.h"
 #include "misc/interrupt.h"
 
+typedef struct input_source input_source_t;
+
 struct input_stats;
 
 /*****************************************************************************
@@ -182,6 +184,9 @@ typedef enum input_event_type_e
 
     /* Thumbnail generation */
     INPUT_EVENT_THUMBNAIL_READY,
+
+    /* Input info event */
+    INPUT_EVENT_INFO,
 } input_event_type_e;
 
 #define VLC_INPUT_CAPABILITIES_SEEKABLE (1<<0)
@@ -314,6 +319,8 @@ struct vlc_input_event
         float subs_fps;
         /* INPUT_EVENT_THUMBNAIL_READY */
         picture_t *thumbnail;
+        /* INPUT_EVENT_INFO */
+        struct vlc_input_event_info *info;
     };
 };
 
@@ -387,7 +394,7 @@ input_item_t* input_GetItem( input_thread_t * ) VLC_USED;
 #define INPUT_CONTROL_FIFO_SIZE    100
 
 /* input_source_t: gathers all information per input source */
-typedef struct
+typedef struct input_source
 {
     demux_t  *p_demux; /**< Demux object (most downstream) */
 

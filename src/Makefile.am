@@ -79,6 +79,7 @@ pluginsinclude_HEADERS = \
 	../include/vlc_picture_fifo.h \
 	../include/vlc_picture_pool.h \
 	../include/vlc_player.h \
+	../include/vlc_player_info.h \
 	../include/vlc_playlist.h \
 	../include/vlc_playlist_export.h \
 	../include/vlc_plugin.h \
@@ -262,6 +263,8 @@ libvlccore_la_SOURCES = \
 	input/input.c \
 	input/player.c \
 	input/player.h \
+	input/player_info.c \
+	input/player_info.h \
 	input/info.h \
 	input/meta.c \
 	clock/input_clock.h \

@@ -89,6 +89,7 @@ demux_PacketizerNew
 demux_New
 demux_vaControl
 demux_vaControlHelper
+demux_GetModuleName
 vlc_demux_chained_New
 vlc_demux_chained_Send
 vlc_demux_chained_ControlVa
@@ -790,6 +791,7 @@ vlc_player_GetCategoryLanguage
 vlc_player_GetCurrentMedia
 vlc_player_GetError
 vlc_player_GetEsIdFromVout
+vlc_player_GetInputInfo
 vlc_player_GetLength
 vlc_player_GetPosition
 vlc_player_GetProgram
@@ -939,3 +941,12 @@ vlc_media_tree_Unlock
 vlc_media_tree_Find
 vlc_media_tree_Preparse
 vlc_viewpoint_to_4x4
+vlc_pi_input_AddListener
+vlc_pi_input_RemoveListener
+vlc_pi_input_GetSourcesCount
+vlc_pi_input_GetSource
+vlc_pi_source_GetStreamsCount
+vlc_pi_source_GetStream
+vlc_pi_stream_GetModuleShortName
+vlc_pi_stream_GetModuleLongName
+vlc_pi_stream_GetUrl

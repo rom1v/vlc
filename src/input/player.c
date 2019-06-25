@@ -37,6 +37,7 @@
 #include "input_internal.h"
 #include "resource.h"
 #include "../audio_output/aout_internal.h"
+#include "player_info.h"
 
 #define RETRY_TIMEOUT_BASE VLC_TICK_FROM_MS(100)
 #define RETRY_TIMEOUT_MAX VLC_TICK_FROM_MS(3200)
@@ -167,6 +168,7 @@ struct vlc_player_t
 
     input_item_t *media;
     struct vlc_player_input *input;
+    struct vlc_pi_input info;
 
     bool releasing_media;
     bool next_media_requested;
@@ -1006,7 +1008,10 @@ vlc_player_input_HandleState(struct vlc_player_input *input,
         case VLC_PLAYER_STATE_STOPPING:
             input->started = false;
             if (input == player->input)
+            {
                 player->input = NULL;
+                vlc_pi_input_reset(&player->info);
+            }
 
             if (player->started)
             {
@@ -2108,6 +2113,9 @@ input_thread_Events(input_thread_t *input_thread,
             vlc_player_SendEvent(player, on_teletext_transparency_changed,
                                  input->teletext_transparent);
             break;
+        case INPUT_EVENT_INFO:
+            vlc_pi_input_handle_event(&player->info, event->info);
+            break;
         default:
             break;
     }
@@ -2194,6 +2202,7 @@ vlc_player_SetCurrentMedia(vlc_player_t *player, input_item_t *media)
     {
         vlc_player_destructor_AddInput(player, player->input);
         player->input = NULL;
+        vlc_pi_input_reset(&player->info);
     }
 
     assert(media == player->next_media);
@@ -2362,6 +2371,7 @@ vlc_player_Stop(vlc_player_t *player)
 
     vlc_player_destructor_AddInput(player, input);
     player->input = NULL;
+    vlc_pi_input_reset(&player->info);
 
 }
 
@@ -3446,6 +3456,8 @@ vlc_player_Delete(vlc_player_t *player)
 
     assert(vlc_list_is_empty(&player->listeners));
 
+    vlc_pi_input_destroy(&player->info);
+
     vlc_mutex_unlock(&player->lock);
 
     vlc_join(player->destructor.thread, NULL);
@@ -3507,6 +3519,8 @@ vlc_player_New(vlc_object_t *parent, enum vlc_player_lock_type lock_type,
     player->releasing_media = false;
     player->next_media_requested = false;
     player->next_media = NULL;
+
+    vlc_pi_input_init(&player->info);
 
 #define VAR_CREATE(var, flag) do { \
     if (var_Create(player, var, flag) != VLC_SUCCESS) \
@@ -3594,4 +3608,10 @@ vlc_object_t *
 vlc_player_GetObject(vlc_player_t *player)
 {
     return VLC_OBJECT(player);
+}
+
+struct vlc_pi_input *
+vlc_player_GetInputInfo(vlc_player_t *player)
+{
+    return &player->info;
 }
