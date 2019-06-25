@@ -82,6 +82,7 @@ struct intf_sys_t
 
     vlc_playlist_t *p_playlist;  /* playlist */
     vlc_player_t *p_player; /* player */
+    vlc_pi_input_listener_id *player_info_listener;
     vlc::playlist::PlaylistControllerModel* p_mainPlaylistController;
     PlayerController* p_mainPlayerController;
 

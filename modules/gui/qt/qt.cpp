@@ -401,6 +401,64 @@ static void Abort( void *obj )
 }
 #endif
 
+static void
+debug_print_pi_input(vlc_object_t *obj, struct vlc_pi_input *pi_input)
+{
+    msg_Info(obj, "[PI INPUT]");
+    size_t sources_count = vlc_pi_input_GetSourcesCount(pi_input);
+    for (size_t i = 0; i < sources_count; ++i)
+    {
+        struct vlc_pi_source *pi_source = vlc_pi_input_GetSource(pi_input, i);
+        msg_Info(obj, "  [PI SOURCE %zd]", i);
+        size_t streams_count = vlc_pi_source_GetStreamsCount(pi_source);
+        for (size_t j = 0; j < streams_count; ++j)
+        {
+            struct vlc_pi_stream *pi_stream =
+                vlc_pi_source_GetStream(pi_source, j);
+            msg_Info(obj, "    [PI STREAM %zd]: %s (%s): %s", j,
+                     vlc_pi_stream_GetModuleLongName(pi_stream),
+                     vlc_pi_stream_GetModuleShortName(pi_stream),
+                     vlc_pi_stream_GetUrl(pi_stream));
+        }
+    }
+}
+
+static void
+on_reset(struct vlc_pi_input *pi_input, void *userdata)
+{
+    vlc_object_t *p_this = reinterpret_cast<vlc_object_t *>(userdata);
+    msg_Info(p_this, "[PI] --> on_reset");
+    debug_print_pi_input(p_this, pi_input);
+}
+
+static void
+on_source_added(struct vlc_pi_input *pi_input, size_t source_index,
+                struct vlc_pi_source *pi_source, void *userdata)
+{
+    (void) source_index;
+    (void) pi_source;
+    vlc_object_t *p_this = reinterpret_cast<vlc_object_t *>(userdata);
+    msg_Info(p_this, "[PI] --> on_source_added");
+    debug_print_pi_input(p_this, pi_input);
+}
+
+static void
+on_source_demux_updated(struct vlc_pi_input *pi_input, size_t source_index,
+                        struct vlc_pi_source *pi_source, void *userdata)
+{
+    (void) source_index;
+    (void) pi_source;
+    vlc_object_t *p_this = reinterpret_cast<vlc_object_t *>(userdata);
+    msg_Info(p_this, "[PI] --> on_source_demux_updated");
+    debug_print_pi_input(p_this, pi_input);
+}
+
+const struct vlc_pi_input_callbacks vlc_pi_input_callbacks = {
+    .on_reset = on_reset,
+    .on_source_added = on_source_added,
+    .on_source_demux_updated = on_source_demux_updated,
+};
+
 /* Open Interface */
 static int Open( vlc_object_t *p_this, bool isDialogProvider )
 {
@@ -455,6 +513,11 @@ static int Open( vlc_object_t *p_this, bool isDialogProvider )
     p_sys->p_playlist = playlist;
     p_sys->p_player = vlc_playlist_GetPlayer( p_sys->p_playlist );
 
+    struct vlc_pi_input *info = vlc_player_GetInputInfo(p_sys->p_player);
+    p_sys->player_info_listener =
+        vlc_pi_input_AddListener(info, &vlc_pi_input_callbacks, p_this);
+    assert(p_sys->player_info_listener);
+
     /* */
 #ifdef Q_OS_MAC
     /* Run mainloop on the main thread as Cocoa requires */
@@ -503,6 +566,9 @@ static void Close( vlc_object_t *p_this )
 {
     intf_thread_t *p_intf = (intf_thread_t *)p_this;
     intf_sys_t *p_sys = p_intf->p_sys;
+
+    struct vlc_pi_input *info = vlc_player_GetInputInfo(p_sys->p_player);
+    vlc_pi_input_RemoveListener(info, p_sys->player_info_listener);
 
     /* And quit */
     msg_Dbg( p_this, "requesting exit..." );
