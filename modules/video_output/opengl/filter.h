@@ -31,6 +31,8 @@ extern "C" {
 struct opengl_vtable_t;
 typedef struct opengl_vtable_t opengl_vtable_t;
 
+struct opengl_tex_converter_t;
+
 /**
  *
  */
@@ -82,6 +84,7 @@ struct vlc_gl_filter
      * Renderer opengl vtable
      */
     const opengl_vtable_t *vt;
+    vlc_gl_t *gl;
 
     /**
      *
@@ -93,6 +96,29 @@ struct vlc_gl_filter
 struct vlc_gl_program
 {
     GLuint id;
+    struct opengl_tex_converter_t *tc;
+
+    /* XXX: shouldn't be here */
+    struct {
+        GLfloat OrientationMatrix[16];
+        GLfloat ProjectionMatrix[16];
+        GLfloat ZoomMatrix[16];
+        GLfloat ViewMatrix[16];
+    } var;
+
+    /* XXX: shouldn't be here */
+    struct { /* UniformLocation */
+        GLint OrientationMatrix;
+        GLint ProjectionMatrix;
+        GLint ViewMatrix;
+        GLint ZoomMatrix;
+    } uloc;
+
+    /* XXX: shouldn't be here */
+    struct { /* AttribLocation */
+        GLint MultiTexCoord[3];
+        GLint VertexPosition;
+    } aloc;
 };
 
 #ifdef __cplusplus
