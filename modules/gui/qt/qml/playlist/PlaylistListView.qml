@@ -209,6 +209,8 @@ Utils.NavigableFocusScope {
         model: root.plmodel
         modelCount: root.plmodel.count
 
+        property string mode: "normal"
+
         footer: PLItemFooter {}
 
         delegate: PLItem {
@@ -234,20 +236,35 @@ Utils.NavigableFocusScope {
             }
             onItemDoubleClicked: mainPlaylistController.goTo(index, true)
             color: VLCStyle.colors.getBgColor(model.selected, plitem.hovered, plitem.activeFocus)
+
+            onDragStarting: {
+                if (!root.plmodel.isSelected(index)) {
+                    /* the dragged item is not in the selection, replace the selection */
+                    root.plmodel.setSelection([index])
+                }
+            }
+
+            onDropedMovedAt: {
+                if (drop.hasUrls) {
+                    delegateModel.onDropUrlAtPos(drop.urls, target)
+                } else {
+                    root.plmodel.moveItems(root.plmodel.getSelection(), target)
+                }
+            }
         }
 
         onSelectAll: root.plmodel.selectAll()
         //onSelectionUpdated: delegateModel.onUpdateIndex( keyModifiers, oldIndex, newIndex )
         Keys.onDeletePressed: root.plmodel.removeItems(root.plmodel.getSelection())
-        //onActionAtIndex: delegateModel.onAction(index)
-        //onActionRight: {
-        //    overlay.state = "normal"
-        //    overlay.focus = true
-        //}
-        //onActionLeft: this.onCancel(index, root.actionLeft)
+        onActionAtIndex: delegateModel.onAction(index)
+        onActionRight: {
+            overlay.state = "normal"
+            overlay.focus = true
+        }
+        onActionLeft: overlay.state = "hidden" //this.onCancel(index, root.actionLeft)
         //onActionCancel: this.onCancel(index, root.actionCancel)
-        //onActionUp: root.actionUp(index)
-        //onActionDown: root.actionDown(index)
+        onActionUp: root.actionUp(index)
+        onActionDown: root.actionDown(index)
 
         function onCancel(index, fct) {
             if (delegateModel.mode === "select" || delegateModel.mode === "move")
@@ -260,6 +277,27 @@ Utils.NavigableFocusScope {
                 fct(index)
             }
         }
+
+        function onDropMovedAtEnd() {
+            onMoveSelectionAtPos(items.count)
+        }
+
+        function onDropUrlAtPos(urls, target) {
+            var list = []
+            for (var i = 0; i < urls.length; i++){
+                list.push(urls[i])
+            }
+            mainPlaylistController.insert(target, list)
+        }
+
+        function onDropUrlAtEnd(urls) {
+            var list = []
+            for (var i = 0; i < urls.length; i++){
+                list.push(urls[i])
+            }
+            mainPlaylistController.append(list)
+        }
+
 
         Connections {
             target: root.plmodel
