@@ -175,6 +175,13 @@ struct vout_display_opengl_t {
     } *filters;
 };
 
+static int EnableOpenglFilter(void *func, bool forced, va_list args)
+{
+    int (*activate)(struct vlc_gl_filter *) = func;
+    struct vlc_gl_filter *filter = va_arg(args, struct vlc_gl_filter *);
+    return activate(filter);
+}
+
 static const vlc_fourcc_t gl_subpicture_chromas[] = {
     VLC_CODEC_RGBA,
     0
@@ -905,8 +912,12 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
 
     vgl->filters = calloc(sizeof(*vgl->filters), 1);
-    vgl->filters->module = module_need(vgl->gl, "opengl filter", "spu blend", true);
+    vgl->filters->module = vlc_module_load(vgl->gl, "opengl filter",
+                                           "spu blend", false,
+                                           EnableOpenglFilter,
+                                           &vgl->filters->object);
 
+    assert(vgl->filters->module);
     if (!vgl->filters->module)
     {
         msg_Err(vgl->gl, "can't initialize spu blender for opengl");
@@ -1620,6 +1631,15 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         vgl->last_source.i_visible_height = source->i_visible_height;
     }
     DrawWithShaders(vgl, vgl->prgm);
+
+    struct vlc_gl_filter_input filter_input =
+    {
+        .region_count = vgl->region_count,
+        .regions = vgl->region,
+    };
+
+    vgl->filters->object.filter(&vgl->filters->object,
+                                &filter_input);
 
     /* Display */
     vlc_gl_Swap(vgl->gl);
