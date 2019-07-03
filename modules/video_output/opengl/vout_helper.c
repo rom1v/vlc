@@ -42,6 +42,7 @@
 
 #include "vout_helper.h"
 #include "internal.h"
+#include "filter.h"
 
 #ifndef GL_CLAMP_TO_EDGE
 # define GL_CLAMP_TO_EDGE 0x812F
@@ -166,6 +167,12 @@ struct vout_display_opengl_t {
     float f_fovy; /* to avoid recalculating them when needed.      */
     float f_z;    /* Position of the camera on the shpere radius vector */
     float f_sar;
+
+    int filter_count;
+    struct {
+        struct vlc_gl_filter object;
+        module_t *module;
+    } *filters;
 };
 
 static const vlc_fourcc_t gl_subpicture_chromas[] = {
@@ -881,18 +888,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     vgl->vt.GenBuffers(1, &vgl->index_buffer_object);
     vgl->vt.GenBuffers(vgl->prgm->tc->tex_count, vgl->texture_buffer_object);
 
-    /* Initial number of allocated buffer objects for subpictures, will grow dynamically. */
-    int subpicture_buffer_object_count = 8;
-    vgl->subpicture_buffer_object = vlc_alloc(subpicture_buffer_object_count, sizeof(GLuint));
-    if (!vgl->subpicture_buffer_object) {
-        vout_display_opengl_Delete(vgl);
-        return NULL;
-    }
-    vgl->subpicture_buffer_object_count = subpicture_buffer_object_count;
-    vgl->vt.GenBuffers(vgl->subpicture_buffer_object_count, vgl->subpicture_buffer_object);
-
     /* */
-    vgl->region_count = 0;
     vgl->region = NULL;
     vgl->pool = NULL;
 
@@ -906,6 +902,16 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     *fmt = vgl->fmt;
     if (subpicture_chromas) {
         *subpicture_chromas = gl_subpicture_chromas;
+    }
+
+    vgl->filters = calloc(sizeof(*vgl->filters), 1);
+    vgl->filters->module = module_need(vgl->gl, "opengl filter", "spu blend", true);
+
+    if (!vgl->filters->module)
+    {
+        msg_Err(vgl->gl, "can't initialize spu blender for opengl");
+        /* TODO: handle errors */
+        return NULL;
     }
 
     GL_ASSERT_NOERROR();
