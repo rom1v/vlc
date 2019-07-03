@@ -164,12 +164,6 @@ Utils.NavigableFocusScope {
                 mainPlaylistController.goTo(delegateModel.selectedGroup.get(0).itemsIndex, true)
         }
 
-        function onAction(index) {
-            if (mode === "select")
-                updateSelection( Qt.ControlModifier, index, view.currentIndex )
-            else //normal
-                onPlay()
-        }
 
         function onUpdateIndex( keyModifiers, oldIndex, newIndex )
         {
@@ -226,6 +220,7 @@ Utils.NavigableFocusScope {
             onItemClicked: {
                 /* to receive keys events */
                 view.forceActiveFocus()
+                view.currentIndex = index
                 /* from PLItem signal itemClicked(key, modifier) */
                 if (modifier & Qt.ControlModifier) {
                     root.plmodel.toggleSelected(index)
@@ -256,7 +251,7 @@ Utils.NavigableFocusScope {
         onSelectAll: root.plmodel.selectAll()
         //onSelectionUpdated: delegateModel.onUpdateIndex( keyModifiers, oldIndex, newIndex )
         Keys.onDeletePressed: root.plmodel.removeItems(root.plmodel.getSelection())
-        onActionAtIndex: delegateModel.onAction(index)
+        onActionAtIndex: onAction(index)
         onActionRight: {
             overlay.state = "normal"
             overlay.focus = true
@@ -266,38 +261,21 @@ Utils.NavigableFocusScope {
         onActionUp: root.actionUp(index)
         onActionDown: root.actionDown(index)
 
-        function onCancel(index, fct) {
-            if (delegateModel.mode === "select" || delegateModel.mode === "move")
-            {
-                overlay.state = "hidden"
-                delegateModel.mode = "normal"
-            }
-            else
-            {
-                fct(index)
-            }
-        }
-
-        function onDropMovedAtEnd() {
-            onMoveSelectionAtPos(items.count)
+        function onAction(index) {
+            if (mode === "select")
+                ;//updateSelection( Qt.ControlModifier, index, view.currentIndex )
+            else //normal
+                // play
+                mainPlaylistController.goTo(index, true)
         }
 
         function onDropUrlAtPos(urls, target) {
             var list = []
-            for (var i = 0; i < urls.length; i++){
+            for (var i = 0; i < urls.length; i++) {
                 list.push(urls[i])
             }
             mainPlaylistController.insert(target, list)
         }
-
-        function onDropUrlAtEnd(urls) {
-            var list = []
-            for (var i = 0; i < urls.length; i++){
-                list.push(urls[i])
-            }
-            mainPlaylistController.append(list)
-        }
-
 
         Connections {
             target: root.plmodel
