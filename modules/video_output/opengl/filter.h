@@ -53,6 +53,8 @@ struct vlc_gl_region
  */
 struct vlc_gl_filter_input
 {
+    struct vlc_gl_region picture;
+
     size_t region_count;
     struct vlc_gl_region *regions;
 };
@@ -73,10 +75,20 @@ struct vlc_gl_filter
     void *sys;
 
     /**
+     * Renderer opengl vtable
+     */
+    opengl_vtable_t *vt;
+
+    /**
      *
      */
-    int (*filter)(const struct vlc_gl_filter *input,
-                  struct vlc_gl_filter *output);
+    int (*filter)(struct vlc_gl_filter *filter,
+                  const struct vlc_gl_filter_input *input);
+};
+
+struct vlc_gl_program
+{
+    GLuint id;
 };
 
 #ifdef __cplusplus
