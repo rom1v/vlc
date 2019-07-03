@@ -1,5 +1,5 @@
 /*****************************************************************************
- * vout_helper.c: OpenGL and OpenGL ES output common code
+ * spu.c: spu blender for opengl
  *****************************************************************************
  * Copyright (C) 2019 VideoLabs
  *
@@ -434,8 +434,10 @@ static void Close(struct vlc_gl_filter *filter)
 { }
 
 vlc_module_begin()
-    set_shortname("spu blender")
+    set_shortname("spu blend")
     set_description("OpenGL subpicture blender")
-    set_capability("opengl filter", 0)
+    set_category(CAT_VIDEO)
+    set_subcategory(SUBCAT_VIDEO_VFILTER)
+    set_capability("opengl filter", 1)
     set_callbacks(Open, Close)
 vlc_module_end()
