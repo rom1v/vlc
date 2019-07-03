@@ -1138,8 +1138,6 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
     }
     free(last);
 
-    VLC_UNUSED(subpicture);
-
     GL_ASSERT_NOERROR();
     return ret;
 }
@@ -1697,4 +1695,3 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
     return VLC_SUCCESS;
 }
-
