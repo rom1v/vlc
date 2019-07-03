@@ -27,6 +27,10 @@
 extern "C" {
 #endif
 
+/* TODO: forward declaration opengl_vtable_t */
+struct opengl_vtable_t;
+typedef struct opengl_vtable_t opengl_vtable_t;
+
 /**
  *
  */
@@ -77,7 +81,7 @@ struct vlc_gl_filter
     /**
      * Renderer opengl vtable
      */
-    opengl_vtable_t *vt;
+    const opengl_vtable_t *vt;
 
     /**
      *

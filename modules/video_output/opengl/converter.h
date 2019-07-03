@@ -148,7 +148,7 @@ typedef GLenum (APIENTRY *PFNGLCLIENTWAITSYNCPROC) (GLsync sync, GLbitfield flag
 /**
  * Structure containing function pointers to shaders commands
  */
-typedef struct {
+typedef struct opengl_vtable_t {
     /*
      * GL / GLES core functions
      */
