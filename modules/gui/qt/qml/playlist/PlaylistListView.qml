@@ -46,17 +46,17 @@ Utils.NavigableFocusScope {
         z: 2
 
         onMenuExit:{
-            delegateModel.mode = "normal"
+            view.mode = "normal"
             view.focus = true
         }
-        onClear: delegateModel.onDelete()
-        onPlay: delegateModel.onPlay()
+        onClear: view.onDelete()
+        onPlay: view.onPlay()
         onSelectionMode:  {
-            delegateModel.mode = selectionMode ? "select" : "normal"
+            view.mode = selectionMode ? "select" : "normal"
             view.focus = true
         }
         onMoveMode: {
-            delegateModel.mode = moveMode ? "move" : "normal"
+            view.mode = moveMode ? "move" : "normal"
             view.focus = true
         }
     }
@@ -241,7 +241,7 @@ Utils.NavigableFocusScope {
 
             onDropedMovedAt: {
                 if (drop.hasUrls) {
-                    delegateModel.onDropUrlAtPos(drop.urls, target)
+                    mainPlaylistController.insert(target, drop.urls)
                 } else {
                     root.plmodel.moveItems(root.plmodel.getSelection(), target)
                 }
@@ -250,8 +250,7 @@ Utils.NavigableFocusScope {
 
         onSelectAll: root.plmodel.selectAll()
         //onSelectionUpdated: delegateModel.onUpdateIndex( keyModifiers, oldIndex, newIndex )
-        Keys.onDeletePressed: root.plmodel.removeItems(root.plmodel.getSelection())
-        onActionAtIndex: onAction(index)
+        Keys.onDeletePressed: onDelete()
         onActionRight: {
             overlay.state = "normal"
             overlay.focus = true
@@ -260,41 +259,22 @@ Utils.NavigableFocusScope {
         //onActionCancel: this.onCancel(index, root.actionCancel)
         onActionUp: root.actionUp(index)
         onActionDown: root.actionDown(index)
-
-        function onAction(index) {
+        onActionAtIndex: {
             if (mode === "select")
-                ;//updateSelection( Qt.ControlModifier, index, view.currentIndex )
+                root.plmodel.toggleSelected(index)
             else //normal
                 // play
                 mainPlaylistController.goTo(index, true)
         }
 
-        function onDropUrlAtPos(urls, target) {
-            var list = []
-            for (var i = 0; i < urls.length; i++) {
-                list.push(urls[i])
-            }
-            mainPlaylistController.insert(target, list)
+        function onPlay() {
+            let selection = root.plmodel.getSelection()
+            if (selection.length > 0)
+                mainPlaylistController.goTo(selection[0], true)
         }
 
-        Connections {
-            target: root.plmodel
-            onCurrentIndexChanged: {
-                var plIndex = root.plmodel.currentIndex
-                if (view.currentIndex === -1 && plIndex >= 0) {
-                    delegateModel.items.get(plIndex).inSelected = true
-                    view.currentIndex = plIndex
-                }
-            }
-        }
-        Connections {
-            target: delegateModel.items
-            onCountChanged: {
-                if (view.currentIndex === -1 && delegateModel.items.count > 0) {
-                    delegateModel.items.get(0).inSelected = true
-                    view.currentIndex = 0
-                }
-            }
+        function onDelete() {
+            root.plmodel.removeItems(root.plmodel.getSelection())
         }
     }
 
