@@ -30,11 +30,14 @@
 
 struct vlc_gl_filter_sys
 {
-    struct prgm *prgm;
+    struct vlc_gl_program *sub_prgm;
+
+    int     buffer_object_count;
+    GLuint *buffer_objects;
 };
 
 static int FilterInput(struct vlc_gl_filter *filter,
-                       const struct vlc_gl_input *input)
+                       const struct vlc_gl_filter_input *input)
 {
     struct vlc_gl_filter_sys *sys = filter->sys;
 
@@ -57,26 +60,26 @@ static int FilterInput(struct vlc_gl_filter *filter,
 
     /* We need two buffer objects for each region: for vertex and texture coordinates. */
     /* TODO: declare buffer objects */
-    if (2 * filter->region_count > filter->subpicture_buffer_object_count) {
-        if (filter->subpicture_buffer_object_count > 0)
-            filter->vt->DeleteBuffers(filter->subpicture_buffer_object_count,
-                                  filter->subpicture_buffer_object);
-        filter->subpicture_buffer_object_count = 0;
+    if (2 * input->region_count > sys->buffer_object_count) {
+        if (sys->buffer_object_count > 0)
+            filter->vt->DeleteBuffers(sys->buffer_object_count,
+                                      sys->buffer_objects);
+        sys->buffer_object_count = 0;
 
-        int new_count = 2 * filter->region_count;
-        filter->subpicture_buffer_object = realloc_or_free(filter->subpicture_buffer_object, new_count * sizeof(GLuint));
-        if (!filter->subpicture_buffer_object)
+        int new_count = 2 * input->region_count;
+        sys->buffer_objects = realloc_or_free(sys->buffer_objects, new_count * sizeof(GLuint));
+        if (!sys->buffer_objects)
             return VLC_ENOMEM;
 
-        filter->subpicture_buffer_object_count = new_count;
-        filter->vt->GenBuffers(filter->subpicture_buffer_object_count,
-                           filter->subpicture_buffer_object);
+        sys->buffer_object_count = new_count;
+        filter->vt->GenBuffers(sys->buffer_object_count,
+                               sys->buffer_objects);
     }
 
     /* TODO: enabled texture tracking ? */
     filter->vt->ActiveTexture(GL_TEXTURE0 + 0);
-    for (int i = 0; i < filter->region_count; i++) {
-        gl_region_t *glr = &filter->region[i];
+    for (int i = 0; i < input->region_count; i++) {
+        struct vlc_gl_region *glr = &input->regions[i];
         const GLfloat vertexCoord[] = {
             glr->left,  glr->top,
             glr->left,  glr->bottom,
@@ -99,14 +102,14 @@ static int FilterInput(struct vlc_gl_filter *filter,
         tc->pf_prepare_shader(tc, &glr->width, &glr->height, glr->alpha);
 
         /* TODO: attribute handling in shader ? */
-        filter->vt->BindBuffer(GL_ARRAY_BUFFER, filter->subpicture_buffer_object[2 * i]);
+        filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->buffer_objects[2 * i]);
         filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(textureCoord), textureCoord, GL_STATIC_DRAW);
         filter->vt->EnableVertexAttribArray(prgm->aloc.MultiTexCoord[0]);
         filter->vt->VertexAttribPointer(prgm->aloc.MultiTexCoord[0], 2, GL_FLOAT,
                                         0, 0, 0);
 
         /* TODO: attribute handling in shader ? */
-        filter->vt->BindBuffer(GL_ARRAY_BUFFER, filter->subpicture_buffer_object[2 * i + 1]);
+        filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->buffer_objects[2 * i + 1]);
         filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
         filter->vt->EnableVertexAttribArray(prgm->aloc.VertexPosition);
         filter->vt->VertexAttribPointer(prgm->aloc.VertexPosition, 2, GL_FLOAT,
@@ -130,7 +133,7 @@ static int FilterInput(struct vlc_gl_filter *filter,
 
 static int Open(struct vlc_gl_filter *filter)
 {
-    filter->filter = filter;
+    filter->filter = FilterInput;
     return VLC_SUCCESS;
 }
 
