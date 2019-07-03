@@ -34,7 +34,6 @@ Utils.NavigableFocusScope {
     //label for DnD
     Utils.DNDLabel {
         id: dragItem
-        text: qsTr("%1 tracks selected").arg(delegateModel.selectedGroup.count)
     }
 
 
@@ -219,6 +218,7 @@ Utils.NavigableFocusScope {
              *  - index: the index of this item in the list
              */
             id: plitem
+            plmodel: root.plmodel
             width: root.width
 
             onItemClicked: {

@@ -28,6 +28,8 @@ import "qrc:///style/"
 Rectangle {
     id: root
 
+    property var plmodel
+
     signal itemClicked(int keys, int modifier)
     signal itemDoubleClicked(int keys, int modifier)
     property alias hovered: mouse.containsMouse
@@ -61,10 +63,6 @@ Rectangle {
         anchors.fill: parent
         hoverEnabled: true
 
-
-        onClicked:{
-            root.itemClicked(mouse.buttons, mouse.modifiers);
-        }
         onDoubleClicked:  root.itemDoubleClicked(mouse.buttons, mouse.modifiers);
 
         drag.target: dragItem
@@ -75,7 +73,12 @@ Rectangle {
                 dragItem.visible = true
         }
         onPressed:  {
+            /* select the item as soon as the button is pressed, so that the
+             * item is included in the drag&drop */
+            root.itemClicked(mouse.buttons, mouse.modifiers);
+
             hold = true
+            dragItem.count = plmodel.getSelection().length
             var pos = this.mapToGlobal( mouseX, mouseY)
             dragItem.updatePos(pos.x, pos.y)
         }
