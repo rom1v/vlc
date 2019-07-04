@@ -170,7 +170,7 @@ struct vout_display_opengl_t {
 
     int filter_count;
     struct {
-        struct vlc_gl_filter object;
+        struct vlc_gl_filter *object;
         module_t *module;
     } *filters;
 };
@@ -912,16 +912,25 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
 
     /* TODO: filters should be an array of filter dynamically allocated */
-    vgl->filters = calloc(sizeof(*vgl->filters), 1);
-    vgl->filters->object.fmt = &vgl->fmt;
-    vgl->filters->object.vt = &vgl->vt;
-    vgl->filters->module = vlc_module_load(vgl->gl, "opengl filter",
-                                           "spu blend", false,
+    vgl->filter_count = 2;
+    vgl->filters = calloc(sizeof(*vgl->filters), vgl->filter_count);
+    vgl->filters[0].object = vlc_object_create(vgl->gl, sizeof(struct vlc_gl_filter));
+    vgl->filters[0].object->fmt = &vgl->fmt;
+    vgl->filters[0].object->vt = &vgl->vt;
+    vgl->filters[0].module = vlc_module_load(vgl->gl, "opengl filter",
+                                           "spu blend", true,
                                            EnableOpenglFilter,
-                                           &vgl->filters->object);
+                                           vgl->filters[0].object);
 
-    assert(vgl->filters->module);
-    if (!vgl->filters->module)
+    vgl->filters[1].object = vlc_object_create(vgl->gl, sizeof(struct vlc_gl_filter));
+    vgl->filters[1].object->fmt = &vgl->fmt;
+    vgl->filters[1].object->vt = &vgl->vt;
+    vgl->filters[1].module = vlc_module_load(vgl->gl, "opengl filter",
+                                           "triangle blend", true,
+                                           EnableOpenglFilter,
+                                           vgl->filters[1].object);
+    assert(vgl->filters[0].module);
+    if (!vgl->filters[0].module)
     {
         msg_Err(vgl->gl, "can't initialize spu blender for opengl");
         /* TODO: handle errors */
@@ -1639,12 +1648,25 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     {
         .region_count = vgl->region_count,
         .regions = vgl->region,
+        /* TODO: it can't work like that because of text converter */
+        .picture = {
+            .texture = vgl->texture[0],
+            .left = -.5f, .right = .5f,
+            .top = -.5f, .bottom = .5f,
+            .width = source->i_visible_width,
+            .height = source->i_visible_height,
+            .alpha = .5f,
+        }
     };
 
     memcpy(&filter_input.var, &vgl->sub_prgm->var, sizeof(filter_input.var));
 
-    vgl->filters->object.filter(&vgl->filters->object,
-                                &filter_input);
+    for (int i = 0; i < vgl->filter_count; ++i)
+    {
+        msg_Err(vgl->gl, "FILTERING WITH FILTER %d", i);
+        struct vlc_gl_filter *filter = vgl->filters[i].object;
+        filter->filter(filter, &filter_input);
+    }
 
     /* Display */
     vlc_gl_Swap(vgl->gl);
