@@ -191,23 +191,47 @@ Utils.NavigableFocusScope {
         anchors.fill: parent
         focus: true
 
-        model: delegateModel.parts.list
-        modelCount: delegateModel.items.count
+        model: root.plmodel
+        modelCount: root.plmodel.count
 
         footer: PLItemFooter {}
 
-        onSelectAll: delegateModel.selectAll()
-        onSelectionUpdated: delegateModel.onUpdateIndex( keyModifiers, oldIndex, newIndex )
-        Keys.onDeletePressed: delegateModel.onDelete()
-        onActionAtIndex: delegateModel.onAction(index)
-        onActionRight: {
-            overlay.state = "normal"
-            overlay.focus = true
+        delegate: PLItem {
+            /*
+             * implicit variables:
+             *  - model: gives access to the values associated to PlaylistListModel roles
+             *  - index: the index of this item in the list
+             */
+            id: plitem
+            width: root.width
+
+            onItemClicked: {
+                /* to receive keys events */
+                view.forceActiveFocus()
+                /* from PLItem signal itemClicked(key, modifier) */
+                if (modifier & Qt.ControlModifier) {
+                    root.plmodel.toggleSelected(index)
+                } else {
+                    root.plmodel.setSelection([index])
+                }
+                console.log("current selection: " + root.plmodel.getSelection())
+            }
+            onItemDoubleClicked: mainPlaylistController.goTo(index, true)
+            color: VLCStyle.colors.getBgColor(model.selected, plitem.hovered, plitem.activeFocus)
         }
-        onActionLeft: this.onCancel(index, root.actionLeft)
-        onActionCancel: this.onCancel(index, root.actionCancel)
-        onActionUp: root.actionUp(index)
-        onActionDown: root.actionDown(index)
+
+        onSelectAll: root.plmodel.selectAll()
+        //onSelectionUpdated: delegateModel.onUpdateIndex( keyModifiers, oldIndex, newIndex )
+        Keys.onDeletePressed: root.plmodel.removeItems(root.plmodel.getSelection())
+        //onActionAtIndex: delegateModel.onAction(index)
+        //onActionRight: {
+        //    overlay.state = "normal"
+        //    overlay.focus = true
+        //}
+        //onActionLeft: this.onCancel(index, root.actionLeft)
+        //onActionCancel: this.onCancel(index, root.actionCancel)
+        //onActionUp: root.actionUp(index)
+        //onActionDown: root.actionDown(index)
 
         function onCancel(index, fct) {
             if (delegateModel.mode === "select" || delegateModel.mode === "move")

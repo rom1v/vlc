@@ -27,16 +27,18 @@
 #include <QVector>
 #include "playlist_common.hpp"
 #include "playlist_item.hpp"
+#include "../selectable_list_model.hpp"
 
 namespace vlc {
 namespace playlist {
 
 class PlaylistListModelPrivate;
-class PlaylistListModel : public QAbstractListModel
+class PlaylistListModel : public SelectableListModel
 {
     Q_OBJECT
     Q_PROPERTY(PlaylistPtr playlistId READ getPlaylistId WRITE setPlaylistId NOTIFY playlistIdChanged)
     Q_PROPERTY(int currentIndex READ getCurrentIndex NOTIFY currentIndexChanged)
+    Q_PROPERTY(int count READ rowCount NOTIFY countChanged)
 
 public:
     enum Roles
@@ -46,7 +48,8 @@ public:
         IsCurrentRole,
         ArtistRole,
         AlbumRole,
-        ArtworkRole
+        ArtworkRole,
+        SelectedRole,
     };
 
     PlaylistListModel(QObject *parent = nullptr);
@@ -66,6 +69,11 @@ public:
 
     int getCurrentIndex() const;
 
+protected:
+    bool isRowSelected(int row) const override;
+    void setRowSelected(int row, bool selected) override;
+    int getSelectedRole() const override;
+
 public slots:
     PlaylistPtr getPlaylistId() const;
     void setPlaylistId(PlaylistPtr id);
@@ -74,6 +82,7 @@ public slots:
 signals:
     void playlistIdChanged(const PlaylistPtr& );
     void currentIndexChanged( int );
+    void countChanged(int);
 
 private:
     Q_DECLARE_PRIVATE(PlaylistListModel)

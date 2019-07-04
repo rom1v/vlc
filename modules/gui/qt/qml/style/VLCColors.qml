@@ -41,7 +41,7 @@ Item {
         if (focus)
             return accent
         if ( selected )
-            return bgHoverInactive
+            return hovered ? "#808080" : "#bdbebf"
         else if (hovered)
             return bgHoverInactive
         else
