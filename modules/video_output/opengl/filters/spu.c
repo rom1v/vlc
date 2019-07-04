@@ -34,7 +34,7 @@
 
 struct vlc_gl_filter_sys
 {
-    struct vlc_gl_program *sub_prgm;
+    struct vlc_gl_program sub_prgm;
 
     int     buffer_object_count;
     GLuint *buffer_objects;
@@ -337,7 +337,8 @@ static int FilterInput(struct vlc_gl_filter *filter,
     /* Draw the subpictures */
 
     /* TODO: program should be a vlc_gl_program loaded by a shader API */
-    struct vlc_gl_program *prgm = sys->sub_prgm;
+    struct vlc_gl_program *prgm = &sys->sub_prgm;
+
     GLuint program = prgm->id;
 
     /* TODO: opengl_tex_converter_t should be handled before as it might need
@@ -410,22 +411,36 @@ static int FilterInput(struct vlc_gl_filter *filter,
 
         /* TODO: where to store this UBO, shader API ? */
         filter->vt->UniformMatrix4fv(prgm->uloc.OrientationMatrix, 1, GL_FALSE,
-                                    prgm->var.OrientationMatrix);
+                                     input->var.OrientationMatrix);
         filter->vt->UniformMatrix4fv(prgm->uloc.ProjectionMatrix, 1, GL_FALSE,
-                                    prgm->var.ProjectionMatrix);
+                                     input->var.ProjectionMatrix);
         filter->vt->UniformMatrix4fv(prgm->uloc.ViewMatrix, 1, GL_FALSE,
-                                    prgm->var.ViewMatrix);
+                                     input->var.ViewMatrix);
         filter->vt->UniformMatrix4fv(prgm->uloc.ZoomMatrix, 1, GL_FALSE,
-                                    prgm->var.ZoomMatrix);
+                                     input->var.ZoomMatrix);
 
         filter->vt->DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }
     filter->vt->Disable(GL_BLEND);
 
+    return VLC_SUCCESS;
 }
 
 static int Open(struct vlc_gl_filter *filter)
 {
+    struct vlc_gl_filter_sys *sys = filter->sys =
+        malloc(sizeof(*sys));
+        //vlc_obj_malloc(VLC_OBJECT(filter), sizeof(*sys));
+
+    sys->buffer_object_count = 0;
+    sys->buffer_objects = NULL;
+
+    const char *extensions = (const char *)filter->vt->GetString(GL_EXTENSIONS);
+
+    opengl_init_program(filter, NULL /* context */,
+                        &sys->sub_prgm, extensions,
+                        filter->fmt, true, false);
+
     filter->filter = FilterInput;
     return VLC_SUCCESS;
 }

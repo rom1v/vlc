@@ -911,7 +911,10 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         *subpicture_chromas = gl_subpicture_chromas;
     }
 
+    /* TODO: filters should be an array of filter dynamically allocated */
     vgl->filters = calloc(sizeof(*vgl->filters), 1);
+    vgl->filters->object.fmt = &vgl->fmt;
+    vgl->filters->object.vt = &vgl->vt;
     vgl->filters->module = vlc_module_load(vgl->gl, "opengl filter",
                                            "spu blend", false,
                                            EnableOpenglFilter,
@@ -1637,6 +1640,8 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         .region_count = vgl->region_count,
         .regions = vgl->region,
     };
+
+    memcpy(&filter_input.var, &vgl->sub_prgm->var, sizeof(filter_input.var));
 
     vgl->filters->object.filter(&vgl->filters->object,
                                 &filter_input);
