@@ -24,6 +24,7 @@
 #include <GL/gl.h>
 
 #include <vlc_common.h>
+#include <vlc_es.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,6 +66,16 @@ struct vlc_gl_filter_input
 
     size_t region_count;
     struct vlc_gl_region *regions;
+
+    /**
+     * Common rendering variable, shouldn't be here
+     */
+    struct {
+        GLfloat OrientationMatrix[16];
+        GLfloat ProjectionMatrix[16];
+        GLfloat ZoomMatrix[16];
+        GLfloat ViewMatrix[16];
+    } var;
 };
 
 
@@ -82,6 +93,8 @@ struct vlc_gl_filter
      * Filter module private data
      */
     void *sys;
+
+    const video_format_t *fmt;
 
     /**
      * Renderer opengl vtable
