@@ -23,6 +23,8 @@
 
 #include <GL/gl.h>
 
+#include <vlc_common.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -75,6 +77,7 @@ struct vlc_gl_filter_input
  */
 struct vlc_gl_filter
 {
+    vlc_object_t obj;
     /**
      * Filter module private data
      */
