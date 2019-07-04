@@ -89,6 +89,10 @@ libgl_filter_spu_plugin_la_SOURCES = video_output/opengl/filters/spu.c $(OPENGL_
 libgl_filter_spu_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
 libgl_filter_spu_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
+libgl_filter_triangle_plugin_la_SOURCES = video_output/opengl/filters/triangle.c $(OPENGL_COMMONSOURCES)
+libgl_filter_triangle_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_filter_triangle_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
+
 libglconv_vaapi_plugin_la_SOURCES = video_output/opengl/converter_vaapi.c \
 	video_output/opengl/converter.h \
 	hw/vaapi/vlc_vaapi.c hw/vaapi/vlc_vaapi.h
@@ -103,7 +107,8 @@ libglconv_vdpau_plugin_la_LIBADD = $(LIBDL) libvlc_vdpau.la $(X_LIBS) $(X_PRE_LI
 if HAVE_GL
 vout_LTLIBRARIES += \
 	libgl_plugin.la \
-	libgl_filter_spu_plugin.la
+	libgl_filter_spu_plugin.la \
+	libgl_filter_triangle_plugin.la
 
 if HAVE_EGL
 if HAVE_VAAPI
