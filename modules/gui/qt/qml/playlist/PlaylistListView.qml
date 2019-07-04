@@ -243,13 +243,20 @@ Utils.NavigableFocusScope {
                 if (drop.hasUrls) {
                     mainPlaylistController.insert(target, drop.urls)
                 } else {
-                    root.plmodel.moveItems(root.plmodel.getSelection(), target)
+                    root.plmodel.moveItemsPre(root.plmodel.getSelection(), target)
                 }
             }
         }
 
         onSelectAll: root.plmodel.selectAll()
-        //onSelectionUpdated: delegateModel.onUpdateIndex( keyModifiers, oldIndex, newIndex )
+        onSelectionUpdated: {
+            if (mode == "move") {
+                let selection = root.plmodel.getSelection()
+                if (selection.length > 0)
+                    root.plmodel.moveItemsPost(selection, newIndex)
+                view.currentIndex = newIndex
+            }
+        }
         Keys.onDeletePressed: onDelete()
         onActionRight: {
             overlay.state = "normal"
