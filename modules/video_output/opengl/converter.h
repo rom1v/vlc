@@ -244,6 +244,13 @@ struct pl_context;
 struct pl_shader;
 struct pl_shader_res;
 
+enum opengl_tex_converter_glsl_code
+{
+    VLC_GLSL_SAMPLER_CODE,
+    VLC_GLSL_TEXCOORDS_CODE,
+    VLC_GLSL_TEXCOORDS_INTERPOLATION_CODE,
+};
+
 /*
  * Structure that is filled by "glhw converter" module probe function
  * The implementation should initialize every members of the struct that are
@@ -270,6 +277,14 @@ struct opengl_tex_converter_t
 
     /* True to dump shaders, set by the caller */
     bool b_dump_shaders;
+
+    /* Gives:
+     *  + sampler for fragment shaders
+     *  + texcoords for vertex shader
+     *  + interpolation code for texcoords
+     * */
+    const char *(*pf_glsl_generate)(opengl_tex_converter_t *,
+                                    enum opengl_tex_converter_glsl_code type);
 
     /* Function pointer to the shader init command, set by the caller, see
      * opengl_fragment_shader_init() documentation. */
