@@ -78,6 +78,15 @@ struct vlc_gl_shader_program
     struct opengl_tex_converter_t *tc;
 };
 
+struct vlc_gl_texcoords
+{
+    struct
+    {
+        const char *header;
+        const char *body;
+    } code;
+};
+
 struct vlc_gl_shader_builder *
 vlc_gl_shader_builder_Create(
     struct opengl_tex_converter_t *tc,
@@ -88,6 +97,14 @@ void vlc_gl_shader_builder_Release(
 
 int vlc_gl_shader_AttachShaderSource(
     struct vlc_gl_shader_builder *builder,
-    enum vlc_gl_shader_type shader_type);
+    enum vlc_gl_shader_type shader_type,
+    const char *header,
+    const char *body);
+
+struct vlc_gl_shader_program*
+vlc_gl_shader_program_Create(struct vlc_gl_shader_builder *builder);
+
+void
+vlc_gl_shader_program_Release(struct vlc_gl_shader_program *builder);
 
 #endif

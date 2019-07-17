@@ -30,6 +30,7 @@
 #include "../internal.h"
 #include "../filter.h"
 #include "../converter.h"
+#include "../shader_builder.h"
 #include "../../placebo_utils.h"
 
 struct vlc_gl_filter_sys
@@ -38,7 +39,25 @@ struct vlc_gl_filter_sys
 
     int     buffer_object_count;
     GLuint *buffer_objects;
+
+    struct vlc_gl_shader_program *program;
 };
+
+
+static const char spu_vertex_shader_header[] =
+    "attribute vec3 VertexPosition;\n"
+    "uniform mat4 OrientationMatrix;\n"
+    "uniform mat4 ProjectionMatrix;\n"
+    "uniform mat4 ZoomMatrix;\n"
+    "uniform mat4 ViewMatrix;\n";
+
+static const char spu_vertex_shader_body[] =
+    "void main() {\n"
+    " TexCoord0 = vec4(OrientationMatrix * MultiTexCoord0).st;\n"
+    "%s%s"
+    " gl_Position = ProjectionMatrix * ZoomMatrix * ViewMatrix\n"
+    "               * vec4(VertexPosition, 1.0);\n"
+    "}";
 
 /* XXX: shouldn't be here, it should either be provided by the module
  *      or by a default implementation */
@@ -437,16 +456,47 @@ static int Open(struct vlc_gl_filter *filter)
 
     const char *extensions = (const char *)filter->vt->GetString(GL_EXTENSIONS);
 
+    // TODO: create the opengl_tex_converter ourselves
     opengl_init_program(filter, NULL /* context */,
                         &sys->sub_prgm, extensions,
                         filter->fmt, true, false);
+
+    /* Initialize the shader */
+    struct vlc_gl_shader_sampler *sampler;
+    struct vlc_gl_shader_builder *shader_builder =
+        vlc_gl_shader_builder_Create(sys->sub_prgm.tc, sampler);
+
+    if (!shader_builder)
+    {
+        // TODO:
+        return VLC_EGENERIC;
+    }
+
+    // TODO: attach real source
+    vlc_gl_shader_AttachShaderSource(shader_builder, VLC_GL_SHADER_VERTEX,
+                                     spu_vertex_shader_header,
+                                     spu_vertex_shader_body);
+    vlc_gl_shader_AttachShaderSource(shader_builder, VLC_GL_SHADER_FRAGMENT,
+                                     spu_vertex_shader_header,
+                                     spu_vertex_shader_body);
+    sys->program = vlc_gl_shader_program_Create(shader_builder);
+    vlc_gl_shader_builder_Release(shader_builder);
+
+    if (!sys->program)
+    {
+        return VLC_EGENERIC;
+    }
 
     filter->filter = FilterInput;
     return VLC_SUCCESS;
 }
 
 static void Close(struct vlc_gl_filter *filter)
-{ }
+{
+    struct vlc_gl_filter_sys *sys = filter->sys;
+    vlc_gl_shader_program_Release(sys->program);
+    free(filter->sys);
+}
 
 vlc_module_begin()
     set_shortname("spu blend")

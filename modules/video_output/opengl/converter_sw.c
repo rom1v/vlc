@@ -28,6 +28,7 @@
 
 #include <vlc_common.h>
 #include "internal.h"
+#include "shader_builder.h"
 
 #ifndef GL_UNPACK_ROW_LENGTH
 # define GL_UNPACK_ROW_LENGTH 0x0CF2
@@ -290,6 +291,37 @@ tc_common_update(const opengl_tex_converter_t *tc, GLuint *textures,
                            pic->p[i].i_pitch, pic->p[i].i_visible_pitch, pixels);
     }
     return ret;
+}
+
+static struct vlc_gl_texcoords*
+tc_generate_glsl(opengl_tex_converter_t *tc,
+                 enum opengl_tex_converter_glsl_code type)
+{
+    // TODO
+    if (tc->tex_count != 1)
+        return NULL;
+
+    // TODO: remove malloc
+    struct vlc_gl_texcoords *tc_info = malloc(sizeof(*tc_info));
+
+    if (type == VLC_GL_SHADER_VERTEX)
+    {
+        tc_info->code.header =
+            "varying vec2 __vlc_pic0_tex0_coords0;\n";
+        tc_info->code.body =
+            "__vlc_pic0_tex0_coords0 = ;\n";
+    }
+    else if (type == VLC_GL_SHADER_FRAGMENT)
+    {
+        tc_info->code.header =
+            "varying vec2 __vlc_pic0_tex0_coords0;\n"
+            "uniform sampler2D __vlc_pic0_tex0;\n";
+        tc_info->code.body =
+            "vec4 __vlc_sample_color_from_textures() {\n";
+            "    return texture2D(__vlc_pic0_tex0, __vlc_pic0_tex0_coords0);\n"
+            "}\n";
+    }
+    return tc_info;
 }
 
 int

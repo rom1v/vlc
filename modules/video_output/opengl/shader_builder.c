@@ -33,40 +33,25 @@ static int BuildVertexShader(
     struct vlc_gl_shader_sampler *sampler,
     /* Used for sampling code and attribute declaration */
     struct opengl_tex_converter_t *tc,
-    /* Used for version */
-    const char *header,
+    /* Used for version, defines, user-defined uniforms or attributes */
+    const char **headers,
+    /* Number of parts in the \ref headers array */
+    size_t header_count,
     /* Actual code of the shader */
     const char **parts,
     /* Number of parts in the shader */
-    unsigned int part_count)
+    size_t part_count)
 {
     const opengl_vtable_t *vt = tc->vt;
-    /* TODO: use chroma description or helper ? */
+    /* TODO: use chroma description or helper ? chroma description won't give opaque planes count */
     //unsigned int plane_count = vlc_gl_tc_CountPlanes(tc);
-
-    /* Basic vertex shader */
-    //static const char *template =
-    //    "#version %u\n"
-    //    "varying vec2 TexCoord0;\n"
-    //    "attribute vec4 MultiTexCoord0;\n"
-    //    "%s%s"
-    //    "attribute vec3 VertexPosition;\n"
-    //    "uniform mat4 OrientationMatrix;\n"
-    //    "uniform mat4 ProjectionMatrix;\n"
-    //    "uniform mat4 ZoomMatrix;\n"
-    //    "uniform mat4 ViewMatrix;\n"
-    //    "void main() {\n"
-    //    " TexCoord0 = vec4(OrientationMatrix * MultiTexCoord0).st;\n"
-    //    "%s%s"
-    //    " gl_Position = ProjectionMatrix * ZoomMatrix * ViewMatrix\n"
-    //    "               * vec4(VertexPosition, 1.0);\n"
-    //    "}";
 
     /* Will generate varying and attribute TexCoords as well as assign
      * configuration function, even in non upload mode (framebuffer
      * input/output) */
     // TODO
-    //struct vlc_gl_texcoords *texcoords = vlc_gl_tc_GenerateTexcoords(sampler, tc, VLC_GL_SHADER_VERTEX);
+    struct vlc_gl_texcoords *texcoords =
+        vlc_gl_tc_GenerateTexcoords(tc, sampler, VLC_GL_SHADER_VERTEX);
 
     GLuint shader = tc->vt->CreateShader(GL_VERTEX_SHADER);
     if (shader == 0)
@@ -74,14 +59,14 @@ static int BuildVertexShader(
         /* TODO: error */
         return VLC_ENOMEM;
     }
-    const char **sources = malloc(sizeof(char*) * (part_count + 2));
-    sources[0] = header;
+    const char **sources = malloc(sizeof(char*) * (header_count + part_count + 1));
+    memcpy(sources, headers, header_count * sizeof(char*));
+    memcpy(sources + header_count + 1,  parts, part_count * sizeof(char*));
     // TODO
-    // sources[1] = texcoords->code;
+    // sources[header_count] = texcoords->code;
+    sources[header_count] = "";
 
-    memcpy(sources + 2, parts, part_count * sizeof (*parts));
-
-    tc->vt->ShaderSource(shader, part_count + 2, sources, NULL);
+    tc->vt->ShaderSource(shader, header_count + part_count + 1, sources, NULL);
 
     /* TODO: check error */
     tc->vt->CompileShader(shader);
@@ -101,7 +86,9 @@ static bool BuildFragmentShader(
     /* Used for sampling code */
     struct vlc_gl_shader_sampler *sampler,
     /* Used for version */
-    const char *header,
+    const char **headers,
+    /* */
+    size_t header_count,
     /* Actual code of the shader */
     const char **parts,
     /* Number of parts in the shader */
@@ -116,6 +103,7 @@ static bool BuildFragmentShader(
 
     // TODO
     //vlc_gl_tc_ReleaseTexcoords(texcoords);
+    *shader_out = 0;
 
     return VLC_EGENERIC;
 }
@@ -147,8 +135,9 @@ void vlc_gl_shader_builder_Release(
 
 int vlc_gl_shader_AttachShaderSource(
     struct vlc_gl_shader_builder *builder,
-    enum vlc_gl_shader_type shader_type
-   )
+    enum vlc_gl_shader_type shader_type,
+    const char *header,
+    const char *body)
 {
     const opengl_vtable_t *vt = builder->tc->vt;
     /* We can only set shader once
@@ -160,8 +149,13 @@ int vlc_gl_shader_AttachShaderSource(
     GLuint shader = 0;
     int ret = VLC_EGENERIC;
 
-    // TODO
-    char *shader_source = NULL;
+    const char *headers[] =
+    {
+        /* Base header for defines and common stuff */
+        builder->header,
+        /* User-define header data */
+        header,
+    };
 
     /* Call
      * TODO: move this into a module
@@ -169,12 +163,12 @@ int vlc_gl_shader_AttachShaderSource(
     switch (shader_type)
     {
         case VLC_GL_SHADER_VERTEX:
-            ret = BuildVertexShader(&shader, builder->sampler, builder->tc, builder->header,
-                                    &shader_source, 1);
+            ret = BuildVertexShader(&shader, builder->sampler, builder->tc,
+                                    headers, 2, &body, 1);
             break;
         case VLC_GL_SHADER_FRAGMENT:
             ret = BuildFragmentShader(&shader, builder->tc, builder->sampler,
-                                      builder->header, &shader_source, 1);
+                                      headers, 2, &body, 1);
             break;
     }
 

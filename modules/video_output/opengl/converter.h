@@ -63,6 +63,8 @@
 # define APIENTRY
 #endif
 
+#include "shader_builder.h"
+
 /* Core OpenGL/OpenGLES functions: the following functions pointers typedefs
  * are not defined. */
 #if !defined(_WIN32) /* Already defined on Win32 */
@@ -283,8 +285,9 @@ struct opengl_tex_converter_t
      *  + texcoords for vertex shader
      *  + interpolation code for texcoords
      * */
-    const char *(*pf_glsl_generate)(opengl_tex_converter_t *,
-                                    enum opengl_tex_converter_glsl_code type);
+    struct vlc_gl_texcoords *(*pf_generate_glsl)(opengl_tex_converter_t *,
+                                                 struct vlc_gl_sampler *sampler,
+                                                 enum opengl_tex_converter_glsl_code type);
 
     /* Function pointer to the shader init command, set by the caller, see
      * opengl_fragment_shader_init() documentation. */
@@ -446,6 +449,16 @@ opengl_fragment_shader_init(opengl_tex_converter_t *tc, GLenum tex_target,
                             vlc_fourcc_t chroma, video_color_space_t yuv_space)
 {
     return tc->pf_fragment_shader_init(tc, tex_target, chroma, yuv_space);
+}
+
+static inline struct vlc_gl_texcoords*
+vlc_gl_tc_GenerateTexcoords(opengl_tex_converter_t *tc,
+                            struct vlc_gl_sampler* sampler,
+                            enum vlc_gl_shader_type type)
+{
+    if (tc->pf_generate_glsl)
+        return tc->pf_generate_glsl(tc, sampler, type);
+    return NULL;
 }
 
 #endif /* include-guard */
