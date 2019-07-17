@@ -85,7 +85,8 @@ libgl_plugin_la_CFLAGS += -DHAVE_GL_CORE_SYMBOLS
 libgl_plugin_la_LIBADD += $(GL_LIBS)
 endif
 
-libgl_filter_spu_plugin_la_SOURCES = video_output/opengl/filters/spu.c $(OPENGL_COMMONSOURCES)
+libgl_filter_spu_plugin_la_SOURCES = video_output/opengl/filters/spu.c $(OPENGL_COMMONSOURCES) \
+									 video_output/opengl/shader_builder.c
 libgl_filter_spu_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
 libgl_filter_spu_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
