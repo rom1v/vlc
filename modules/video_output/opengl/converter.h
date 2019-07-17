@@ -289,6 +289,10 @@ struct opengl_tex_converter_t
                                                  struct vlc_gl_sampler *sampler,
                                                  enum opengl_tex_converter_glsl_code type);
 
+    /* Update uniforms and bind textures in the given shader program */
+    int (*pf_enable_program)(opengl_tex_converter_t *,
+                             struct vlc_gl_shader_program *program);
+
     /* Function pointer to the shader init command, set by the caller, see
      * opengl_fragment_shader_init() documentation. */
     GLuint (*pf_fragment_shader_init)(opengl_tex_converter_t *, GLenum,

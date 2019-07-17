@@ -324,6 +324,15 @@ tc_generate_glsl(opengl_tex_converter_t *tc,
     return tc_info;
 }
 
+// TODO: MAYBE useless if we can reuse tc_common_update
+static int
+tc_enable_program(opengl_tex_converter_t *tc,
+                      struct vlc_gl_shader_program *program)
+{
+    if (tc->tex_count != 1)
+        return tc->tex_count == 0 ? VLC_EGENERIC : VLC_SUCCESS;
+}
+
 int
 opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
 {
