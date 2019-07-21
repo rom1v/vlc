@@ -1695,3 +1695,9 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
     return VLC_SUCCESS;
 }
+
+int vout_display_opengl_AddFilter(vout_display_opengl_t *vgl,
+                                  struct vlc_gl_filter *filter)
+{
+
+}
