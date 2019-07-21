@@ -54,7 +54,6 @@ static const char spu_vertex_shader_header[] =
 static const char spu_vertex_shader_body[] =
     "void main() {\n"
     " TexCoord0 = vec4(OrientationMatrix * MultiTexCoord0).st;\n"
-    "%s%s"
     " gl_Position = ProjectionMatrix * ZoomMatrix * ViewMatrix\n"
     "               * vec4(VertexPosition, 1.0);\n"
     "}";
@@ -464,7 +463,7 @@ static int Open(struct vlc_gl_filter *filter)
     /* Initialize the shader */
     struct vlc_gl_shader_sampler *sampler;
     struct vlc_gl_shader_builder *shader_builder =
-        vlc_gl_shader_builder_Create(sys->sub_prgm.tc, sampler);
+        vlc_gl_shader_builder_Create(filter->vt, sys->sub_prgm.tc, sampler);
 
     if (!shader_builder)
     {

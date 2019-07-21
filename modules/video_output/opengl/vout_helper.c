@@ -671,6 +671,20 @@ ResizeFormatToGLMaxTexSize(video_format_t *fmt, unsigned int max_tex_size)
     }
 }
 
+static void GLAPIENTRY
+MessageCallback( GLenum source,
+                 GLenum type,
+                 GLuint id,
+                 GLenum severity,
+                 GLsizei length,
+                 const GLchar* message,
+                 const void* userParam )
+{
+  fprintf( stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+           ( type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "" ),
+            type, severity, message );
+}
+
 vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
                                                const vlc_fourcc_t **subpicture_chromas,
                                                vlc_gl_t *gl,
@@ -727,6 +741,8 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     GET_PROC_ADDR_CORE(TexParameteri);
     GET_PROC_ADDR_CORE(TexSubImage2D);
     GET_PROC_ADDR_CORE(Viewport);
+
+    GET_PROC_ADDR_CORE(DebugMessageCallback);
 
     GET_PROC_ADDR_CORE_GL(GetTexLevelParameteriv);
     GET_PROC_ADDR_CORE_GL(TexEnvf);
@@ -895,6 +911,11 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     vgl->vt.GenBuffers(1, &vgl->index_buffer_object);
     vgl->vt.GenBuffers(vgl->prgm->tc->tex_count, vgl->texture_buffer_object);
 
+    // During init, enable debug output
+    vgl->vt.Enable              ( GL_DEBUG_OUTPUT );
+    vgl->vt.DebugMessageCallback( MessageCallback, 0 );
+
+
     /* */
     vgl->region = NULL;
     vgl->pool = NULL;
@@ -912,27 +933,27 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
 
     /* TODO: filters should be an array of filter dynamically allocated */
-    vgl->filter_count = 2;
+    vgl->filter_count = 1;
     vgl->filters = calloc(sizeof(*vgl->filters), vgl->filter_count);
+    //vgl->filters[0].object = vlc_object_create(vgl->gl, sizeof(struct vlc_gl_filter));
+    //vgl->filters[0].object->fmt = &vgl->fmt;
+    //vgl->filters[0].object->vt = &vgl->vt;
+    //vgl->filters[0].module = vlc_module_load(vgl->gl, "opengl filter",
+    //                                       "spu blend", true,
+    //                                       EnableOpenglFilter,
+    //                                       vgl->filters[0].object);
+
     vgl->filters[0].object = vlc_object_create(vgl->gl, sizeof(struct vlc_gl_filter));
     vgl->filters[0].object->fmt = &vgl->fmt;
     vgl->filters[0].object->vt = &vgl->vt;
     vgl->filters[0].module = vlc_module_load(vgl->gl, "opengl filter",
-                                           "spu blend", true,
-                                           EnableOpenglFilter,
-                                           vgl->filters[0].object);
-
-    vgl->filters[1].object = vlc_object_create(vgl->gl, sizeof(struct vlc_gl_filter));
-    vgl->filters[1].object->fmt = &vgl->fmt;
-    vgl->filters[1].object->vt = &vgl->vt;
-    vgl->filters[1].module = vlc_module_load(vgl->gl, "opengl filter",
                                            "triangle blend", true,
                                            EnableOpenglFilter,
-                                           vgl->filters[1].object);
+                                           vgl->filters[0].object);
     assert(vgl->filters[0].module);
     if (!vgl->filters[0].module)
     {
-        msg_Err(vgl->gl, "can't initialize spu blender for opengl");
+        msg_Err(vgl->gl, "can't initialize triangle for opengl");
         /* TODO: handle errors */
         return NULL;
     }
@@ -1663,7 +1684,6 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
     for (int i = 0; i < vgl->filter_count; ++i)
     {
-        msg_Err(vgl->gl, "FILTERING WITH FILTER %d", i);
         struct vlc_gl_filter *filter = vgl->filters[i].object;
         filter->filter(filter, &filter_input);
     }

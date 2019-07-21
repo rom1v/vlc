@@ -25,6 +25,8 @@
 #include <GL/gl.h>
 
 struct opengl_tex_converter_t;
+struct opengl_vtable_t;
+typedef struct opengl_vtable_t opengl_vtable_t;
 
 /**
  * Enumerate the different kind of linkable shader
@@ -33,7 +35,7 @@ enum vlc_gl_shader_type
 {
     VLC_GL_SHADER_VERTEX,
     VLC_GL_SHADER_FRAGMENT,
-# define VLC_GL_SHADER_TYPE_MAX VLC_GL_SHADER_FRAGMENT
+# define VLC_GL_SHADER_TYPE_COUNT ((int)VLC_GL_SHADER_FRAGMENT+1)
 };
 
 
@@ -52,11 +54,12 @@ struct vlc_gl_shader_builder
     vlc_object_t obj;
     module_t *module;
 
-    void* // TODO: use correct type
-    shaders[VLC_GL_SHADER_TYPE_MAX];
+    GLuint // TODO: use correct type
+    shaders[VLC_GL_SHADER_TYPE_COUNT];
 
     const char *header;
 
+    const opengl_vtable_t *vt;
     struct vlc_gl_shader_sampler *sampler;
     struct opengl_tex_converter_t *tc;
 };
@@ -89,6 +92,7 @@ struct vlc_gl_texcoords
 
 struct vlc_gl_shader_builder *
 vlc_gl_shader_builder_Create(
+    const opengl_vtable_t *vt,
     struct opengl_tex_converter_t *tc,
     struct vlc_gl_shader_sampler *sampler);
 
@@ -106,5 +110,7 @@ vlc_gl_shader_program_Create(struct vlc_gl_shader_builder *builder);
 
 void
 vlc_gl_shader_program_Release(struct vlc_gl_shader_program *builder);
+
+GLuint vlc_gl_shader_program_GetId(struct vlc_gl_shader_program *program);
 
 #endif
