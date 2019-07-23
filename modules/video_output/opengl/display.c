@@ -65,6 +65,7 @@ vlc_module_begin ()
     add_shortcut ("opengl", "gl")
     add_module("gl", "opengl", NULL, GL_TEXT, PROVIDER_LONGTEXT)
 #endif
+    add_module_list("gl-filters", "opengl filter", "none", "GL filters", "GL filters")
     add_glopts ()
 vlc_module_end ()
 
@@ -140,6 +141,22 @@ static int Open(vout_display_t *vd, const vout_display_cfg_t *cfg,
 
     if (sys->vgl == NULL)
         goto error;
+
+    /* Load the different opengl filter into the opengl renderer */
+    char *filter_config = var_GetString(vd, "gl-filters");
+    if (filter_config != NULL)
+    {
+        char *name;
+        config_chain_t *chain;
+        char *next_module = filter_config;
+
+        while (*next_module != '\0')
+        {
+            next_module = config_ChainCreate(&name, &chain, filter_config);
+            struct vlc_gl_filter *filter =
+                vlc_object_create(vgl->gl, sizeof(*filter));
+        }
+    }
 
     vd->sys = sys;
     vd->info.subpicture_chromas = spu_chromas;

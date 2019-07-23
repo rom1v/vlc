@@ -169,10 +169,8 @@ struct vout_display_opengl_t {
     float f_sar;
 
     int filter_count;
-    struct {
-        struct vlc_gl_filter *object;
-        module_t *module;
-    } *filters;
+
+    VLC_VECTOR(struct vlc_gl_filter *) filters;
 };
 
 static int EnableOpenglFilter(void *func, bool forced, va_list args)
@@ -933,6 +931,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
 
     /* TODO: filters should be an array of filter dynamically allocated */
+
     vgl->filter_count = 1;
     vgl->filters = calloc(sizeof(*vgl->filters), vgl->filter_count);
     //vgl->filters[0].object = vlc_object_create(vgl->gl, sizeof(struct vlc_gl_filter));
@@ -1696,8 +1695,9 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     return VLC_SUCCESS;
 }
 
-int vout_display_opengl_AddFilter(vout_display_opengl_t *vgl,
-                                  struct vlc_gl_filter *filter)
+int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
+                                     struct vlc_gl_filter *filter)
 {
-
+    vlc_vector_push(vgl->filters, filter);
+    /* TODO framebuffer configuration */
 }
