@@ -144,7 +144,7 @@ static int Open(vout_display_t *vd, const vout_display_cfg_t *cfg,
     }
 
     /* Load the different opengl filter into the opengl renderer */
-    char *filter_config = var_GetString(vd, "gl-filters");
+    char *filter_config = var_InheritString(vd, "gl-filters");
     if (filter_config != NULL)
     {
         char *name = NULL;
@@ -155,7 +155,7 @@ static int Open(vout_display_t *vd, const vout_display_cfg_t *cfg,
         {
             next_module = config_ChainCreate(&name, &chain, next_module);
             // TODO: chain == null ?
-            if (name != NULL && chain != NULL)
+            if (name != NULL)
                 vout_display_opengl_AppendFilter(sys->vgl, name, chain);
             config_ChainDestroy(chain);
         }
