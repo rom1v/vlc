@@ -137,10 +137,11 @@ static int Open(vout_display_t *vd, const vout_display_cfg_t *cfg,
 
     sys->vgl = vout_display_opengl_New (fmt, &spu_chromas, sys->gl,
                                         &cfg->viewpoint, context);
-    vlc_gl_ReleaseCurrent (sys->gl);
-
     if (sys->vgl == NULL)
+    {
+        vlc_gl_ReleaseCurrent (sys->gl);
         goto error;
+    }
 
     /* Load the different opengl filter into the opengl renderer */
     char *filter_config = var_GetString(vd, "gl-filters");
@@ -150,12 +151,17 @@ static int Open(vout_display_t *vd, const vout_display_cfg_t *cfg,
         config_chain_t *chain = NULL;
         char *next_module = filter_config;
 
-        while (*next_module != '\0')
+        while(next_module != NULL)
         {
             next_module = config_ChainCreate(&name, &chain, next_module);
-            vout_display_opengl_AppendFilter(sys->vgl, name, chain);
+            // TODO: chain == null ?
+            if (name != NULL && chain != NULL)
+                vout_display_opengl_AppendFilter(sys->vgl, name, chain);
+            config_ChainDestroy(chain);
         }
     }
+    free(filter_config);
+    vlc_gl_ReleaseCurrent (sys->gl);
 
     vd->sys = sys;
     vd->info.subpicture_chromas = spu_chromas;
