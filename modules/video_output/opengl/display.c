@@ -161,6 +161,9 @@ static int Open(vout_display_t *vd, const vout_display_cfg_t *cfg,
         }
     }
     free(filter_config);
+
+    // TODO: add vout_display_opengl_ConfigureFilters(default_framebuffer_target);
+
     vlc_gl_ReleaseCurrent (sys->gl);
 
     vd->sys = sys;
