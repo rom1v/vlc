@@ -46,7 +46,7 @@ static int BuildVertexShader(
     /* TODO: use chroma description or helper ? chroma description won't give opaque planes count */
     //unsigned int plane_count = vlc_gl_tc_CountPlanes(tc);
 
-    GLuint shader = vt->CreateShader(GL_VERTEX_SHADER);
+    GLuint shader = *shader_out = vt->CreateShader(GL_VERTEX_SHADER);
     if (shader == 0)
     {
         /* TODO: error */
@@ -76,7 +76,6 @@ static int BuildVertexShader(
     //TODO
     //vlc_gl_tc_ReleaseTexcoords(texcoords);
 
-    *shader_out = shader;
     return VLC_SUCCESS;
 }
 
@@ -101,7 +100,7 @@ static bool BuildFragmentShader(
     /* TODO: add tc private data in generatetexcoords */
     //struct vlc_gl_texcoords *texcoords = vlc_gl_tc_GenerateTexcoords(tc, VLC_GL_SHADER_FRAGMENT);
 
-    GLuint shader = vt->CreateShader(GL_FRAGMENT_SHADER);
+    GLuint shader = *shader_out = vt->CreateShader(GL_FRAGMENT_SHADER);
     if (shader == 0)
     {
         /* TODO: error */
@@ -115,8 +114,6 @@ static bool BuildFragmentShader(
 
     // TODO
     //vlc_gl_tc_ReleaseTexcoords(texcoords);
-    *shader_out = shader;
-
     return VLC_SUCCESS;
 }
 
@@ -206,15 +203,23 @@ int vlc_gl_shader_AttachShaderSource(
     if (shader != 0 && ret != VLC_SUCCESS)
     {
         fprintf(stderr, "Shader compilation error:\n%s\n", body);
+        vt->DeleteShader(shader);
         return VLC_EGENERIC;
     }
 
     fprintf(stderr, "Shader value : %u\n", shader);
 
     int error;
+    bool has_error = false;
     while ((error = vt->GetError()) != GL_NO_ERROR)
     {
         fprintf(stderr, "Error (%x): %s\n", error, "unknown");
+        has_error = true;
+    }
+
+    if (has_error)
+    {
+        vt->DeleteShader(shader);
         return VLC_EGENERIC;
     }
 
