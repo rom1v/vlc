@@ -109,4 +109,8 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
 int vout_display_opengl_Display(vout_display_opengl_t *vgl,
                                 const video_format_t *source);
 
+int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
+                                     const char *module_name,
+                                     const config_chain_t *config);
+
 #endif

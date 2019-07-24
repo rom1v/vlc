@@ -39,6 +39,7 @@
 #include <vlc_modules.h>
 #include <vlc_vout.h>
 #include <vlc_viewpoint.h>
+#include <vlc_vector.h>
 
 #include "vout_helper.h"
 #include "internal.h"
@@ -117,6 +118,12 @@ struct prgm
     } aloc;
 };
 
+struct vout_display_opengl_filter
+{
+    struct vlc_gl_filter *filter;
+    module_t *module;
+};
+
 struct vout_display_opengl_t {
 
     vlc_gl_t   *gl;
@@ -170,7 +177,7 @@ struct vout_display_opengl_t {
 
     int filter_count;
 
-    VLC_VECTOR(struct vlc_gl_filter *) filters;
+    struct VLC_VECTOR(struct vout_display_opengl_filter) filters;
 };
 
 static int EnableOpenglFilter(void *func, bool forced, va_list args)
@@ -932,8 +939,6 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
 
     /* TODO: filters should be an array of filter dynamically allocated */
 
-    vgl->filter_count = 1;
-    vgl->filters = calloc(sizeof(*vgl->filters), vgl->filter_count);
     //vgl->filters[0].object = vlc_object_create(vgl->gl, sizeof(struct vlc_gl_filter));
     //vgl->filters[0].object->fmt = &vgl->fmt;
     //vgl->filters[0].object->vt = &vgl->vt;
@@ -942,20 +947,20 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     //                                       EnableOpenglFilter,
     //                                       vgl->filters[0].object);
 
-    vgl->filters[0].object = vlc_object_create(vgl->gl, sizeof(struct vlc_gl_filter));
-    vgl->filters[0].object->fmt = &vgl->fmt;
-    vgl->filters[0].object->vt = &vgl->vt;
-    vgl->filters[0].module = vlc_module_load(vgl->gl, "opengl filter",
-                                           "triangle blend", true,
-                                           EnableOpenglFilter,
-                                           vgl->filters[0].object);
-    assert(vgl->filters[0].module);
-    if (!vgl->filters[0].module)
-    {
-        msg_Err(vgl->gl, "can't initialize triangle for opengl");
-        /* TODO: handle errors */
-        return NULL;
-    }
+    //vgl->filters[0].object = vlc_object_create(vgl->gl, sizeof(struct vlc_gl_filter));
+    //vgl->filters[0].object->fmt = &vgl->fmt;
+    //vgl->filters[0].object->vt = &vgl->vt;
+    //vgl->filters[0].module = vlc_module_load(vgl->gl, "opengl filter",
+    //                                       "triangle blend", true,
+    //                                       EnableOpenglFilter,
+    //                                       vgl->filters[0].object);
+    //assert(vgl->filters[0].module);
+    //if (!vgl->filters[0].module)
+    //{
+    //    msg_Err(vgl->gl, "can't initialize triangle for opengl");
+    //    /* TODO: handle errors */
+    //    return NULL;
+    //}
 
     GL_ASSERT_NOERROR();
     return vgl;
@@ -968,6 +973,13 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     /* */
     vgl->vt.Finish();
     vgl->vt.Flush();
+
+    struct vout_display_opengl_filter wrapper;
+    vlc_vector_foreach(wrapper, &vgl->filters)
+    {
+        //TODO vlc_module_unload(wrapper.module);
+        vlc_object_release(VLC_OBJECT(wrapper.filter));
+    }
 
     const size_t main_tex_count = vgl->prgm->tc->tex_count;
     const bool main_del_texs = !vgl->prgm->tc->handle_texs_gen;
@@ -1681,10 +1693,11 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
     memcpy(&filter_input.var, &vgl->sub_prgm->var, sizeof(filter_input.var));
 
-    for (int i = 0; i < vgl->filter_count; ++i)
+    struct vout_display_opengl_filter wrapper;
+    vlc_vector_foreach(wrapper, &vgl->filters)
     {
-        struct vlc_gl_filter *filter = vgl->filters[i].object;
-        filter->filter(filter, &filter_input);
+        struct vlc_gl_filter *object = wrapper.filter;
+        object->filter(object, &filter_input);
     }
 
     /* Display */
@@ -1696,8 +1709,33 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 }
 
 int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
-                                     struct vlc_gl_filter *filter)
+                                     const char *name,
+                                     const config_chain_t *config)
 {
-    vlc_vector_push(vgl->filters, filter);
     /* TODO framebuffer configuration */
+    struct vlc_gl_filter *filter =
+        vlc_object_create(vgl->gl, sizeof(*filter));
+
+    if (filter == NULL)
+        return VLC_ENOMEM;
+
+    filter->config = config;
+    filter->fmt = &vgl->fmt;
+    filter->vt = &vgl->vt;
+
+    module_t *filter_module =
+        vlc_module_load(vgl->gl, "opengl filter", name, true,
+                        EnableOpenglFilter, filter);
+
+    if (filter_module == NULL)
+    {
+        vlc_object_release(VLC_OBJECT(filter));
+        return VLC_EGENERIC;
+    }
+
+    struct vout_display_opengl_filter wrapper =
+        { .filter = filter, .module = filter_module };
+    vlc_vector_push(&vgl->filters, wrapper);
+
+    return VLC_SUCCESS;
 }

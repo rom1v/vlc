@@ -146,15 +146,14 @@ static int Open(vout_display_t *vd, const vout_display_cfg_t *cfg,
     char *filter_config = var_GetString(vd, "gl-filters");
     if (filter_config != NULL)
     {
-        char *name;
-        config_chain_t *chain;
+        char *name = NULL;
+        config_chain_t *chain = NULL;
         char *next_module = filter_config;
 
         while (*next_module != '\0')
         {
-            next_module = config_ChainCreate(&name, &chain, filter_config);
-            struct vlc_gl_filter *filter =
-                vlc_object_create(vgl->gl, sizeof(*filter));
+            next_module = config_ChainCreate(&name, &chain, next_module);
+            vout_display_opengl_AppendFilter(sys->vgl, name, chain);
         }
     }
 

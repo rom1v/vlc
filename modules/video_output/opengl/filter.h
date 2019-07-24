@@ -94,6 +94,8 @@ struct vlc_gl_filter
      */
     void *sys;
 
+    const config_chain_t *config;
+
     const video_format_t *fmt;
 
     /**
