@@ -122,6 +122,14 @@ struct vout_display_opengl_filter
 {
     struct vlc_gl_filter *filter;
     module_t *module;
+
+    video_format_t fmt_in;
+    video_format_t fmt_out;
+
+    /* determine whether this filter has been added by the user or inserted by
+     * the renderer to convert the format */
+    bool is_converter;
+
 };
 
 struct vout_display_opengl_t {
@@ -177,13 +185,16 @@ struct vout_display_opengl_t {
 
     int filter_count;
 
-    struct VLC_VECTOR(struct vout_display_opengl_filter) filters;
+    struct VLC_VECTOR(struct vout_display_opengl_filter*) filters;
 };
 
+typedef int (*vlc_gl_filter_open)(struct vlc_gl_filter *);
 static int EnableOpenglFilter(void *func, bool forced, va_list args)
 {
-    int (*activate)(struct vlc_gl_filter *) = func;
+    vlc_gl_filter_open activate = func;
     struct vlc_gl_filter *filter = va_arg(args, struct vlc_gl_filter *);
+    const video_format_t *fmt_in  = va_arg(args, const video_format_t*);
+    const video_format_t *fmt_out = va_arg(args, const video_format_t*);
     return activate(filter);
 }
 
@@ -1712,7 +1723,8 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
 
     wrapper->module = vlc_module_load(vgl->gl, "opengl filter", name, true,
-                                      EnableOpenglFilter, wrapper->filter);
+                                      EnableOpenglFilter, wrapper->filter,
+                                      &wrapper->fmt_in, &wrapper->fmt_out);
 
     if (wrapper->module == NULL)
     {
