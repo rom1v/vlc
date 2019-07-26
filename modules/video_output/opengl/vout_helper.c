@@ -1704,7 +1704,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     /* Filters are wrapped into a structure containing their module and
      * rendering configuration
      * TODO: use owner paradigm like the core */
-    struct vout_display_opengl_filter *wrapper = malloc(sizeof(wrapper));
+    struct vout_display_opengl_filter *wrapper = malloc(sizeof(*wrapper));
     if (wrapper == NULL)
         return VLC_ENOMEM;
 
