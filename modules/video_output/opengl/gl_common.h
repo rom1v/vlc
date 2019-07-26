@@ -212,6 +212,12 @@ typedef void (APIENTRY *PFNGLTEXPARAMETERFPROC) (GLenum target, GLenum pname, GL
 typedef void (APIENTRY *PFNGLTEXPARAMETERIPROC) (GLenum target, GLenum pname, GLint param);
 typedef void (APIENTRY *PFNGLTEXSUBIMAGE2DPROC) (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels);
 typedef void (APIENTRY *PFNGLVIEWPORTPROC) (GLint x, GLint y, GLsizei width, GLsizei height);
+typedef void (APIENTRY *PFNGLGENFRAMEBUFFERS) (GLuint count, GLuint *framebuffers);
+typedef void (APIENTRY *PFNGLDELETEFRAMEBUFFERS) (GLuint count, GLuint *framebuffers);
+typedef void (APIENTRY *PFNGLBINDFRAMEBUFFER) (GLenum target, GLuint framebuffer);
+typedef void (APIENTRY *PFNGLFRAMEBUFFERTEXTURE2D) (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+typedef GLenum (APIENTRY *PFNGLCHECKFRAMEBUFFERSTATUS) (GLenum target);
+typedef void (APIENTRY *PFNGLDRAWBUFFERS) (GLsizei n, const GLenum *bufs);
 
 /* The following are defined in glext.h but not for GLES2 or on Apple systems */
 #if defined(USE_OPENGL_ES2) || defined(__APPLE__)
@@ -347,6 +353,12 @@ typedef struct {
 
     /* Framebuffers commands */
     PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC GetFramebufferAttachmentParameteriv;
+    PFNGLGENFRAMEBUFFERS            GenFramebuffers;
+    PFNGLDELETEFRAMEBUFFERS         DeleteFramebuffers;
+    PFNGLBINDFRAMEBUFFER            BindFramebuffer;
+    PFNGLFRAMEBUFFERTEXTURE2D       FramebufferTexture2D;
+    PFNGLCHECKFRAMEBUFFERSTATUS     CheckFramebufferStatus;
+    PFNGLDRAWBUFFERS                DrawBuffers;
 
     /* Commands used for PBO and/or Persistent mapping */
     PFNGLBUFFERSUBDATAPROC          BufferSubData; /* can be NULL */
