@@ -1701,6 +1701,16 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, last_framebuffer);
         vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, wrapper->framebuffer);
 
+        if (object->info.blend && last_framebuffer != 0)
+            vgl->vt.BlitFramebuffer(0, 0,
+                                    filter_input.picture.width,
+                                    filter_input.picture.height,
+                                    0, 0,
+                                    filter_input.picture.width,
+                                    filter_input.picture.height,
+                                    GL_COLOR_BUFFER_BIT,
+                                    GL_NEAREST);
+
         object->filter(object, &filter_input);
 
         last_framebuffer = wrapper->framebuffer;
@@ -1762,6 +1772,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     wrapper->filter->config = config;
     wrapper->filter->fmt = &vgl->fmt; //< TODO: replace by fmt_in/fmt_out const pointer
     wrapper->filter->vt = &vgl->vt;
+    wrapper->filter->info.blend = true;
 
     /* Mutable format configuration for the filter input/output. */
     uint32_t chroma = prev_filter != NULL ? prev_filter->fmt_out.i_chroma
