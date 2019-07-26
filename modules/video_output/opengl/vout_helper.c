@@ -130,6 +130,11 @@ struct vout_display_opengl_filter
      * the renderer to convert the format */
     bool is_converter;
 
+    /* framebuffer configuration, can be set to zero-like value to be able to
+     * render to the screen directly */
+    GLuint framebuffer;
+    unsigned texture_count;
+    GLuint textures[3]; //< max 3 textures for now
 };
 
 struct vout_display_opengl_t {
@@ -1726,6 +1731,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     if (vgl->filters.size > 0)
         prev_filter = vgl->filters.data[vgl->filters.size - 1];
 
+    wrapper->framebuffer = 0;
     wrapper->filter->config = config;
     wrapper->filter->fmt = &vgl->fmt; //< TODO: replace by fmt_in/fmt_out const pointer
     wrapper->filter->vt = &vgl->vt;
@@ -1756,6 +1762,35 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         {
             // TODO: add converter
         }
+
+        vgl->vt.GenFramebuffers(1, &prev_filter->framebuffer);
+        // TODO: check error;
+
+        vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, prev_filter->framebuffer);
+
+        /* enforce one texture output for now
+         * TODO: multiple texture support */
+        prev_filter->texture_count = 1;
+        vgl->vt.GenTextures(prev_filter->texture_count,
+                            prev_filter->textures);
+
+        /* TODO: Handle openGL ES Renderbuffers too */
+        vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                     GL_TEXTURE_2D,
+                                     prev_filter->textures[0], 0);
+
+        if (prev_filter->texture_count >= 2)
+            vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
+                                         GL_TEXTURE_2D,
+                                         prev_filter->textures[1], 0);
+        if (prev_filter->texture_count >= 3)
+            vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
+                                         GL_TEXTURE_2D,
+                                         prev_filter->textures[2], 0);
+
+        GLenum status = vgl->vt.CheckFramebufferStatus(GL_FRAMEBUFFER);
+        assert(status == GL_FRAMEBUFFER_COMPLETE);
+        vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     vlc_vector_push(&vgl->filters, wrapper);
