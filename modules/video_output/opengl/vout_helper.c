@@ -1783,6 +1783,12 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         vgl->vt.GenTextures(prev_filter->texture_count,
                             prev_filter->textures);
 
+        vgl->vt.BindTexture(GL_TEXTURE_2D, prev_filter->textures[0]);
+        vgl->vt.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                           prev_filter->fmt_out.i_width,
+                           prev_filter->fmt_out.i_height,
+                           0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
         /* TODO: Handle openGL ES Renderbuffers too */
         vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                      GL_TEXTURE_2D,
@@ -1799,6 +1805,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
         GLenum status = vgl->vt.CheckFramebufferStatus(GL_FRAMEBUFFER);
         assert(status == GL_FRAMEBUFFER_COMPLETE);
+        vgl->vt.DrawBuffer(GL_COLOR_ATTACHMENT0);
         vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
