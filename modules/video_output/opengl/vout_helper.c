@@ -974,11 +974,12 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vgl->vt.Finish();
     vgl->vt.Flush();
 
-    struct vout_display_opengl_filter wrapper;
+    struct vout_display_opengl_filter *wrapper;
     vlc_vector_foreach(wrapper, &vgl->filters)
     {
         //TODO vlc_module_unload(wrapper.module);
-        vlc_object_release(VLC_OBJECT(wrapper.filter));
+        vlc_object_release(VLC_OBJECT(wrapper->filter));
+        free(wrapper);
     }
 
     const size_t main_tex_count = vgl->prgm->tc->tex_count;
@@ -1693,10 +1694,10 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
     memcpy(&filter_input.var, &vgl->sub_prgm->var, sizeof(filter_input.var));
 
-    struct vout_display_opengl_filter wrapper;
+    struct vout_display_opengl_filter *wrapper;
     vlc_vector_foreach(wrapper, &vgl->filters)
     {
-        struct vlc_gl_filter *object = wrapper.filter;
+        struct vlc_gl_filter *object = wrapper->filter;
         object->filter(object, &filter_input);
     }
 
@@ -1712,29 +1713,39 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
                                      const char *name,
                                      const config_chain_t *config)
 {
-    /* TODO framebuffer configuration */
-    struct vlc_gl_filter *filter =
-        vlc_object_create(vgl->gl, sizeof(*filter));
-
-    if (filter == NULL)
+    /* Filters are wrapped into a structure containing their module and
+     * rendering configuration
+     * TODO: use owner paradigm like the core */
+    struct vout_display_opengl_filter *wrapper = malloc(sizeof(wrapper));
+    if (wrapper == NULL)
         return VLC_ENOMEM;
 
-    filter->config = config;
-    filter->fmt = &vgl->fmt;
-    filter->vt = &vgl->vt;
+    /* TODO framebuffer configuration */
+    wrapper->filter =
+        vlc_object_create(vgl->gl, sizeof(*wrapper->filter));
 
-    module_t *filter_module =
-        vlc_module_load(vgl->gl, "opengl filter", name, true,
-                        EnableOpenglFilter, filter);
-
-    if (filter_module == NULL)
+    if (wrapper->filter == NULL)
     {
-        vlc_object_release(VLC_OBJECT(filter));
+        free(wrapper);
+        return VLC_ENOMEM;
+    }
+
+
+    wrapper->filter->config = config;
+    wrapper->filter->fmt = &vgl->fmt; //< TODO: replace by fmt_in/fmt_out const pointer
+    wrapper->filter->vt = &vgl->vt;
+
+
+    wrapper->module = vlc_module_load(vgl->gl, "opengl filter", name, true,
+                                      EnableOpenglFilter, wrapper->filter);
+
+    if (wrapper->module == NULL)
+    {
+        vlc_object_release(VLC_OBJECT(wrapper->filter));
+        free(wrapper);
         return VLC_EGENERIC;
     }
 
-    struct vout_display_opengl_filter wrapper =
-        { .filter = filter, .module = filter_module };
     vlc_vector_push(&vgl->filters, wrapper);
 
     return VLC_SUCCESS;
