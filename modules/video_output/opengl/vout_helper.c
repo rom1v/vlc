@@ -937,31 +937,6 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         *subpicture_chromas = gl_subpicture_chromas;
     }
 
-    /* TODO: filters should be an array of filter dynamically allocated */
-
-    //vgl->filters[0].object = vlc_object_create(vgl->gl, sizeof(struct vlc_gl_filter));
-    //vgl->filters[0].object->fmt = &vgl->fmt;
-    //vgl->filters[0].object->vt = &vgl->vt;
-    //vgl->filters[0].module = vlc_module_load(vgl->gl, "opengl filter",
-    //                                       "spu blend", true,
-    //                                       EnableOpenglFilter,
-    //                                       vgl->filters[0].object);
-
-    //vgl->filters[0].object = vlc_object_create(vgl->gl, sizeof(struct vlc_gl_filter));
-    //vgl->filters[0].object->fmt = &vgl->fmt;
-    //vgl->filters[0].object->vt = &vgl->vt;
-    //vgl->filters[0].module = vlc_module_load(vgl->gl, "opengl filter",
-    //                                       "triangle blend", true,
-    //                                       EnableOpenglFilter,
-    //                                       vgl->filters[0].object);
-    //assert(vgl->filters[0].module);
-    //if (!vgl->filters[0].module)
-    //{
-    //    msg_Err(vgl->gl, "can't initialize triangle for opengl");
-    //    /* TODO: handle errors */
-    //    return NULL;
-    //}
-
     GL_ASSERT_NOERROR();
     return vgl;
 }
