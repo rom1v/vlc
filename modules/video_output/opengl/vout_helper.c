@@ -1691,12 +1691,20 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
     memcpy(&filter_input.var, &vgl->sub_prgm->var, sizeof(filter_input.var));
 
+    GLuint last_framebuffer = 0;
     struct vout_display_opengl_filter *wrapper;
     vlc_vector_foreach(wrapper, &vgl->filters)
     {
         struct vlc_gl_filter *object = wrapper->filter;
+        vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, last_framebuffer);
+        vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, wrapper->framebuffer);
+
         object->filter(object, &filter_input);
+
+        last_framebuffer = wrapper->framebuffer;
     }
+    vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
     /* Display */
     vlc_gl_Swap(vgl->gl);
