@@ -444,7 +444,9 @@ static int FilterInput(struct vlc_gl_filter *filter,
     return VLC_SUCCESS;
 }
 
-static int Open(struct vlc_gl_filter *filter)
+static int Open(struct vlc_gl_filter *filter,
+                video_format_t *fmt_in,
+                video_format_t *fmt_out)
 {
     struct vlc_gl_filter_sys *sys = filter->sys =
         malloc(sizeof(*sys));

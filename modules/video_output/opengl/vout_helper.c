@@ -188,14 +188,16 @@ struct vout_display_opengl_t {
     struct VLC_VECTOR(struct vout_display_opengl_filter*) filters;
 };
 
-typedef int (*vlc_gl_filter_open)(struct vlc_gl_filter *);
+typedef int (*vlc_gl_filter_open)(struct vlc_gl_filter *,
+                                  video_format_t *fmt_in,
+                                  video_format_t *fmt_out);
 static int EnableOpenglFilter(void *func, bool forced, va_list args)
 {
     vlc_gl_filter_open activate = func;
     struct vlc_gl_filter *filter = va_arg(args, struct vlc_gl_filter *);
     const video_format_t *fmt_in  = va_arg(args, const video_format_t*);
     const video_format_t *fmt_out = va_arg(args, const video_format_t*);
-    return activate(filter);
+    return activate(filter, fmt_in, fmt_out);
 }
 
 static const vlc_fourcc_t gl_subpicture_chromas[] = {
