@@ -98,7 +98,10 @@ typedef void (APIENTRY *PFNGLVIEWPORTPROC) (GLint x, GLint y, GLsizei width, GLs
 typedef void APIENTRY PFNGLDEBUGCALLBACK(GLenum source, GLenum type, GLuint id,
    GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 typedef void (APIENTRY *PFNGLDEBUGMESSAGECALLBACK) (PFNGLDEBUGCALLBACK callback, void * userParam);
-
+typedef void (APIENTRY *PFNGLGENFRAMEBUFFERS) (GLuint count, GLuint *framebuffers);
+typedef void (APIENTRY *PFNGLBINDFRAMEBUFFER) (GLenum target, GLuint framebuffer);
+typedef void (APIENTRY *PFNGLFRAMEBUFFERTEXTURE2D) (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+typedef GLenum (APIENTRY *PFNGLCHECKFRAMEBUFFERSTATUS) (GLenum target);
 /* The following are defined in glext.h but not for GLES2 or on Apple systems */
 #if defined(USE_OPENGL_ES2) || defined(__APPLE__)
 #   define PFNGLGETPROGRAMIVPROC             typeof(glGetProgramiv)*
@@ -235,6 +238,10 @@ typedef struct opengl_vtable_t {
 
     /* Framebuffers commands */
     PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC GetFramebufferAttachmentParameteriv;
+    PFNGLGENFRAMEBUFFERS            GenFramebuffers;
+    PFNGLBINDFRAMEBUFFER            BindFramebuffer;
+    PFNGLFRAMEBUFFERTEXTURE2D       FramebufferTexture2D;
+    PFNGLCHECKFRAMEBUFFERSTATUS     CheckFramebufferStatus;
 
     /* Commands used for PBO and/or Persistent mapping */
     PFNGLBUFFERSUBDATAPROC          BufferSubData; /* can be NULL */
