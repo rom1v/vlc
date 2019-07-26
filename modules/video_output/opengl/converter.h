@@ -102,6 +102,9 @@ typedef void (APIENTRY *PFNGLGENFRAMEBUFFERS) (GLuint count, GLuint *framebuffer
 typedef void (APIENTRY *PFNGLBINDFRAMEBUFFER) (GLenum target, GLuint framebuffer);
 typedef void (APIENTRY *PFNGLFRAMEBUFFERTEXTURE2D) (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
 typedef GLenum (APIENTRY *PFNGLCHECKFRAMEBUFFERSTATUS) (GLenum target);
+typedef void (APIENTRY *PFNGLBLITFRAMEBUFFER) (GLint, GLint, GLint, GLint,
+                                               GLint, GLint, GLint, GLint,
+                                               GLbitfield, GLenum);
 typedef void (APIENTRY *PFNGLDRAWBUFFER) (GLenum target);
 /* The following are defined in glext.h but not for GLES2 or on Apple systems */
 #if defined(USE_OPENGL_ES2) || defined(__APPLE__)
@@ -244,6 +247,7 @@ typedef struct opengl_vtable_t {
     PFNGLFRAMEBUFFERTEXTURE2D       FramebufferTexture2D;
     PFNGLCHECKFRAMEBUFFERSTATUS     CheckFramebufferStatus;
     PFNGLDRAWBUFFER                 DrawBuffer;
+    PFNGLBLITFRAMEBUFFER            BlitFramebuffer;
 
     /* Commands used for PBO and/or Persistent mapping */
     PFNGLBUFFERSUBDATAPROC          BufferSubData; /* can be NULL */
