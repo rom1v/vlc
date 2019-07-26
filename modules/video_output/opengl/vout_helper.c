@@ -1716,11 +1716,19 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         return VLC_ENOMEM;
     }
 
+    struct vout_display_opengl_filter* prev_filter = NULL;
+    if (vgl->filters.size > 0)
+        prev_filter = vgl->filters.data[vgl->filters.size - 1];
 
     wrapper->filter->config = config;
     wrapper->filter->fmt = &vgl->fmt; //< TODO: replace by fmt_in/fmt_out const pointer
     wrapper->filter->vt = &vgl->vt;
 
+    /* Mutable format configuration for the filter input/output. */
+    uint32_t chroma = prev_filter == NULL ? prev_filter->fmt_out.i_chroma
+                                          : VLC_CODEC_RGBA;
+    wrapper->fmt_in = (video_format_t) { .i_chroma = chroma };
+    wrapper->fmt_out = wrapper->fmt_in;
 
     wrapper->module = vlc_module_load(vgl->gl, "opengl filter", name, true,
                                       EnableOpenglFilter, wrapper->filter,
@@ -1731,6 +1739,17 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         vlc_object_release(VLC_OBJECT(wrapper->filter));
         free(wrapper);
         return VLC_EGENERIC;
+    }
+
+    /* If we already have filters, we need to be sure we can convert from the
+     * previous filter to the next filter format. In the mean time, configure
+     * the rendering target for the previous filter. */
+    if (prev_filter != NULL)
+    {
+        if (prev_filter->fmt_out.i_chroma != wrapper->fmt_in.i_chroma)
+        {
+            // TODO: add converter
+        }
     }
 
     vlc_vector_push(&vgl->filters, wrapper);
