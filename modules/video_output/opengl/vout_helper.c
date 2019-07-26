@@ -1704,6 +1704,23 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         object->filter(object, &filter_input);
 
         last_framebuffer = wrapper->framebuffer;
+        filter_input = (struct vlc_gl_filter_input)
+        {
+            .region_count = vgl->region_count,
+            .regions = vgl->region,
+            /* todo: it can't work like that because of text converter */
+            .picture = {
+                /* TODO: handle textures and parameters correctly */
+                .texture = wrapper->textures[0],
+                .left = -.5f, .right = .5f,
+                .top = -.5f, .bottom = .5f,
+                .width = vgl->last_source.i_visible_width,
+                .height = vgl->last_source.i_visible_height,
+                .alpha = .5f,
+            }
+        };
+
+
     }
     vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -1749,7 +1766,14 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     /* Mutable format configuration for the filter input/output. */
     uint32_t chroma = prev_filter != NULL ? prev_filter->fmt_out.i_chroma
                                           : VLC_CODEC_RGBA;
-    wrapper->fmt_in = (video_format_t) { .i_chroma = chroma };
+    /* TODO: it should use information from previous filter */
+    wrapper->fmt_in = (video_format_t) {
+        .i_chroma = chroma,
+        .i_visible_width = vgl->last_source.i_visible_width,
+        .i_width = vgl->last_source.i_visible_width,
+        .i_visible_height = vgl->last_source.i_visible_height,
+        .i_height = vgl->last_source.i_visible_height
+    };
     wrapper->fmt_out = wrapper->fmt_in;
 
     wrapper->module = vlc_module_load(vgl->gl, "opengl filter", name, true,
