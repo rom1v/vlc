@@ -1727,7 +1727,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     wrapper->filter->vt = &vgl->vt;
 
     /* Mutable format configuration for the filter input/output. */
-    uint32_t chroma = prev_filter == NULL ? prev_filter->fmt_out.i_chroma
+    uint32_t chroma = prev_filter != NULL ? prev_filter->fmt_out.i_chroma
                                           : VLC_CODEC_RGBA;
     wrapper->fmt_in = (video_format_t) { .i_chroma = chroma };
     wrapper->fmt_out = wrapper->fmt_in;
