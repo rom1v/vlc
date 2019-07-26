@@ -195,8 +195,8 @@ static int EnableOpenglFilter(void *func, bool forced, va_list args)
 {
     vlc_gl_filter_open activate = func;
     struct vlc_gl_filter *filter = va_arg(args, struct vlc_gl_filter *);
-    const video_format_t *fmt_in  = va_arg(args, const video_format_t*);
-    const video_format_t *fmt_out = va_arg(args, const video_format_t*);
+    video_format_t *fmt_in  = va_arg(args, video_format_t*);
+    video_format_t *fmt_out = va_arg(args, video_format_t*);
     return activate(filter, fmt_in, fmt_out);
 }
 
