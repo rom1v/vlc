@@ -1781,10 +1781,10 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     /* TODO: it should use information from previous filter */
     wrapper->fmt_in = (video_format_t) {
         .i_chroma = chroma,
-        .i_visible_width = vgl->last_source.i_visible_width,
-        .i_width = vgl->last_source.i_visible_width,
-        .i_visible_height = vgl->last_source.i_visible_height,
-        .i_height = vgl->last_source.i_visible_height
+        .i_visible_width = vgl->fmt.i_visible_width,
+        .i_width = vgl->fmt.i_visible_width,
+        .i_visible_height = vgl->fmt.i_visible_height,
+        .i_height = vgl->fmt.i_visible_height
     };
     wrapper->fmt_out = wrapper->fmt_in;
 
