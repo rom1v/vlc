@@ -342,6 +342,60 @@ static inline GLsizei GetAlignedSize(unsigned size)
     return ((align >> 1) == size) ? size : align;
 }
 
+static int filter_UpdateFramebuffer(
+        vout_display_opengl_t *vgl,
+        struct vout_display_opengl_filter *filter
+)
+{
+    if (filter->texture_count == 0)
+    {
+        filter->texture_count = 1;
+        vgl->vt.GenTextures(filter->texture_count,
+                            filter->textures);
+    }
+
+    /* Set or update texture size */
+    vgl->vt.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                       filter->fmt_out.i_width,
+                       filter->fmt_out.i_height,
+                       0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+    if (filter->framebuffer == 0)
+    {
+        vgl->vt.GenFramebuffers(1, &filter->framebuffer);
+        // TODO: check error;
+    }
+
+    vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, filter->framebuffer);
+
+    /* enforce one texture output for now
+     * TODO: multiple texture support */
+
+    msg_Err(vgl->gl, "FBO WIDTH=%d, HEIGHT=%d", filter->fmt_out.i_width,
+            filter->fmt_out.i_height);
+    vgl->vt.BindTexture(GL_TEXTURE_2D, filter->textures[0]);
+
+    /* TODO: Handle openGL ES Renderbuffers too */
+    vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                 GL_TEXTURE_2D,
+                                 filter->textures[0], 0);
+
+    if (filter->texture_count >= 2)
+        vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
+                                     GL_TEXTURE_2D,
+                                     filter->textures[1], 0);
+    if (filter->texture_count >= 3)
+        vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
+                                     GL_TEXTURE_2D,
+                                     filter->textures[2], 0);
+
+    vgl->vt.DrawBuffer(GL_COLOR_ATTACHMENT0);
+    vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    GLenum status = vgl->vt.CheckFramebufferStatus(GL_FRAMEBUFFER);
+    assert(status == GL_FRAMEBUFFER_COMPLETE);
+}
+
 static GLuint BuildVertexShader(const opengl_tex_converter_t *tc,
                                 unsigned plane_count)
 {
@@ -1083,6 +1137,12 @@ void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
                                   unsigned width, unsigned height)
 {
     vgl->vt.Viewport(x, y, width, height);
+    struct vout_display_opengl_filter *filter;
+    vlc_vector_foreach(filter, &vgl->filters)
+    {
+        if (filter->framebuffer != 0)
+            filter_UpdateFramebuffer(vgl, filter);
+    }
 }
 
 bool vout_display_opengl_HasPool(const vout_display_opengl_t *vgl)
@@ -1770,6 +1830,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         prev_filter = vgl->filters.data[vgl->filters.size - 1];
 
     wrapper->framebuffer = 0;
+    wrapper->texture_count = 0;
     wrapper->filter->config = config;
     wrapper->filter->fmt = &vgl->fmt; //< TODO: replace by fmt_in/fmt_out const pointer
     wrapper->filter->vt = &vgl->vt;
@@ -1809,41 +1870,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
             // TODO: add converter
         }
 
-        vgl->vt.GenFramebuffers(1, &prev_filter->framebuffer);
-        // TODO: check error;
-
-        vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, prev_filter->framebuffer);
-
-        /* enforce one texture output for now
-         * TODO: multiple texture support */
-        prev_filter->texture_count = 1;
-        vgl->vt.GenTextures(prev_filter->texture_count,
-                            prev_filter->textures);
-
-        vgl->vt.BindTexture(GL_TEXTURE_2D, prev_filter->textures[0]);
-        vgl->vt.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                           prev_filter->fmt_out.i_width,
-                           prev_filter->fmt_out.i_height,
-                           0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
-        /* TODO: Handle openGL ES Renderbuffers too */
-        vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                     GL_TEXTURE_2D,
-                                     prev_filter->textures[0], 0);
-
-        if (prev_filter->texture_count >= 2)
-            vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
-                                         GL_TEXTURE_2D,
-                                         prev_filter->textures[1], 0);
-        if (prev_filter->texture_count >= 3)
-            vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
-                                         GL_TEXTURE_2D,
-                                         prev_filter->textures[2], 0);
-
-        GLenum status = vgl->vt.CheckFramebufferStatus(GL_FRAMEBUFFER);
-        assert(status == GL_FRAMEBUFFER_COMPLETE);
-        vgl->vt.DrawBuffer(GL_COLOR_ATTACHMENT0);
-        vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, 0);
+        filter_UpdateFramebuffer(vgl, prev_filter);
     }
 
     vlc_vector_push(&vgl->filters, wrapper);
