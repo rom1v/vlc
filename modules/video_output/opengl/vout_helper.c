@@ -1745,8 +1745,8 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
             .texture = vgl->texture[0],
             .left = -.5f, .right = .5f,
             .top = -.5f, .bottom = .5f,
-            .width = source->i_visible_width,
-            .height = source->i_visible_height,
+            .width = vgl->fmt.i_visible_width,
+            .height = vgl->fmt.i_visible_height,
             .alpha = .5f,
         }
     };
@@ -1785,8 +1785,8 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
                 .texture = wrapper->textures[0],
                 .left = -.5f, .right = .5f,
                 .top = -.5f, .bottom = .5f,
-                .width = vgl->last_source.i_visible_width,
-                .height = vgl->last_source.i_visible_height,
+                .width = vgl->fmt.i_visible_width,
+                .height = vgl->fmt.i_visible_height,
                 .alpha = .5f,
             }
         };
