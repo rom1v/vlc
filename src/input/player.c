@@ -2198,12 +2198,12 @@ input_thread_Events(input_thread_t *input_thread,
                                  old_caps, input->capabilities);
             break;
         }
-        case INPUT_EVENT_POSITION:
-            if (input->time != event->position.ms ||
-                input->position != event->position.percentage)
+        case INPUT_EVENT_TIMES:
+            if (input->time != event->times.ms ||
+                input->position != event->times.percentage)
             {
-                input->time = event->position.ms;
-                input->position = event->position.percentage;
+                input->time = event->times.ms;
+                input->position = event->times.percentage;
                 vlc_player_SendEvent(player, on_position_changed,
                                      input->time,
                                      input->position);
@@ -2212,11 +2212,9 @@ input_thread_Events(input_thread_t *input_thread,
                  && input == player->input)
                     vlc_player_HandleAtoBLoop(player);
             }
-            break;
-        case INPUT_EVENT_LENGTH:
-            if (input->length != event->length)
+            if (input->length != event->times.length)
             {
-                input->length = event->length;
+                input->length = event->times.length;
                 vlc_player_SendEvent(player, on_length_changed, input->length);
             }
             break;
