@@ -76,6 +76,18 @@ struct vlc_player_listener_id
     struct vlc_list node;
 };
 
+struct vlc_player_timer_id
+{
+    enum vlc_player_timer_idype type;
+    vlc_tick_t delay;
+    vlc_tick_t last_update_date;
+
+    const struct vlc_player_timer_cbs *cbs;
+    void *data;
+
+    struct vlc_list node;
+};
+
 struct vlc_player_vout_listener_id
 {
     const struct vlc_player_vout_cbs *cbs;
@@ -109,8 +121,16 @@ struct vlc_player_input
     int capabilities;
     vlc_tick_t length;
 
-    vlc_tick_t time;
     float position;
+    vlc_tick_t time;
+    vlc_tick_t input_time_date;
+
+    vlc_tick_t output_time;
+    vlc_tick_t output_time_date;
+
+    vlc_tick_t pause_date;
+
+    enum vlc_player_timer_state last_timer_state;
 
     bool recording;
 
@@ -167,6 +187,7 @@ struct vlc_player_t
     struct vlc_list listeners;
     struct vlc_list aout_listeners;
     struct vlc_list vout_listeners;
+    struct vlc_list timers;
 
     input_resource_t *resource;
     vlc_renderer_item_t *renderer;
@@ -664,7 +685,10 @@ vlc_player_input_New(vlc_player_t *player, input_item_t *item)
     input->error = VLC_PLAYER_ERROR_NONE;
     input->rate = 1.f;
     input->capabilities = 0;
-    input->length = input->time = VLC_TICK_INVALID;
+    input->length = input->time = input->output_time = VLC_TICK_INVALID;
+    input->input_time_date = input->output_time_date = VLC_TICK_INVALID;
+    input->pause_date = VLC_TICK_INVALID;
+    input->last_timer_state = VLC_PLAYER_TIMER_STATE_DISCONTINUITY;
     input->position = 0.f;
 
     input->recording = false;
@@ -762,24 +786,88 @@ vlc_player_input_HandleAtoBLoop(struct vlc_player_input *input, vlc_tick_t time,
         vlc_player_SetPosition(player, input->abloop_state[0].pos);
 }
 
+static inline struct vlc_player_timer_value
+vlc_player_input_GetTimerValue(struct vlc_player_input *input)
+{
+    if (input->output_time != VLC_TICK_INVALID)
+    {
+        return (struct vlc_player_timer_value) {
+            .position = input->length != VLC_TICK_INVALID ?
+                        input->output_time / (float) input->length : input->position,
+            .rate = input->rate,
+            .ts = input->output_time,
+            .length = input->length,
+            .system_date = input->output_time_date
+        };
+    }
+    else
+        return (struct vlc_player_timer_value) {
+            .position = input->position,
+            .rate = input->rate,
+            .ts = input->time,
+            .length = input->length,
+            .system_date = input->input_time_date
+        };
+}
+
 static inline vlc_tick_t
 vlc_player_input_GetTime(struct vlc_player_input *input)
 {
-    return input->time;
+    const struct vlc_player_timer_value value =
+        vlc_player_input_GetTimerValue(input);
+
+    vlc_tick_t ts;
+    vlc_player_timer_value_Interpolate(&value, vlc_tick_now(), &ts, NULL);
+    return ts;
 }
 
 static inline float
 vlc_player_input_GetPos(struct vlc_player_input *input)
 {
-    return input->position;
+    const struct vlc_player_timer_value value =
+        vlc_player_input_GetTimerValue(input);
+
+    float pos;
+    vlc_player_timer_value_Interpolate(&value, vlc_tick_now(), NULL, &pos);
+    return pos;
 }
 
 static void
-vlc_player_input_OnTimerUpdate(struct vlc_player_input *input)
+vlc_player_input_OnTimerUpdate(struct vlc_player_input *input,
+                               enum vlc_player_timer_state state,
+                               vlc_tick_t interpolate_date,
+                               vlc_tick_t timer_record_date)
 {
+    vlc_player_t *player = input->player;
+
+    struct vlc_player_timer_value value =
+        vlc_player_input_GetTimerValue(input);
+
+    if (interpolate_date != VLC_TICK_INVALID)
+    {
+        assert(timer_record_date != VLC_TICK_INVALID);
+
+        vlc_player_timer_value_Interpolate(&value, interpolate_date,
+                                           &value.ts, &value.position);
+        value.system_date = timer_record_date;
+    }
+
+    vlc_player_timer_id *timer;
+    vlc_list_foreach(timer, &player->timers, node)
+    {
+        /* Respect refresh delay of the timer */
+        if (state == input->last_timer_state
+         && timer->delay != VLC_TICK_INVALID
+         && timer->last_update_date != VLC_TICK_INVALID
+         && value.system_date - timer->last_update_date < timer->delay)
+            continue;
+        timer->cbs->on_update(state, &value, timer->data);
+        timer->last_update_date = value.system_date;
+    }
+    input->last_timer_state = state;
+
     if (input->abloop_state[0].set && input->abloop_state[1].set)
-        vlc_player_input_HandleAtoBLoop(input, vlc_player_input_GetTime(input),
-                                        vlc_player_input_GetPos(input));
+        vlc_player_input_HandleAtoBLoop(input, value.ts, value.position);
 }
 
 static int
@@ -1068,6 +1156,11 @@ vlc_player_input_HandleState(struct vlc_player_input *input,
             if (input == player->input)
                 player->input = NULL;
 
+            const vlc_tick_t system_now = vlc_tick_now();
+            vlc_player_input_OnTimerUpdate(input,
+                                           VLC_PLAYER_TIMER_STATE_DISCONTINUITY,
+                                           system_now, system_now);
+
             if (player->started)
             {
                 vlc_player_PrepareNextMedia(player);
@@ -1076,16 +1169,36 @@ vlc_player_input_HandleState(struct vlc_player_input *input,
             }
             send_event = !player->started;
             break;
-        case VLC_PLAYER_STATE_STARTED:
         case VLC_PLAYER_STATE_PLAYING:
+            assert(state_date != VLC_TICK_INVALID);
+            if (input->pause_date != VLC_TICK_INVALID)
+            {
+                /* Interpolate the last time record to the last pause but fake
+                 * its origin (system_date) to now */
+                vlc_player_input_OnTimerUpdate(input,
+                                               VLC_PLAYER_TIMER_STATE_PLAYING,
+                                               input->pause_date, state_date);
+                input->pause_date = VLC_TICK_INVALID;
+            }
+            /* fallthrough */
+        case VLC_PLAYER_STATE_STARTED:
             if (player->started &&
                 player->global_state == VLC_PLAYER_STATE_PLAYING)
                 send_event = false;
             break;
 
         case VLC_PLAYER_STATE_PAUSED:
+        {
             assert(player->started && input->started);
+            assert(state_date != VLC_TICK_INVALID);
+            input->pause_date = state_date;
+
+            /* Interpolate the last time record to this current pause date */
+            vlc_player_input_OnTimerUpdate(input,
+                                           VLC_PLAYER_TIMER_STATE_PAUSED,
+                                           input->pause_date, input->pause_date);
             break;
+        }
         default:
             vlc_assert_unreachable();
     }
@@ -2231,22 +2344,50 @@ input_thread_Events(input_thread_t *input_thread,
             break;
         }
         case INPUT_EVENT_TIMES:
+        {
+            bool changed = false;
             if (input->time != event->times.ms ||
                 input->position != event->times.percentage)
             {
                 input->time = event->times.ms;
                 input->position = event->times.percentage;
+                input->input_time_date = vlc_tick_now();
+                changed = true;
+
                 vlc_player_SendEvent(player, on_position_changed,
                                      input->time,
                                      input->position);
 
-                vlc_player_input_OnTimerUpdate(input);
             }
             if (input->length != event->times.length)
             {
                 input->length = event->times.length;
                 vlc_player_SendEvent(player, on_length_changed, input->length);
+                changed = true;
             }
+            if (changed && input->output_time == VLC_TICK_INVALID)
+            {
+                vlc_player_input_OnTimerUpdate(input,
+                                               VLC_PLAYER_TIMER_STATE_PLAYING,
+                                               VLC_TICK_INVALID, VLC_TICK_INVALID);
+            }
+            break;
+        }
+        case INPUT_EVENT_OUTPUT_CLOCK:
+            if (event->output_clock.ts != VLC_TICK_INVALID)
+            {
+                const vlc_tick_t system_now = vlc_tick_now();
+                const vlc_tick_t drift =
+                    event->output_clock.system_ts - system_now;
+                input->output_time = event->output_clock.ts - drift;
+                input->output_time_date = system_now;
+
+                vlc_player_input_OnTimerUpdate(input,
+                                               VLC_PLAYER_TIMER_STATE_PLAYING,
+                                               VLC_TICK_INVALID, VLC_TICK_INVALID);
+            }
+            else
+                input->output_time_date = input->output_time = VLC_TICK_INVALID;
             break;
         case INPUT_EVENT_PROGRAM:
             vlc_player_input_HandleProgramEvent(input, &event->program);
@@ -2733,6 +2874,73 @@ vlc_player_GetPosition(vlc_player_t *player)
     struct vlc_player_input *input = vlc_player_get_input_locked(player);
 
     return input ? vlc_player_input_GetPos(input) : -1.f;
+}
+
+vlc_player_timer_id *
+vlc_player_AddTimer(vlc_player_t *player, enum vlc_player_timer_idype type,
+                    vlc_tick_t delay,
+                    const struct vlc_player_timer_cbs *cbs, void *data)
+{
+    vlc_player_assert_locked(player);
+    assert(delay >= 0 || delay == VLC_TICK_INVALID);
+    assert(cbs && cbs->on_update);
+
+    struct vlc_player_timer_id *timer = malloc(sizeof(*timer));
+    if (!timer)
+        return NULL;
+    timer->type = type;
+    timer->delay = delay;
+    timer->last_update_date = VLC_TICK_INVALID;
+    timer->cbs = cbs;
+    timer->data = data;
+
+    switch (type)
+    {
+        case VLC_PLAYER_TIMER_TYPE_SOURCE:
+            break;
+        case VLC_PLAYER_TIMER_TYPE_TIMER:
+            break;
+        default:
+            vlc_assert_unreachable();
+    }
+
+    vlc_list_append(&timer->node, &player->timers);
+
+    return timer;
+}
+
+void
+vlc_player_RemoveTimer(vlc_player_t *player, vlc_player_timer_id *timer)
+{
+    vlc_player_assert_locked(player);
+    assert(timer);
+
+    vlc_list_remove(&timer->node);
+    free(timer);
+}
+
+void
+vlc_player_timer_value_Interpolate(const struct vlc_player_timer_value *value,
+                                   vlc_tick_t system_now,
+                                   vlc_tick_t *out_ts, float *out_pos)
+{
+    assert(value);
+    assert(system_now > 0);
+    assert(out_ts || out_pos);
+
+    const vlc_tick_t drift = (system_now - value->system_date) * value->rate;
+    vlc_tick_t ts = value->ts;
+    float pos = value->position;
+
+    if (ts != VLC_TICK_INVALID)
+        ts += drift;
+    if (value->length != VLC_TICK_INVALID)
+        pos += drift / (float) value->length;
+
+    if (out_ts)
+        *out_ts = ts;
+    if (out_pos)
+        *out_pos = pos;
 }
 
 static inline void
@@ -3702,6 +3910,7 @@ vlc_player_Delete(vlc_player_t *player)
     assert(vlc_list_is_empty(&player->listeners));
     assert(vlc_list_is_empty(&player->vout_listeners));
     assert(vlc_list_is_empty(&player->aout_listeners));
+    assert(vlc_list_is_empty(&player->timers));
 
     vlc_mutex_unlock(&player->lock);
 
@@ -3744,6 +3953,7 @@ vlc_player_New(vlc_object_t *parent, enum vlc_player_lock_type lock_type,
     vlc_list_init(&player->listeners);
     vlc_list_init(&player->vout_listeners);
     vlc_list_init(&player->aout_listeners);
+    vlc_list_init(&player->timers);
     vlc_list_init(&player->destructor.inputs);
     vlc_list_init(&player->destructor.stopping_inputs);
     vlc_list_init(&player->destructor.joinable_inputs);

@@ -3055,6 +3055,136 @@ vlc_player_RemoveListener(vlc_player_t *player,
 
 /** @} vlc_player__events */
 
+/**
+ * @defgroup vlc_player__timer Player timer
+ * @{
+ */
+
+/**
+ * Player timer opaque structure.
+ */
+typedef struct vlc_player_timer_id vlc_player_timer_id;
+
+/*
+ * Player timer creation type
+ *
+ * @see vlc_player_AddTimer()
+ */
+enum vlc_player_timer_idype
+{
+    /**
+     * Get notified only when the time is updated by the input or output
+     * source. The input source is the 'demux' or the 'access_demux'. The
+     * output source are audio and video outputs: an update is received each
+     * time a video frame is displayed or an audio sample is written. The delay
+     * between each updates may depend on the input and source type (it can be
+     * every 5ms, 30ms, 1s or 10s...). The user of this timer may need to
+     * update the position at a higher frequency from its own mainloop via
+     * vlc_player_timer_value_Interpolate().
+     */
+    VLC_PLAYER_TIMER_TYPE_SOURCE,
+    /** Spawn a timer to get regular time updates. */
+    VLC_PLAYER_TIMER_TYPE_TIMER,
+};
+
+/**
+ * Player timer state
+ *
+ * @see vlc_player_timer_cbs.on_update
+ */
+enum vlc_player_timer_state
+{
+    /* Normal state, the player is playing */
+    VLC_PLAYER_TIMER_STATE_PLAYING,
+    /* The player is paused */
+    VLC_PLAYER_TIMER_STATE_PAUSED,
+    /* A discontinuity occurred, likely caused by seek from the user. */
+    VLC_PLAYER_TIMER_STATE_DISCONTINUITY,
+};
+
+/**
+ * Player timer value
+ *
+ * @see vlc_player_timer_cbs.on_update
+ */
+struct vlc_player_timer_value
+{
+    /** Position in the range [0.0f;1.0] */
+    float position;
+    /** Rate of the player */
+    float rate;
+    /** Valid time > 0 or VLC_TICK_INVALID */
+    vlc_tick_t ts;
+    /** Valid length > 0 or VLC_TICK_INVALID */
+    vlc_tick_t length;
+    /** System date of this record (always valid) */
+    vlc_tick_t system_date;
+};
+
+/**
+ * Player timer callbacks
+ *
+ * @see vlc_player_AddTimer
+ */
+struct vlc_player_timer_cbs
+{
+    /**
+     * Called when the state or the time changed.
+     *
+     * @param timer the timer created by vlc_player_AddTimer()
+     * @param state PLAYING, PAUSED or DISCONTINUITY
+     * @param value always valid, the time corresponding to the state
+     * @param data opaque pointer set by vlc_player_AddTimer()
+     */
+    void (*on_update)(enum vlc_player_timer_state state,
+                      const struct vlc_player_timer_value *value, void *data);
+};
+
+/**
+ * Add a timer in order to get times updates
+ *
+ * @param player locked player instance
+ * @param type SOURCE or TIMER, see vlc_player_timer_idype
+ * @param delay if the type is SOURCE, it corresponds to the minimum delay
+ * between each updates, use it to avoid flood from too many source updates,
+ * set it to VLC_TICK_INVALID to receive all updates. If type is TIMER, it
+ * corresponds to the delay between each updates.
+ * @param cbs pointer to a vlc_player_timer_cbs structure, the structure must
+ * be valid during the lifetime of the player
+ * @param cbs_data opaque pointer used by the callbacks
+ * @return a valid vlc_player_timer_id or NULL in case of memory allocation
+ * error
+ */
+VLC_API vlc_player_timer_id *
+vlc_player_AddTimer(vlc_player_t *player, enum vlc_player_timer_idype type,
+                    vlc_tick_t delay,
+                    const struct vlc_player_timer_cbs *cbs, void *data);
+
+/**
+ * Remove a player timer
+ *
+ * @param timer timer created by vlc_player_AddTimer()
+ */
+VLC_API void
+vlc_player_RemoveTimer(vlc_player_t *player, vlc_player_timer_id *timer);
+
+/**
+ * Interpolate the last timer value to now
+ *
+ * @param value time update obtained via the vlc_player_timer_cbs.on_update()
+ * callback
+ * @param system_now current system date
+ * @param player_rate rate of the player
+ * @param out_ts pointer where to set the interpolated ts
+ * @param out_pos pointer where to set the interpolated position
+ */
+VLC_API void
+vlc_player_timer_value_Interpolate(const struct vlc_player_timer_value *value,
+                                   vlc_tick_t system_now,
+                                   vlc_tick_t *out_ts, float *out_pos);
+
+/** @} vlc_player__timer */
+
 /** @} vlc_player */
 
 #endif
