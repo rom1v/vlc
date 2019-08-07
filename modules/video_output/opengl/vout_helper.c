@@ -1768,7 +1768,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         if (object->info.blend && last_framebuffer != 0)
         {
             /* TODO: it should be able to handle different size
-             * TODO: add filter->resize() when viewport change
+             * TODO: add filter->resize() when viewport change */
             vgl->vt.BlitFramebuffer(0, 0,
                                     filter_input.picture.width,
                                     filter_input.picture.height,
