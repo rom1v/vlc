@@ -24,6 +24,8 @@
 #include "util/input_models.hpp"
 #include "adapters/var_choice_model.hpp"
 
+#include <QTimer>
+
 class PlayerControllerPrivate {
     Q_DISABLE_COPY(PlayerControllerPrivate)
 public:
@@ -95,6 +97,7 @@ public:
     //timer
     vlc_player_timer_id* m_player_timer = nullptr;
     struct vlc_player_timer_value m_player_time;
+    QTimer m_interpolate_timer;
 
     //title/chapters/menu
     TitleListModel m_titleList;

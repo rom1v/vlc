@@ -838,6 +838,18 @@ static void on_player_timer_update(enum vlc_player_timer_state state,
         emit q->positionUpdated(that->m_position, that->m_time,
                                 SEC_FROM_VLC_TICK(that->m_length) );
 
+        switch (state)
+        {
+            case VLC_PLAYER_TIMER_STATE_PLAYING:
+                that->m_interpolate_timer.start();
+                break;
+            case VLC_PLAYER_TIMER_STATE_PAUSED:
+            case VLC_PLAYER_TIMER_STATE_DISCONTINUITY:
+                that->m_interpolate_timer.stop();
+                break;
+            default:
+                break;
+        }
     });
 }
 
@@ -925,6 +937,8 @@ PlayerControllerPrivate::PlayerControllerPrivate(PlayerController *playercontrol
 
     QObject::connect( &m_autoscale, &QVLCBool::valueChanged, q_ptr, &PlayerController::autoscaleChanged );
     QObject::connect( &m_audioVisualization, &VLCVarChoiceModel::hasCurrentChanged, q_ptr, &PlayerController::hasAudioVisualizationChanged );
+
+    m_interpolate_timer.setInterval( 17 ); /* XXX ~60 fps */
 }
 
 PlayerController::PlayerController( intf_thread_t *_p_intf )
@@ -934,6 +948,7 @@ PlayerController::PlayerController( intf_thread_t *_p_intf )
     /* Audio Menu */
     menusAudioMapper = new QSignalMapper(this);
     CONNECT( menusAudioMapper, mapped(const QString&), this, menusUpdateAudio(const QString&) );
+    CONNECT( &d_ptr->m_interpolate_timer, timeout(), this, interpolateTime() );
 
     input_fetcher_cbs.on_art_fetch_ended = onArtFetchEnded_callback;
 }
@@ -1355,6 +1370,18 @@ void PlayerController::menusUpdateAudio( const QString& data )
     if( aout )
         aout_DeviceSet( aout.get(), qtu(data) );
 }
+
+void PlayerController::interpolateTime()
+{
+    Q_D(PlayerController);
+    vlc_tick_t new_time;
+    vlc_player_timer_value_Interpolate(&d->m_player_time, vlc_tick_now(), &new_time, &d->m_position);
+    d->m_time = new_time;
+
+    emit positionChanged(d->m_position);
+    emit timeChanged(d->m_time);
+}
+
 
 //MISC
 

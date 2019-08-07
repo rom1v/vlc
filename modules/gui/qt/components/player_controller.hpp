@@ -418,6 +418,7 @@ signals:
 
 private slots:
     void menusUpdateAudio( const QString& );
+    void interpolateTime();
 
 private:
     Q_DECLARE_PRIVATE(PlayerController)
