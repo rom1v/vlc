@@ -36,6 +36,13 @@ So as to load a program, the implementors may use their own method, but the
 `vlc_gl_shader_builder` API might help so as to implement the previous
 behaviour.
 
+A shader builder is created through the `vlc_gl_shader_builder_Create` and must
+be released through the `vlc_gl_shader_builder_Release`. Shader parts, like
+vertex shader or fragment shader, can be defined through the use of
+`vlc_gl_shader_AttachShaderSource`.
+The final shader program can be obtained through `vlc_gl_shader_program_Create`
+by giving the shader builder object.
+
 The filters can work in two differents modes, which should be initialized during
 the `Open` callback. It can either create its own new picture from the original
 picture or the previous one, which is the default behaviour, or can also set the
