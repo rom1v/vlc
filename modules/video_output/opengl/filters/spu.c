@@ -444,6 +444,13 @@ static int FilterInput(struct vlc_gl_filter *filter,
     return VLC_SUCCESS;
 }
 
+static void FilterClose(struct vlc_gl_filter *filter)
+{
+    struct vlc_gl_filter_sys *sys = filter->sys;
+    vlc_gl_shader_program_Release(sys->program);
+    free(filter->sys);
+}
+
 static int Open(struct vlc_gl_filter *filter,
                 video_format_t *fmt_in,
                 video_format_t *fmt_out)
@@ -489,14 +496,8 @@ static int Open(struct vlc_gl_filter *filter,
     }
 
     filter->filter = FilterInput;
+    filter->close  = FilterClose;
     return VLC_SUCCESS;
-}
-
-static void Close(struct vlc_gl_filter *filter)
-{
-    struct vlc_gl_filter_sys *sys = filter->sys;
-    vlc_gl_shader_program_Release(sys->program);
-    free(filter->sys);
 }
 
 vlc_module_begin()
@@ -505,6 +506,6 @@ vlc_module_begin()
     set_category(CAT_VIDEO)
     set_subcategory(SUBCAT_VIDEO_VFILTER)
     set_capability("opengl filter", 0)
-    set_callbacks(Open, Close)
+    set_callback(Open)
     add_shortcut("spu_blend")
 vlc_module_end()
