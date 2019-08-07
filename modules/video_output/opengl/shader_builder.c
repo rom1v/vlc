@@ -251,6 +251,7 @@ vlc_gl_shader_program_Create(struct vlc_gl_shader_builder *builder)
         malloc(sizeof(*shader_program));
 
     shader_program->id = program_id;
+    shader_program->vt = vt;
 
     return shader_program;
 }
@@ -258,7 +259,7 @@ vlc_gl_shader_program_Create(struct vlc_gl_shader_builder *builder)
 void
 vlc_gl_shader_program_Release(struct vlc_gl_shader_program *program)
 {
-    const opengl_vtable_t *vt = program->tc->vt;
+    const opengl_vtable_t *vt = program->vt;
     vt->DeleteProgram(program->id);
     free(program);
 }
