@@ -214,7 +214,11 @@ static int Open(struct vlc_gl_filter *filter,
 }
 
 static void Close(struct vlc_gl_filter *filter)
-{ }
+{
+    struct vlc_gl_filter_sys *sys = filter->sys;
+    vlc_gl_shader_program_Release(sys->program);
+    filter->vt->DeleteBuffers(3, sys->buffer_objects);
+}
 
 vlc_module_begin()
     set_shortname("triangle blend")
