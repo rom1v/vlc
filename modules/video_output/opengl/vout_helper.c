@@ -1867,6 +1867,9 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         return VLC_EGENERIC;
     }
 
+    assert(wrapper->filter->filter);
+    assert(wrapper->filter->close);
+
     /* If we already have filters, we need to be sure we can convert from the
      * previous filter to the next filter format. In the mean time, configure
      * the rendering target for the previous filter. */
