@@ -52,6 +52,39 @@ image result.
 The triangle example shows a basic OpenGL filter. This filter only blend a
 triangle on the previous image.
 
+## Using filter parameters
+
+OpenGL filters are getting temporary reading access to as `config_chain_t`
+object, which allows to map the filter parameter to the filter object variables.
+
+The main usage template for this `config_chain_t` is like the following snippet:
+
+```
+#define MYFILTER_CFG_PREFIX filter-
+static const char **filter_options = { "option1", "option2", NULL };
+
+/* ... */
+
+static int Open(struct vlc_gl_filter *filter, config_chain_t *config)
+{
+    /* ... */
+    config_ChainParse(filter, MYFILTER_CFG_PREFIX, filter_options, config);
+    /* ... */
+}
+
+/* ... */
+
+vlc_module_begin()
+    /* ... */
+    add_string(MYFILTER_CFG_PREFIX "option1", /* ... */)
+    add_integer(MYFILTER_CFG_PREFIX "option2", /* ... */)
+vlc_module_end()
+```
+
+This mechanism allow the user (be it the end user or another module using the
+implementors's one) to set a global option, and then override it filter by
+filter.
+
 ## Managing input textures
 
 Textures are embedded into Opengl regions, which are also describing:
