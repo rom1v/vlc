@@ -1030,7 +1030,7 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     struct vout_display_opengl_filter *wrapper;
     vlc_vector_foreach(wrapper, &vgl->filters)
     {
-        //TODO vlc_module_unload(wrapper.module);
+        wrapper->filter->close(wrapper->filter);
         vlc_object_release(VLC_OBJECT(wrapper->filter));
         free(wrapper);
     }
