@@ -92,6 +92,10 @@ public:
     VLCTick      m_secondarySubtitleDelay = 0;
     float        m_subtitleFPS = 1.0;
 
+    //timer
+    vlc_player_timer_id* m_player_timer = nullptr;
+    struct vlc_player_timer_value m_player_time;
+
     //title/chapters/menu
     TitleListModel m_titleList;
     ChapterListModel m_chapterList;

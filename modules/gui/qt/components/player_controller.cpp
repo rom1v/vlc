@@ -60,6 +60,7 @@ PlayerControllerPrivate::~PlayerControllerPrivate()
     vlc_player_vout_RemoveListener( m_player, m_player_vout_listener );
     vlc_player_aout_RemoveListener( m_player, m_player_aout_listener );
     vlc_player_RemoveListener( m_player, m_player_listener );
+    vlc_player_RemoveTimer( m_player, m_player_timer );
 }
 
 void PlayerControllerPrivate::UpdateName(input_item_t* media)
@@ -345,16 +346,6 @@ static void on_player_buffering(vlc_player_t *, float new_buffering, void *data)
     });
 }
 
-static void on_player_rate_changed(vlc_player_t *, float new_rate, void *data)
-{
-    PlayerControllerPrivate* that = static_cast<PlayerControllerPrivate*>(data);
-    msg_Dbg( that->p_intf, "on_player_rate_changed %f", new_rate);
-    that->callAsync([that,new_rate](){
-        that->m_rate = new_rate;
-        emit that->q_func()->rateChanged( new_rate );
-    });
-}
-
 static void on_player_capabilities_changed(vlc_player_t *, int old_caps, int new_caps, void *data)
 {
     PlayerControllerPrivate* that = static_cast<PlayerControllerPrivate*>(data);
@@ -385,34 +376,6 @@ static void on_player_capabilities_changed(vlc_player_t *, int old_caps, int new
     });
 
     //FIXME other events?
-}
-
-static void on_player_position_changed(vlc_player_t *player, vlc_tick_t time, float pos, void *data)
-{
-    PlayerControllerPrivate* that = static_cast<PlayerControllerPrivate*>(data);
-    vlc_tick_t length =  vlc_player_GetLength( player );
-    that->callAsync([that,time,pos,length] () {
-        PlayerController* q = that->q_func();
-        that->m_position = pos;
-        emit q->positionChanged(pos);
-        that->m_time = time;
-        emit q->timeChanged(time);
-        emit that->q_func()->positionUpdated(pos, time, SEC_FROM_VLC_TICK(length) );
-    });
-}
-
-static void on_player_length_changed(vlc_player_t *player, vlc_tick_t new_length, void *data)
-{
-    PlayerControllerPrivate* that = static_cast<PlayerControllerPrivate*>(data);
-    vlc_tick_t time = vlc_player_GetTime( player );
-    float pos = vlc_player_GetPosition( player );
-    that->callAsync([that,new_length,time,pos] () {
-        PlayerController* q = that->q_func();
-        that->m_length = new_length;
-        emit q->lengthChanged(new_length);
-        emit that->q_func()->positionUpdated( pos, time, SEC_FROM_VLC_TICK(new_length) );
-    });
-
 }
 
 static void on_player_track_list_changed(vlc_player_t *, enum vlc_player_list_action action, const struct vlc_player_track *track, void *data)
@@ -854,6 +817,30 @@ static void on_player_corks_changed(vlc_player_t *, unsigned, void *data)
     msg_Dbg( that->p_intf, "on_player_corks_changed");
 }
 
+static void on_player_timer_update(enum vlc_player_timer_state state,
+                                   const struct vlc_player_timer_value *value,
+                                   void *data)
+{
+    PlayerControllerPrivate* that = static_cast<PlayerControllerPrivate*>(data);
+    that->callAsync([that,state,value_copy = *value](){
+        PlayerController* q = that->q_func();
+        that->m_player_time = value_copy;
+
+        that->m_position = that->m_player_time.position;
+        that->m_time = that->m_player_time.ts;
+        that->m_length = that->m_player_time.length;
+        that->m_rate = that->m_player_time.rate;
+
+        emit q->lengthChanged(that->m_length );
+        emit q->positionChanged(that->m_position);
+        emit q->timeChanged(that->m_time);
+        emit q->rateChanged(that->m_rate);
+        emit q->positionUpdated(that->m_position, that->m_time,
+                                SEC_FROM_VLC_TICK(that->m_length) );
+
+    });
+}
+
 } //extern "C"
 
 static const struct vlc_player_cbs player_cbs = {
@@ -861,10 +848,10 @@ static const struct vlc_player_cbs player_cbs = {
     on_player_state_changed,
     on_player_error_changed,
     on_player_buffering,
-    on_player_rate_changed,
+    nullptr, // on_player_rate_changed: handled by on_player_timer_update
     on_player_capabilities_changed,
-    on_player_position_changed,
-    on_player_length_changed,
+    nullptr, // on_player_position_changed: handled by on_player_timer_update
+    nullptr, // on_player_length_changed: handled by on_player_timer_update
     on_player_track_list_changed,
     on_player_track_selection_changed,
     on_player_track_delay_changed,
@@ -903,6 +890,10 @@ static const struct vlc_player_aout_cbs player_aout_cbs = {
     nullptr
 };
 
+static const struct vlc_player_timer_cbs player_timer_cbs = {
+    on_player_timer_update,
+};
+
 PlayerControllerPrivate::PlayerControllerPrivate(PlayerController *playercontroller, intf_thread_t *p_intf)
     : q_ptr(playercontroller)
     , p_intf(p_intf)
@@ -928,6 +919,8 @@ PlayerControllerPrivate::PlayerControllerPrivate(PlayerController *playercontrol
         m_player_listener = vlc_player_AddListener( m_player, &player_cbs, this );
         m_player_aout_listener = vlc_player_aout_AddListener( m_player, &player_aout_cbs, this );
         m_player_vout_listener = vlc_player_vout_AddListener( m_player, &player_vout_cbs, this );
+        m_player_timer = vlc_player_AddTimer( m_player, VLC_PLAYER_TIMER_TYPE_SOURCE,
+                                              VLC_TICK_FROM_MS(250), &player_timer_cbs, this );
     }
 
     QObject::connect( &m_autoscale, &QVLCBool::valueChanged, q_ptr, &PlayerController::autoscaleChanged );
