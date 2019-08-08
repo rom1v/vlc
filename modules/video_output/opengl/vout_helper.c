@@ -1765,8 +1765,12 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, last_framebuffer);
         vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, wrapper->framebuffer);
 
-        vgl->vt.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        vgl->vt.Clear(GL_COLOR_BUFFER_BIT);
+
+        if (!object->info.blend)
+        {
+            vgl->vt.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            vgl->vt.Clear(GL_COLOR_BUFFER_BIT);
+        }
 
         if (object->info.blend && last_framebuffer != wrapper->framebuffer)
         {
