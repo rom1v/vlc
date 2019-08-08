@@ -1768,7 +1768,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         vgl->vt.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         vgl->vt.Clear(GL_COLOR_BUFFER_BIT);
 
-        if (object->info.blend)//&& last_framebuffer != 0)
+        if (object->info.blend && last_framebuffer != wrapper->framebuffer)
         {
             /* TODO: it should be able to handle different size
              * TODO: add filter->resize() when viewport change */
