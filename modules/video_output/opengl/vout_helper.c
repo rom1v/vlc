@@ -354,11 +354,17 @@ static int filter_UpdateFramebuffer(
                             filter->textures);
     }
 
+    /* enforce one texture output for now
+     * TODO: multiple texture support */
+    vgl->vt.BindTexture(GL_TEXTURE_2D, filter->textures[0]);
+
     /* Set or update texture size */
     vgl->vt.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
                        filter->fmt_out.i_width,
                        filter->fmt_out.i_height,
                        0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    vgl->vt.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    vgl->vt.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     if (filter->framebuffer == 0)
     {
@@ -368,12 +374,8 @@ static int filter_UpdateFramebuffer(
 
     vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, filter->framebuffer);
 
-    /* enforce one texture output for now
-     * TODO: multiple texture support */
-
     msg_Err(vgl->gl, "FBO WIDTH=%d, HEIGHT=%d", filter->fmt_out.i_width,
             filter->fmt_out.i_height);
-    vgl->vt.BindTexture(GL_TEXTURE_2D, filter->textures[0]);
 
     /* TODO: Handle openGL ES Renderbuffers too */
     vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
@@ -390,10 +392,11 @@ static int filter_UpdateFramebuffer(
                                      filter->textures[2], 0);
 
     vgl->vt.DrawBuffer(GL_COLOR_ATTACHMENT0);
-    vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, 0);
 
     GLenum status = vgl->vt.CheckFramebufferStatus(GL_FRAMEBUFFER);
     assert(status == GL_FRAMEBUFFER_COMPLETE);
+
+    vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 static GLuint BuildVertexShader(const opengl_tex_converter_t *tc,
