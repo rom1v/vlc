@@ -48,10 +48,10 @@ struct vlc_gl_filter_sys
 static const char *vertex_shader =
     "#version 130\n"
     "varying vec3 Color;\n"
-    "attribute vec3 VertexPosition;\n"
+    "attribute vec2 VertexPosition;\n"
     "attribute vec3 VertexColor;\n"
     "void main() {\n"
-    " gl_Position = vec4(VertexPosition, 1.0);\n"
+    " gl_Position = vec4(VertexPosition, 0.0, 1.0);\n"
     " Color = VertexColor;\n"
     "}";
 
@@ -89,8 +89,8 @@ static int FilterInput(struct vlc_gl_filter *filter,
     struct vlc_gl_region *glr = &input->picture;
     const GLfloat vertexCoord[] = {
         (glr->left+glr->right)/2,   glr->top,
-        glr->right,                 glr->bottom,
         glr->left,                  glr->bottom,
+        glr->right,                 glr->bottom,
     };
     const GLfloat textureCoord[] = {
         glr->tex_width/2.f, 0.0,
@@ -113,17 +113,17 @@ static int FilterInput(struct vlc_gl_filter *filter,
     //tc->pf_prepare_shader(tc, &glr->width, &glr->height, glr->alpha);
 
     /* TODO: attribute handling in shader ? */
+    filter->vt->EnableVertexAttribArray(sys->aloc.VertexPosition);
     filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->buffer_objects[1]);
     filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
-    filter->vt->EnableVertexAttribArray(sys->aloc.VertexPosition);
     filter->vt->VertexAttribPointer(sys->aloc.VertexPosition, 2, GL_FLOAT,
-                                    0, 0, 0);
+                                    GL_FALSE, 0, 0);
 
+    filter->vt->EnableVertexAttribArray(sys->aloc.VertexColor);
     filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->buffer_objects[2]);
     filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
-    filter->vt->EnableVertexAttribArray(sys->aloc.VertexColor);
     filter->vt->VertexAttribPointer(sys->aloc.VertexColor, 3, GL_FLOAT,
-                                    0, 0, 0);
+                                    GL_FALSE, 0, 0);
 
 
 
@@ -137,7 +137,7 @@ static int FilterInput(struct vlc_gl_filter *filter,
     //filter->vt->UniformMatrix4fv(prgm->uloc.ZoomMatrix, 1, GL_FALSE,
     //                             input->var.ZoomMatrix);
 
-    filter->vt->DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    filter->vt->DrawArrays(GL_TRIANGLES, 0, 3);
 
     //filter->vt->DisableVertexAttribArray(sys->aloc.VertexColor);
     //filter->vt->DisableVertexAttribArray(sys->aloc.VertexPosition);
