@@ -1757,11 +1757,11 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         /* TODO: it can't work like that because of text converter */
         .picture = {
             .texture = vgl->texture[0],
-            .left = -.5f, .right = .5f,
-            .top = .5f, .bottom = -.5f,
+            .left = -1.f, .right = 1.f,
+            .top = 1.f, .bottom = -1.f,
             .width = vgl->fmt.i_visible_width,
             .height = vgl->fmt.i_visible_height,
-            .alpha = .5f,
+            .alpha = 1.f,
         }
     };
 
@@ -1808,11 +1808,11 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
             .picture = {
                 /* TODO: handle textures and parameters correctly */
                 .texture = wrapper->textures[0],
-                .left = -.5f, .right = .5f,
-                .top = .5f, .bottom = -.5f,
+                .left = -1.f, .right = 1.f,
+                .top = 1.f, .bottom = -1.f,
                 .width = vgl->fmt.i_visible_width,
                 .height = vgl->fmt.i_visible_height,
-                .alpha = .5f,
+                .alpha = 1.f,
             }
         };
 
