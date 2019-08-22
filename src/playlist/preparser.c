@@ -42,6 +42,7 @@ struct playlist_preparser_t
 struct input_preparser_req
 {
     input_item_t *item;
+    input_item_meta_request_option_t options;
     atomic_uint rc;
 };
 
@@ -52,13 +53,15 @@ struct input_preparser_task
 };
 
 static struct input_preparser_req *
-input_preparser_req_new(input_item_t *item)
+input_preparser_req_new(input_item_t *item,
+                        input_item_meta_request_option_t options)
 {
     struct input_preparser_req *req = malloc(sizeof(*req));
     if (!req)
         return NULL;
 
     req->item = input_item_Hold(item);
+    req->options = options;
     atomic_init(&req->rc, 1);
     return req;
 }
@@ -135,6 +138,7 @@ static int PreparserProbeInput( void* preparser_, void* task_ )
 static void PreparserCloseInput( void* preparser_, void* task_ )
 {
     struct input_preparser_task *task = task_;
+    struct input_preparser_req *req = task->req;
     playlist_preparser_t* preparser = preparser_;
     input_thread_t* input = task->input;
     input_item_t* item = input_priv(input)->p_item;
@@ -159,9 +163,11 @@ static void PreparserCloseInput( void* preparser_, void* task_ )
 
     free(task);
 
-    if( preparser->fetcher )
+    int fetch_options = req->options & META_REQUEST_OPTION_FETCH_ANY;
+    if( preparser->fetcher && fetch_options )
     {
-        if( !playlist_fetcher_Push( preparser->fetcher, item, 0, status ) )
+        if( !playlist_fetcher_Push( preparser->fetcher, item, fetch_options,
+                                    status ) )
             return;
     }
 
@@ -229,7 +235,7 @@ void playlist_preparser_Push( playlist_preparser_t *preparser,
             return;
     }
 
-    struct input_preparser_req *req = input_preparser_req_new(item);
+    struct input_preparser_req *req = input_preparser_req_new(item, i_options);
     if (!req)
     {
         input_item_SignalPreparseEnded( item, ITEM_PREPARSE_FAILED );

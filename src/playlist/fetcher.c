@@ -23,6 +23,7 @@
 # include "config.h"
 #endif
 
+#include <assert.h>
 #include <vlc_common.h>
 #include <vlc_stream.h>
 #include <vlc_modules.h>
@@ -297,7 +298,7 @@ static void SearchLocal( playlist_fetcher_t* fetcher, struct fetcher_request* re
         return; /* done */
 
     if( var_InheritBool( fetcher->owner, "metadata-network-access" ) ||
-        req->options & META_REQUEST_OPTION_SCOPE_NETWORK )
+        req->options & META_REQUEST_OPTION_FETCH_NETWORK )
     {
         if( background_worker_Push( fetcher->network, req, NULL, 0 ) )
             SetPreparsed( req );
@@ -452,6 +453,7 @@ playlist_fetcher_t* playlist_fetcher_New( vlc_object_t* owner )
 int playlist_fetcher_Push( playlist_fetcher_t* fetcher, input_item_t* item,
     input_item_meta_request_option_t options, int preparse_status )
 {
+    assert(options & META_REQUEST_OPTION_FETCH_ANY);
     struct fetcher_request* req = malloc( sizeof *req );
 
     if( unlikely( !req ) )
@@ -464,7 +466,9 @@ int playlist_fetcher_Push( playlist_fetcher_t* fetcher, input_item_t* item,
     atomic_init( &req->refs, 1 );
     input_item_Hold( item );
 
-    if( background_worker_Push( fetcher->local, req, NULL, 0 ) )
+    struct background_worker* worker =
+        options & META_REQUEST_OPTION_FETCH_LOCAL ? fetcher->local : fetcher->network;
+    if( background_worker_Push( worker, req, NULL, 0 ) )
         SetPreparsed( req );
 
     RequestRelease( req );
