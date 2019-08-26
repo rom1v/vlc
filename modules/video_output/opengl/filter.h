@@ -96,8 +96,6 @@ struct vlc_gl_filter
 
     const config_chain_t *config;
 
-    const video_format_t *fmt;
-
     /**
      * Renderer opengl vtable
      */

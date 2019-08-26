@@ -1849,7 +1849,6 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
     wrapper->framebuffer = 0;
     wrapper->texture_count = 0;
-    wrapper->filter.fmt = &vgl->fmt; //< TODO: replace by fmt_in/fmt_out const pointer
     wrapper->filter.vt = &vgl->vt;
     wrapper->filter.info.blend = false;
 

@@ -468,7 +468,7 @@ static int Open(struct vlc_gl_filter *filter,
     // TODO: create the opengl_tex_converter ourselves
     opengl_init_program(filter, NULL /* context */,
                         &sys->sub_prgm, extensions,
-                        filter->fmt, true, false);
+                        fmt_out, true, false);
 
     /* Initialize the shader */
     struct vlc_gl_shader_sampler *sampler;
