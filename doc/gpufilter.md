@@ -98,4 +98,19 @@ Textures are embedded into Opengl regions, which are also describing:
 + texture size.
 + texture rendering rectangle according to VLC core.
 
+When `filter.info.blend` is `false`, the input video texture coming from the
+previous filter will be transfered to the filter into the `filter_input`
+parameter.
 
+The filter implementor can ask a specific chroma layout, and the result will
+be converted into this one before the filter can access the picture. Most
+filters will probably want to stay in `RGB` or `RGBA` format.
+
+When the `filter` function is called, the filter implementor gets this
+`vlc_gl_filter_input` object and can use `glBindTexture` to bind to the
+current opengl rendering context.
+
+The example `triangle_mask` [3] shows a basic `RGB` example where the input
+picture is extracted and masked, only drawn on a triangle.
+
+[3]: see modules/video_output/opengl/filters/triangle_mask.c
