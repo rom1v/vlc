@@ -1852,6 +1852,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     wrapper->framebuffer = 0;
     wrapper->texture_count = 0;
     wrapper->filter.vt = &vgl->vt;
+    /* By default, disable blending, so we don't copy previous framebuffer. */
     wrapper->filter.info.blend = false;
 
     /* Mutable format configuration for the filter input/output. */
