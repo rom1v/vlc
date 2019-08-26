@@ -1845,7 +1845,6 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
     wrapper->framebuffer = 0;
     wrapper->texture_count = 0;
-    wrapper->filter->config = config;
     wrapper->filter->fmt = &vgl->fmt; //< TODO: replace by fmt_in/fmt_out const pointer
     wrapper->filter->vt = &vgl->vt;
     wrapper->filter->info.blend = true;
@@ -1864,7 +1863,9 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     wrapper->fmt_out = wrapper->fmt_in;
 
     wrapper->module = vlc_module_load(vgl->gl, "opengl filter", name, true,
-                                      EnableOpenglFilter, wrapper->filter,
+                                      EnableOpenglFilter,
+                                      /* Parameters given to filter's Open() */
+                                      wrapper->filter, config,
                                       &wrapper->fmt_in, &wrapper->fmt_out);
 
     if (wrapper->module == NULL)

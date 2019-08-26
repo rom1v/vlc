@@ -155,6 +155,7 @@ static void FilterClose(struct vlc_gl_filter *filter)
 }
 
 static int Open(struct vlc_gl_filter *filter,
+                const config_chain_t *config,
                 video_format_t *fmt_in,
                 video_format_t *fmt_out)
 {
