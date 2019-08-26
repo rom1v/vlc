@@ -49,8 +49,10 @@ picture or the previous one, which is the default behaviour, or can also set the
 `info.blend` flag to `true` in its structure to write directly on the previous
 image result.
 
-The triangle example shows a basic OpenGL filter. This filter only blend a
-triangle on the previous image.
+The `triangle` example [1] shows a basic OpenGL filter. This filter only blend a
+triangle on the previous image, running a custom shader for colors.
+
+[1]: see modules/video_output/opengl/filters/triangle.c
 
 ## Using filter parameters
 
