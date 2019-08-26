@@ -118,9 +118,11 @@ struct prgm
     } aloc;
 };
 
+/* Wrapper around vlc_gl_filter */
 struct vout_display_opengl_filter
 {
-    struct vlc_gl_filter *filter;
+    /* This must be the first field in the structure. */
+    struct vlc_gl_filter filter;
     module_t *module;
 
     video_format_t fmt_in;
@@ -1033,9 +1035,8 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     struct vout_display_opengl_filter *wrapper;
     vlc_vector_foreach(wrapper, &vgl->filters)
     {
-        wrapper->filter->close(wrapper->filter);
-        vlc_object_release(VLC_OBJECT(wrapper->filter));
-        free(wrapper);
+        wrapper->filter.close(&wrapper->filter);
+        vlc_object_release(VLC_OBJECT(&wrapper->filter));
     }
 
     const size_t main_tex_count = vgl->prgm->tc->tex_count;
@@ -1760,7 +1761,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     struct vout_display_opengl_filter *wrapper;
     vlc_vector_foreach(wrapper, &vgl->filters)
     {
-        struct vlc_gl_filter *object = wrapper->filter;
+        struct vlc_gl_filter *object = &wrapper->filter;
         msg_Err(vgl->gl, "Binding READ=%u, WRITE=%u", last_framebuffer, wrapper->framebuffer);
         vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, last_framebuffer);
         vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, wrapper->framebuffer);
@@ -1823,21 +1824,14 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
                                      const config_chain_t *config)
 {
     /* Filters are wrapped into a structure containing their module and
-     * rendering configuration
-     * TODO: use owner paradigm like the core */
-    struct vout_display_opengl_filter *wrapper = malloc(sizeof(*wrapper));
+     * rendering configuration. */
+    struct vout_display_opengl_filter *wrapper =
+        vlc_object_create(vgl->gl, sizeof(*wrapper));
+
     if (wrapper == NULL)
         return VLC_ENOMEM;
 
     /* TODO framebuffer configuration */
-    wrapper->filter =
-        vlc_object_create(vgl->gl, sizeof(*wrapper->filter));
-
-    if (wrapper->filter == NULL)
-    {
-        free(wrapper);
-        return VLC_ENOMEM;
-    }
 
     struct vout_display_opengl_filter* prev_filter = NULL;
     if (vgl->filters.size > 0)
@@ -1845,9 +1839,9 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
     wrapper->framebuffer = 0;
     wrapper->texture_count = 0;
-    wrapper->filter->fmt = &vgl->fmt; //< TODO: replace by fmt_in/fmt_out const pointer
-    wrapper->filter->vt = &vgl->vt;
-    wrapper->filter->info.blend = true;
+    wrapper->filter.fmt = &vgl->fmt; //< TODO: replace by fmt_in/fmt_out const pointer
+    wrapper->filter.vt = &vgl->vt;
+    wrapper->filter.info.blend = true;
 
     /* Mutable format configuration for the filter input/output. */
     uint32_t chroma = prev_filter != NULL ? prev_filter->fmt_out.i_chroma
@@ -1870,13 +1864,12 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
     if (wrapper->module == NULL)
     {
-        vlc_object_release(VLC_OBJECT(wrapper->filter));
-        free(wrapper);
+        vlc_object_release(VLC_OBJECT(&wrapper->filter));
         return VLC_EGENERIC;
     }
 
-    assert(wrapper->filter->filter);
-    assert(wrapper->filter->close);
+    assert(wrapper->filter.filter);
+    assert(wrapper->filter.close);
 
     /* If we already have filters, we need to be sure we can convert from the
      * previous filter to the next filter format. In the mean time, configure
