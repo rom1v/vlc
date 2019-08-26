@@ -400,7 +400,11 @@ static int filter_UpdateFramebuffer(
     GLenum status = vgl->vt.CheckFramebufferStatus(GL_FRAMEBUFFER);
     assert(status == GL_FRAMEBUFFER_COMPLETE);
 
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+        return VLC_EGENERIC;
+
     vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, 0);
+    return VLC_SUCCESS;
 }
 
 static GLuint BuildVertexShader(const opengl_tex_converter_t *tc,
@@ -1887,7 +1891,12 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
             // TODO: add converter
         }
 
-        filter_UpdateFramebuffer(vgl, prev_filter);
+        if (filter_UpdateFramebuffer(vgl, prev_filter) != VLC_SUCCESS)
+        {
+            wrapper->filter.close(&wrapper->filter);
+            vlc_object_release(VLC_OBJECT(&wrapper->filter));
+            return VLC_EGENERIC;
+        }
     }
 
     vlc_vector_push(&vgl->filters, wrapper);
