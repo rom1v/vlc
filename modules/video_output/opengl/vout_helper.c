@@ -204,6 +204,8 @@ static int EnableOpenglFilter(void *func, bool forced, va_list args)
     struct vlc_gl_filter *filter = va_arg(args, struct vlc_gl_filter *);
     video_format_t *fmt_in  = va_arg(args, video_format_t*);
     video_format_t *fmt_out = va_arg(args, video_format_t*);
+
+    VLC_UNUSED(forced);
     return activate(filter, fmt_in, fmt_out);
 }
 
@@ -765,6 +767,10 @@ MessageCallback( GLenum source,
   fprintf( stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
            ( type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "" ),
             type, severity, message );
+  VLC_UNUSED(source);
+  VLC_UNUSED(id);
+  VLC_UNUSED(length);
+  VLC_UNUSED(userParam);
 }
 
 vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,

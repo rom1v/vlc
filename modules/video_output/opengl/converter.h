@@ -263,6 +263,7 @@ typedef struct opengl_vtable_t {
 struct pl_context;
 struct pl_shader;
 struct pl_shader_res;
+struct vlc_gl_sampler *sampler;
 
 enum opengl_tex_converter_glsl_code
 {
