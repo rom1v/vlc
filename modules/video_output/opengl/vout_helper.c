@@ -196,10 +196,26 @@ struct vout_display_opengl_t {
     struct VLC_VECTOR(struct vout_display_opengl_filter*) filters;
 };
 
+typedef int (*vlc_gl_converter_open)(struct vlc_gl_filter *,
+                                     video_format_t *fmt_in,
+                                     video_format_t *fmt_out);
+
+static int EnableOpenglConverter(void *func, bool forced, va_list args)
+{
+    vlc_gl_converter_open activate = func;
+    struct vlc_gl_filter *filter = va_arg(args, struct vlc_gl_filter *);
+    video_format_t *fmt_in  = va_arg(args, video_format_t*);
+    video_format_t *fmt_out = va_arg(args, video_format_t*);
+
+    VLC_UNUSED(forced);
+    return activate(filter, fmt_in, fmt_out);
+}
+
 typedef int (*vlc_gl_filter_open)(struct vlc_gl_filter *,
                                   config_chain_t *config,
                                   video_format_t *fmt_in,
                                   video_format_t *fmt_out);
+
 static int EnableOpenglFilter(void *func, bool forced, va_list args)
 {
     vlc_gl_filter_open activate = func;
@@ -1815,6 +1831,54 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     return VLC_SUCCESS;
 }
 
+static struct vout_display_opengl_filter *
+vout_display_opengl_AppendConverter(vout_display_opengl_t *vgl,
+                                    video_format_t *fmt_in,
+                                    video_format_t *fmt_out)
+{
+    struct vout_display_opengl_filter *wrapper =
+        vlc_object_create(vgl->gl, sizeof(*wrapper));
+    if (!wrapper)
+        return NULL;
+
+    int ret = video_format_Copy(&wrapper->fmt_in, fmt_in);
+    if (ret != VLC_SUCCESS)
+    {
+        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        return NULL;
+    }
+
+    ret = video_format_Copy(&wrapper->fmt_out, fmt_out);
+    if (ret != VLC_SUCCESS)
+    {
+        video_format_Clean(&wrapper->fmt_in);
+        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        return NULL;
+    }
+
+    wrapper->framebuffer = 0;
+    wrapper->texture_count = 0;
+    wrapper->filter.config = NULL;
+    wrapper->filter.vt = &vgl->vt;
+    wrapper->filter.info.blend = false;
+
+    wrapper->module =
+        vlc_module_load(vgl->gl, "opengl chroma converter", NULL, false,
+                        EnableOpenglConverter, &wrapper->filter,
+                        &wrapper->fmt_in, &wrapper->fmt_out);
+    if (!wrapper->module)
+    {
+        video_format_Clean(&wrapper->fmt_out);
+        video_format_Clean(&wrapper->fmt_in);
+        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        return NULL;
+    }
+
+    filter_UpdateFramebuffer(vgl, wrapper);
+
+    return wrapper;
+}
+
 int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
                                      const char *name,
                                      const config_chain_t *config)
@@ -1829,28 +1893,37 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
     /* TODO framebuffer configuration */
 
-    struct vout_display_opengl_filter* prev_filter = NULL;
-    if (vgl->filters.size > 0)
-        prev_filter = vgl->filters.data[vgl->filters.size - 1];
-
     wrapper->framebuffer = 0;
     wrapper->texture_count = 0;
     wrapper->filter.vt = &vgl->vt;
     /* By default, disable blending, so we don't copy previous framebuffer. */
     wrapper->filter.info.blend = false;
 
-    /* Mutable format configuration for the filter input/output. */
-    uint32_t chroma = prev_filter != NULL ? prev_filter->fmt_out.i_chroma
-                                          : VLC_CODEC_RGBA;
-    /* TODO: it should use information from previous filter */
-    wrapper->fmt_in = (video_format_t) {
-        .i_chroma = chroma,
-        .i_visible_width = vgl->fmt.i_visible_width,
-        .i_width = vgl->fmt.i_visible_width,
-        .i_visible_height = vgl->fmt.i_visible_height,
-        .i_height = vgl->fmt.i_visible_height
-    };
-    wrapper->fmt_out = wrapper->fmt_in;
+    struct vout_display_opengl_filter *prev_filter;
+    video_format_t *fmt_in;
+    if (!vgl->filters.size)
+    {
+        prev_filter = NULL;
+        fmt_in = &vgl->fmt;
+    }
+    else
+    {
+        prev_filter = vgl->filters.data[vgl->filters.size - 1];
+        fmt_in = &prev_filter->fmt_out;
+    }
+
+    video_format_Init(&wrapper->fmt_in, fmt_in->i_chroma);
+    wrapper->fmt_in.i_visible_width = vgl->fmt.i_visible_width;
+    wrapper->fmt_in.i_width = vgl->fmt.i_visible_width;
+    wrapper->fmt_in.i_visible_height = vgl->fmt.i_visible_height;
+    wrapper->fmt_in.i_height = vgl->fmt.i_visible_height;
+
+    int ret = video_format_Copy(&wrapper->fmt_out, &wrapper->fmt_in);
+    if (ret != VLC_SUCCESS)
+    {
+        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
+        return ret;
+    }
 
     wrapper->module = vlc_module_load(vgl->gl, "opengl filter", name, true,
                                       EnableOpenglFilter,
@@ -1870,14 +1943,19 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     /* If we already have filters, we need to be sure we can convert from the
      * previous filter to the next filter format. In the mean time, configure
      * the rendering target for the previous filter. */
-    if (prev_filter != NULL)
+    if (fmt_in->i_chroma != wrapper->fmt_in.i_chroma)
     {
-        if (prev_filter->fmt_out.i_chroma != wrapper->fmt_in.i_chroma)
+        struct vout_display_opengl_filter *converter =
+            vout_display_opengl_AppendConverter(vgl, fmt_in, &wrapper->fmt_out);
+        if (!converter)
         {
-            // TODO: add converter
+            module_unneed(vgl->gl, wrapper->module);
+            vlc_object_release(VLC_OBJECT(&wrapper->filter));
+            free(wrapper);
+            return VLC_EGENERIC;
         }
 
-        if (filter_UpdateFramebuffer(vgl, prev_filter) != VLC_SUCCESS)
+        if (!vlc_vector_push(&vgl->filters, converter))
         {
             wrapper->filter.close(&wrapper->filter);
             vlc_object_delete(VLC_OBJECT(&wrapper->filter));
@@ -1885,7 +1963,20 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         }
     }
 
-    vlc_vector_push(&vgl->filters, wrapper);
+    if (prev_filter && filter_UpdateFramebuffer(vgl, prev_filter) != VLC_SUCCESS)
+    {
+        wrapper->filter.close(&wrapper->filter);
+        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        return VLC_EGENERIC;
+    }
+
+    if (!vlc_vector_push(&vgl->filters, wrapper))
+    {
+        // TODO remove converter possibly just added
+        wrapper->filter.close(&wrapper->filter);
+        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        return VLC_EGENERIC;
+    }
 
     return VLC_SUCCESS;
 }
