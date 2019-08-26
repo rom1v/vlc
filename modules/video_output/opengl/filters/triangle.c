@@ -34,7 +34,6 @@
 
 struct vlc_gl_filter_sys
 {
-    struct vlc_gl_program sub_prgm;
     struct vlc_gl_shader_program *program;
 
     GLuint  buffer_objects[3];
@@ -71,12 +70,8 @@ static int FilterInput(struct vlc_gl_filter *filter,
     /* Draw the subpictures */
 
     /* TODO: program should be a vlc_gl_program loaded by a shader API */
-    struct vlc_gl_program *prgm = &sys->sub_prgm;
     GLuint program = vlc_gl_shader_program_GetId(sys->program);
 
-    /* TODO: opengl_tex_converter_t should be handled before as it might need
-     *       to inject sampling code into the previous program. */
-    opengl_tex_converter_t *tc = prgm->tc;
     filter->vt->UseProgram(program);
 
     /* TODO: should we handle state in the shader and require that state
@@ -86,16 +81,11 @@ static int FilterInput(struct vlc_gl_filter *filter,
     filter->vt->BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     /* TODO: enabled texture tracking ? */
-    struct vlc_gl_region *glr = &input->picture;
+    const struct vlc_gl_region *glr = &input->picture;
     const GLfloat vertexCoord[] = {
         (glr->left+glr->right)/2,   glr->top,
         glr->left,                  glr->bottom,
         glr->right,                 glr->bottom,
-    };
-    const GLfloat textureCoord[] = {
-        glr->tex_width/2.f, 0.0,
-        -.5f, glr->tex_height,
-        glr->tex_width, glr->tex_height,
     };
 
     const GLfloat colors[] = {
@@ -103,14 +93,6 @@ static int FilterInput(struct vlc_gl_filter *filter,
         0.f, 1.f, 0.f,
         0.f, 0.f, 1.f,
     };
-
-    assert(glr->texture != 0);
-    /* TODO: binded texture tracker ? */
-    //filter->vt->BindTexture(tc->tex_target, glr->texture);
-
-    /* TODO: as above, texture_converter and shaders are dual and this
-     *       should be more transparent. */
-    //tc->pf_prepare_shader(tc, &glr->width, &glr->height, glr->alpha);
 
     /* TODO: attribute handling in shader ? */
     filter->vt->EnableVertexAttribArray(sys->aloc.VertexPosition);
@@ -124,18 +106,6 @@ static int FilterInput(struct vlc_gl_filter *filter,
     filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
     filter->vt->VertexAttribPointer(sys->aloc.VertexColor, 3, GL_FLOAT,
                                     GL_FALSE, 0, 0);
-
-
-
-    /* TODO: where to store this UBO, shader API ? */
-    //filter->vt->UniformMatrix4fv(prgm->uloc.OrientationMatrix, 1, GL_FALSE,
-    //                             input->var.OrientationMatrix);
-    //filter->vt->UniformMatrix4fv(prgm->uloc.ProjectionMatrix, 1, GL_FALSE,
-    //                             input->var.ProjectionMatrix);
-    //filter->vt->UniformMatrix4fv(prgm->uloc.ViewMatrix, 1, GL_FALSE,
-    //                             input->var.ViewMatrix);
-    //filter->vt->UniformMatrix4fv(prgm->uloc.ZoomMatrix, 1, GL_FALSE,
-    //                             input->var.ZoomMatrix);
 
     filter->vt->DrawArrays(GL_TRIANGLES, 0, 3);
 
@@ -211,15 +181,14 @@ static int Open(struct vlc_gl_filter *filter,
     sys->aloc.VertexColor =
         filter->vt->GetAttribLocation(program, "VertexColor");
 
-    const char *extensions = (const char *)filter->vt->GetString(GL_EXTENSIONS);
-
-    //opengl_init_program(filter, NULL /* context */,
-    //                    &sys->sub_prgm, extensions,
-    //                    filter->fmt, true, false);
-
     filter->filter = FilterInput;
     filter->close = FilterClose;
     filter->info.blend = true;
+
+    VLC_UNUSED(config);
+    VLC_UNUSED(fmt_in);
+    VLC_UNUSED(fmt_out);
+
     return VLC_SUCCESS;
 }
 
