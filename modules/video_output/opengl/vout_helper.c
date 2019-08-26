@@ -196,17 +196,19 @@ struct vout_display_opengl_t {
 };
 
 typedef int (*vlc_gl_filter_open)(struct vlc_gl_filter *,
+                                  config_chain_t *config,
                                   video_format_t *fmt_in,
                                   video_format_t *fmt_out);
 static int EnableOpenglFilter(void *func, bool forced, va_list args)
 {
     vlc_gl_filter_open activate = func;
     struct vlc_gl_filter *filter = va_arg(args, struct vlc_gl_filter *);
+    config_chain_t *config = va_arg(args, config_chain_t*);
     video_format_t *fmt_in  = va_arg(args, video_format_t*);
     video_format_t *fmt_out = va_arg(args, video_format_t*);
 
     VLC_UNUSED(forced);
-    return activate(filter, fmt_in, fmt_out);
+    return activate(filter, config, fmt_in, fmt_out);
 }
 
 static const vlc_fourcc_t gl_subpicture_chromas[] = {
@@ -1868,7 +1870,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     wrapper->module = vlc_module_load(vgl->gl, "opengl filter", name, true,
                                       EnableOpenglFilter,
                                       /* Parameters given to filter's Open() */
-                                      wrapper->filter, config,
+                                      &wrapper->filter, config,
                                       &wrapper->fmt_in, &wrapper->fmt_out);
 
     if (wrapper->module == NULL)
