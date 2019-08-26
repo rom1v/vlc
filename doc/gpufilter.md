@@ -87,6 +87,11 @@ This mechanism allow the user (be it the end user or another module using the
 implementors's one) to set a global option, and then override it filter by
 filter.
 
+The example `triangle_rotate` [2] shows the previous triangle with a `rotate`
+parameter taking an angle in radian, which rotates the triangle.
+
+[2]: see modules/video_output/opengl/filters/triangle_rotate.c
+
 ## Managing input textures
 
 Textures are embedded into Opengl regions, which are also describing:
