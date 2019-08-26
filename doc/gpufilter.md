@@ -63,7 +63,7 @@ The main usage template for this `config_chain_t` is like the following snippet:
 
 ```
 #define MYFILTER_CFG_PREFIX filter-
-static const char **filter_options = { "option1", "option2", NULL };
+static const char * const filter_options[] = { "option1", "option2", NULL };
 
 /* ... */
 
