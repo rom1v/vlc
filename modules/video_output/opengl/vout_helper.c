@@ -1048,7 +1048,7 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vlc_vector_foreach(wrapper, &vgl->filters)
     {
         wrapper->filter.close(&wrapper->filter);
-        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
     }
 
     const size_t main_tex_count = vgl->prgm->tc->tex_count;
@@ -1876,7 +1876,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
     if (wrapper->module == NULL)
     {
-        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
         return VLC_EGENERIC;
     }
 
@@ -1896,7 +1896,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         if (filter_UpdateFramebuffer(vgl, prev_filter) != VLC_SUCCESS)
         {
             wrapper->filter.close(&wrapper->filter);
-            vlc_object_release(VLC_OBJECT(&wrapper->filter));
+            vlc_object_delete(VLC_OBJECT(&wrapper->filter));
             return VLC_EGENERIC;
         }
     }
