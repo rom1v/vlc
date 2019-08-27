@@ -153,14 +153,17 @@ static int Open(vout_display_t *vd, const vout_display_cfg_t *cfg,
 
         while(next_module != NULL)
         {
-            next_module = config_ChainCreate(&name, &chain, next_module);
-            // TODO: chain == null ?
+            char *leftover = config_ChainCreate(&name, &chain, next_module);
+            free(next_module);
+            next_module = leftover;
+
             if (name != NULL)
                 vout_display_opengl_AppendFilter(sys->vgl, name, chain);
             config_ChainDestroy(chain);
+            free(name);
         }
+        free(next_module);
     }
-    free(filter_config);
 
     // TODO: add vout_display_opengl_ConfigureFilters(default_framebuffer_target);
 
