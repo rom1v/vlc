@@ -49,10 +49,10 @@ picture or the previous one, which is the default behaviour, or can also set the
 `info.blend` flag to `true` in its structure to write directly on the previous
 image result.
 
-The `triangle` example [1] shows a basic OpenGL filter. This filter only blend a
+The [`triangle`] example shows a basic OpenGL filter. This filter only blend a
 triangle on the previous image, running a custom shader for colors.
 
-[1]: see modules/video_output/opengl/filters/triangle.c
+[`triangle`]: modules/video_output/opengl/filters/triangle.c
 
 ## Using filter parameters
 
@@ -87,10 +87,10 @@ This mechanism allow the user (be it the end user or another module using the
 implementors's one) to set a global option, and then override it filter by
 filter.
 
-The example `triangle_rotate` [2] shows the previous triangle with a `rotate`
+The example [`triangle_rotate`] shows the previous triangle with a `rotate`
 parameter taking an angle in radian, which rotates the triangle.
 
-[2]: see modules/video_output/opengl/filters/triangle_rotate.c
+[`triangle_rotate`]: modules/video_output/opengl/filters/triangle_rotate.c
 
 ## Managing input textures
 
@@ -110,7 +110,7 @@ When the `filter` function is called, the filter implementor gets this
 `vlc_gl_filter_input` object and can use `glBindTexture` to bind to the
 current opengl rendering context.
 
-The example `triangle_mask` [3] shows a basic `RGB` example where the input
+The example [`triangle_mask`] shows a basic `RGB` example where the input
 picture is extracted and masked, only drawn on a triangle.
 
-[3]: see modules/video_output/opengl/filters/triangle_mask.c
+[`triangle_mask`]: modules/video_output/opengl/filters/triangle_mask.c
