@@ -149,7 +149,7 @@ struct vout_display_opengl_t {
     GLsizei    tex_width[PICTURE_PLANE_MAX];
     GLsizei    tex_height[PICTURE_PLANE_MAX];
 
-    GLuint     texture[PICTURE_PLANE_MAX];
+    GLuint     textures[PICTURE_PLANE_MAX];
 
     int         region_count;
     gl_region_t *region;
@@ -991,7 +991,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     if (!vgl->prgm->tc->handle_texs_gen)
     {
         ret = GenTextures(vgl->prgm->tc, vgl->tex_width, vgl->tex_height,
-                          vgl->texture);
+                          vgl->textures);
         if (ret != VLC_SUCCESS)
         {
             vout_display_opengl_Delete(vgl);
@@ -1070,7 +1070,7 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     free(vgl->subpicture_buffer_object);
 
     if (main_del_texs)
-        vgl->vt.DeleteTextures(main_tex_count, vgl->texture);
+        vgl->vt.DeleteTextures(main_tex_count, vgl->textures);
 
     for (int i = 0; i < vgl->region_count; i++)
     {
@@ -1185,7 +1185,7 @@ picture_pool_t *vout_display_opengl_GetPool(vout_display_opengl_t *vgl, unsigned
     return vgl->pool;
 
 error:
-    DelTextures(tc, vgl->texture);
+    DelTextures(tc, vgl->textures);
     return NULL;
 }
 
@@ -1197,7 +1197,7 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
     opengl_tex_converter_t *tc = vgl->prgm->tc;
 
     /* Update the texture */
-    int ret = tc->pf_update(tc, vgl->texture, vgl->tex_width, vgl->tex_height,
+    int ret = tc->pf_update(tc, vgl->textures, vgl->tex_width, vgl->tex_height,
                             picture, NULL);
     if (ret != VLC_SUCCESS)
         return ret;
@@ -1617,9 +1617,9 @@ static void DrawWithShaders(vout_display_opengl_t *vgl, struct prgm *prgm)
     tc->pf_prepare_shader(tc, vgl->tex_width, vgl->tex_height, 1.0f);
 
     for (unsigned j = 0; j < vgl->prgm->tc->tex_count; j++) {
-        assert(vgl->texture[j] != 0);
+        assert(vgl->textures[j] != 0);
         vgl->vt.ActiveTexture(GL_TEXTURE0+j);
-        vgl->vt.BindTexture(tc->tex_target, vgl->texture[j]);
+        vgl->vt.BindTexture(tc->tex_target, vgl->textures[j]);
 
         vgl->vt.BindBuffer(GL_ARRAY_BUFFER, vgl->texture_buffer_object[j]);
 
@@ -1759,7 +1759,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         .regions = vgl->region,
         /* TODO: it can't work like that because of text converter */
         .picture = {
-            .texture = vgl->texture[0],
+            .texture = vgl->textures[0],
             .left = -1.f, .right = 1.f,
             .top = 1.f, .bottom = -1.f,
             .width = vgl->fmt.i_visible_width,
