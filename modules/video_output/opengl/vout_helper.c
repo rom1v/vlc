@@ -150,6 +150,7 @@ struct vout_display_opengl_t {
     GLsizei    tex_height[PICTURE_PLANE_MAX];
 
     GLuint     textures[PICTURE_PLANE_MAX];
+    unsigned   texture_count;
 
     int         region_count;
     gl_region_t *region;
@@ -997,6 +998,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
             vout_display_opengl_Delete(vgl);
             return NULL;
         }
+        vgl->texture_count = tc->tex_count;
     }
 
     /* */
