@@ -102,6 +102,11 @@ libgl_filter_triangle_rotate_plugin_la_SOURCES = video_output/opengl/filters/tri
 libgl_filter_triangle_rotate_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
 libgl_filter_triangle_rotate_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
+libgl_filter_triangle_mask_plugin_la_SOURCES = video_output/opengl/filters/triangle_mask.c \
+                                               $(OPENGL_COMMONSOURCES) \
+                                               video_output/opengl/shader_builder.c
+libgl_filter_triangle_mask_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_filter_triangle_mask_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
 libglconv_vaapi_plugin_la_SOURCES = video_output/opengl/converter_vaapi.c \
 	video_output/opengl/converter.h \
@@ -119,7 +124,8 @@ vout_LTLIBRARIES += \
 	libgl_plugin.la \
 	libgl_filter_spu_plugin.la \
 	libgl_filter_triangle_plugin.la \
-	libgl_filter_triangle_rotate_plugin.la
+	libgl_filter_triangle_rotate_plugin.la \
+	libgl_filter_triangle_mask_plugin.la
 
 if HAVE_EGL
 if HAVE_VAAPI
