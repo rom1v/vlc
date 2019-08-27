@@ -66,13 +66,21 @@ The main usage template for this `config_chain_t` is like the following snippet:
 static const char * const filter_options[] = { "option1", "option2", NULL };
 
 /* ... */
+static void Close(struct vlc_gl_filter *filter)
+{
+    var_Destroy(filter, MYFILTER_CFG_PREFIX "option1");
+    var_Destroy(filter, MYFILTER_CFG_PREFIX "option2");
+}
 
 static int Open(struct vlc_gl_filter *filter, config_chain_t *config)
 {
     /* ... */
     config_ChainParse(filter, MYFILTER_CFG_PREFIX, filter_options, config);
     /* ... */
+
+    filter->close = Close;
 }
+
 
 /* ... */
 
