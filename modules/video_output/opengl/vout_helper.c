@@ -874,6 +874,9 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     GET_PROC_ADDR_CORE_GL(GetTexLevelParameteriv);
     GET_PROC_ADDR_CORE_GL(TexEnvf);
 
+    /* Not available in OpenGL ES 2 */
+    GET_PROC_ADDR_OPTIONAL(TexImage2DMultisample);
+
     GET_PROC_ADDR(CreateShader);
     GET_PROC_ADDR(ShaderSource);
     GET_PROC_ADDR(CompileShader);

@@ -106,6 +106,12 @@ typedef void (APIENTRY *PFNGLBLITFRAMEBUFFER) (GLint, GLint, GLint, GLint,
                                                GLint, GLint, GLint, GLint,
                                                GLbitfield, GLenum);
 typedef void (APIENTRY *PFNGLDRAWBUFFER) (GLenum target);
+
+/* Multisample support */
+typedef void (APIENTRY *PFNGLTEXIMAGE2DMULTISAMPLE) (GLenum target, GLsizei samples, \
+                                                     GLenum internalformat, GLsizei width, \
+                                                     GLsizei height, GLboolean fixedsamplelocations);
+
 /* The following are defined in glext.h but not for GLES2 or on Apple systems */
 #if defined(USE_OPENGL_ES2) || defined(__APPLE__)
 #   define PFNGLGETPROGRAMIVPROC             typeof(glGetProgramiv)*
@@ -196,6 +202,9 @@ typedef struct opengl_vtable_t {
     /*
      * GL / GLES extensions
      */
+
+    /* Multisample extensions */
+    PFNGLTEXIMAGE2DMULTISAMPLE TexImage2DMultisample;
 
     /* Shader commands */
     PFNGLCREATESHADERPROC   CreateShader;
