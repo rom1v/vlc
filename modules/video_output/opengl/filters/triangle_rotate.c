@@ -231,6 +231,8 @@ static int Open(struct vlc_gl_filter *filter,
 
     filter->filter = FilterInput;
     filter->close = FilterClose;
+    filter->info.blend = true;
+
     return VLC_SUCCESS;
 }
 
