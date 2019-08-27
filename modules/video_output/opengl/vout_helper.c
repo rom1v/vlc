@@ -1050,6 +1050,7 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
         wrapper->filter.close(&wrapper->filter);
         vlc_object_delete(VLC_OBJECT(&wrapper->filter));
     }
+    vlc_vector_destroy(&vgl->filters);
 
     const size_t main_tex_count = vgl->prgm->tc->tex_count;
     const bool main_del_texs = !vgl->prgm->tc->handle_texs_gen;
