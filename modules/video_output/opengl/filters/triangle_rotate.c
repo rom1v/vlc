@@ -151,6 +151,10 @@ static void FilterClose(struct vlc_gl_filter *filter)
     struct vlc_gl_filter_sys *sys = filter->sys;
     vlc_gl_shader_program_Release(sys->program);
     filter->vt->DeleteBuffers(3, sys->buffer_objects);
+
+    var_Destroy(filter, TRIANGLE_ROTATE_CFG_PREFIX "angle");
+
+    free(sys);
 }
 
 static int Open(struct vlc_gl_filter *filter,
@@ -212,10 +216,8 @@ static int Open(struct vlc_gl_filter *filter,
     sys->uloc.RotationMatrix =
         filter->vt->GetUniformLocation(program, "RotationMatrix");
 
-
-    if (config)
-        config_ChainParse(filter, TRIANGLE_ROTATE_CFG_PREFIX,
-                          filter_options, config);
+    config_ChainParse(filter, TRIANGLE_ROTATE_CFG_PREFIX,
+                      filter_options, config);
 
     float theta = var_InheritFloat(filter, TRIANGLE_ROTATE_CFG_PREFIX "angle");
     theta = theta * 3.141592f / 180.f;
