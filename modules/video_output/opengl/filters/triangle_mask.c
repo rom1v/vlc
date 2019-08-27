@@ -74,17 +74,17 @@ static int FilterInput(struct vlc_gl_filter *filter,
     GLuint program = vlc_gl_shader_program_GetId(sys->program);
     filter->vt->UseProgram(program);
 
-    const struct vlc_gl_region *glr = &input->picture;
+    const struct vlc_gl_picture *pic = &input->picture;
     const GLfloat vertexCoord[] = {
-        (glr->left+glr->right) / 2, glr->top * .75,
-        glr->left * .75,            glr->bottom * .75,
-        glr->right * .9,            glr->bottom * .2,
+         0,     0.75,
+        -0.75, -0.75,
+         0.9,  -0.2,
     };
 
-    assert(glr->texture != 0);
+    assert(pic->textures[0]);
     /* TODO: binded texture tracker ? */
     filter->vt->ActiveTexture(GL_TEXTURE0);
-    filter->vt->BindTexture(GL_TEXTURE_2D, glr->texture);
+    filter->vt->BindTexture(GL_TEXTURE_2D, pic->textures[0]);
     filter->vt->Uniform1i(sys->loc.sampler, 0);
 
     filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->vbo);

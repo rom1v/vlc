@@ -96,16 +96,11 @@ static int FilterInput(struct vlc_gl_filter *filter,
     filter->vt->BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     /* TODO: enabled texture tracking ? */
-    struct vlc_gl_region *glr = &input->picture;
+    struct vlc_gl_picture *pic = &input->picture;
     const GLfloat vertexCoord[] = {
-        (glr->left+glr->right)/2,   glr->top,
-        glr->left,                  glr->bottom,
-        glr->right,                 glr->bottom,
-    };
-    const GLfloat textureCoord[] = {
-        glr->tex_width/2.f, 0.0,
-        -.5f, glr->tex_height,
-        glr->tex_width, glr->tex_height,
+         0,  1,
+        -1, -1,
+         1, -1,
     };
 
     const GLfloat colors[] = {
@@ -114,7 +109,7 @@ static int FilterInput(struct vlc_gl_filter *filter,
         0.f, 0.f, 1.f,
     };
 
-    assert(glr->texture != 0);
+    assert(pic->textures[0]);
     /* TODO: binded texture tracker ? */
     //filter->vt->BindTexture(tc->tex_target, glr->texture);
 

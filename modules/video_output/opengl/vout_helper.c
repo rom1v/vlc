@@ -136,7 +136,7 @@ struct vout_display_opengl_filter
      * render to the screen directly */
     GLuint framebuffer;
     unsigned texture_count;
-    GLuint textures[3]; //< max 3 textures for now
+    GLuint textures[PICTURE_PLANE_MAX];
 };
 
 struct vout_display_opengl_t {
@@ -1758,22 +1758,10 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     }
     DrawWithShaders(vgl, vgl->prgm);
 
-    struct vlc_gl_filter_input filter_input =
-    {
-        .region_count = vgl->region_count,
-        .regions = vgl->region,
-        /* TODO: it can't work like that because of text converter */
-        .picture = {
-            .texture = vgl->textures[0],
-            .left = -1.f, .right = 1.f,
-            .top = 1.f, .bottom = -1.f,
-            .width = vgl->fmt.i_visible_width,
-            .height = vgl->fmt.i_visible_height,
-            .alpha = 1.f,
-        }
-    };
-
-    memcpy(&filter_input.var, &vgl->sub_prgm->var, sizeof(filter_input.var));
+    struct vlc_gl_filter_input filter_input;
+    memcpy(filter_input.picture.textures, vgl->textures,
+           vgl->texture_count * sizeof(GLuint));
+    filter_input.picture.texture_count = vgl->texture_count;
 
     GLuint last_framebuffer = 0;
     struct vout_display_opengl_filter *wrapper;
@@ -1796,35 +1784,25 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
             /* TODO: it should be able to handle different size
              * TODO: add filter->resize() when viewport change */
             vgl->vt.BlitFramebuffer(0, 0,
-                                    filter_input.picture.width,
-                                    filter_input.picture.height,
+                                    vgl->fmt.i_visible_width,
+                                    vgl->fmt.i_visible_height,
                                     0, 0,
-                                    filter_input.picture.width,
-                                    filter_input.picture.height,
+                                    vgl->fmt.i_visible_width,
+                                    vgl->fmt.i_visible_height,
                                     GL_COLOR_BUFFER_BIT,
                                     GL_NEAREST);
         }
 
+        /* texture count may be changed by the filter */
+        wrapper->texture_count = filter_input.picture.texture_count;
+
         object->filter(object, &filter_input);
 
         last_framebuffer = wrapper->framebuffer;
-        filter_input = (struct vlc_gl_filter_input)
-        {
-            .region_count = vgl->region_count,
-            .regions = vgl->region,
-            /* todo: it can't work like that because of text converter */
-            .picture = {
-                /* TODO: handle textures and parameters correctly */
-                .texture = wrapper->textures[0],
-                .left = -1.f, .right = 1.f,
-                .top = 1.f, .bottom = -1.f,
-                .width = vgl->fmt.i_visible_width,
-                .height = vgl->fmt.i_visible_height,
-                .alpha = 1.f,
-            }
-        };
-
-
+        /* use textures from the wrapper */
+        memcpy(filter_input.picture.textures, wrapper->textures,
+               wrapper->texture_count * sizeof(GLuint));
+        filter_input.picture.texture_count = wrapper->texture_count;
     }
     vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);

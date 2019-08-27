@@ -66,7 +66,7 @@ static const char *fragment_shader =
 static int FilterInput(struct vlc_gl_filter *filter,
                        const struct vlc_gl_filter_input *input)
 {
-
+    (void) input;
     struct vlc_gl_filter_sys *sys = filter->sys;
 
     /* Draw the subpictures */
@@ -83,11 +83,10 @@ static int FilterInput(struct vlc_gl_filter *filter,
     filter->vt->BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     /* TODO: enabled texture tracking ? */
-    const struct vlc_gl_region *glr = &input->picture;
     const GLfloat vertexCoord[] = {
-        (glr->left+glr->right)/2,   glr->top,
-        glr->left,                  glr->bottom,
-        glr->right,                 glr->bottom,
+         0,  1,
+        -1, -1,
+         1, -1,
     };
 
     const GLfloat colors[] = {
