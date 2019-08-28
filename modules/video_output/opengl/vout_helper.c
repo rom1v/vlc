@@ -194,6 +194,13 @@ struct vout_display_opengl_t {
     int filter_count;
 
     struct VLC_VECTOR(struct vout_display_opengl_filter*) filters;
+
+    struct {
+        int x;
+        int y;
+        unsigned width;
+        unsigned height;
+    } viewport;
 };
 
 typedef int (*vlc_gl_converter_open)(struct vlc_gl_filter *,
@@ -1174,13 +1181,10 @@ void vout_display_opengl_SetWindowAspectRatio(vout_display_opengl_t *vgl,
 void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
                                   unsigned width, unsigned height)
 {
-    vgl->vt.Viewport(x, y, width, height);
-    struct vout_display_opengl_filter *filter;
-    vlc_vector_foreach(filter, &vgl->filters)
-    {
-        if (filter->framebuffer != 0)
-            filter_UpdateFramebuffer(vgl, filter);
-    }
+    vgl->viewport.x = x;
+    vgl->viewport.y = y;
+    vgl->viewport.width  = width;
+    vgl->viewport.height = height;
 }
 
 bool vout_display_opengl_HasPool(const vout_display_opengl_t *vgl)
@@ -1720,6 +1724,8 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
                                 const video_format_t *source)
 {
     GL_ASSERT_NOERROR();
+    vgl->vt.Viewport(vgl->viewport.x, vgl->viewport.y,
+                     vgl->viewport.width, vgl->viewport.height);
 
     /* Why drawing here and not in Render()? Because this way, the
        OpenGL providers can call vout_display_opengl_Display to force redraw.
