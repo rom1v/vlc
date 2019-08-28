@@ -200,7 +200,11 @@ int vlc_gl_shader_AttachShaderSource(
     fprintf(stderr, "Shader info: %s\n", info);
     free(info);
 
-    if (shader != 0 && ret != VLC_SUCCESS)
+    GLint success = GL_FALSE;
+    if (shader)
+        vt->GetShaderiv(shader, GL_COMPILE_STATUS, &success);
+
+    if (shader != 0 && (ret != VLC_SUCCESS || success == GL_FALSE))
     {
         fprintf(stderr, "Shader compilation error:\n%s\n", body);
         vt->DeleteShader(shader);
