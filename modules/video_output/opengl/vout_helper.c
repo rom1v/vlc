@@ -762,6 +762,7 @@ ResizeFormatToGLMaxTexSize(video_format_t *fmt, unsigned int max_tex_size)
     }
 }
 
+#if !defined(USE_OPENGL_ES2)
 static void GLAPIENTRY
 MessageCallback( GLenum source,
                  GLenum type,
@@ -779,6 +780,7 @@ MessageCallback( GLenum source,
   VLC_UNUSED(length);
   VLC_UNUSED(userParam);
 }
+#endif
 
 vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
                                                const vlc_fourcc_t **subpicture_chromas,
@@ -837,7 +839,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     GET_PROC_ADDR_CORE(TexSubImage2D);
     GET_PROC_ADDR_CORE(Viewport);
 
-    GET_PROC_ADDR_CORE(DebugMessageCallback);
+    GET_PROC_ADDR_CORE_GL(DebugMessageCallback);
 
     GET_PROC_ADDR_CORE_GL(GetTexLevelParameteriv);
     GET_PROC_ADDR_CORE_GL(TexEnvf);
@@ -1013,10 +1015,11 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     vgl->vt.GenBuffers(1, &vgl->index_buffer_object);
     vgl->vt.GenBuffers(vgl->prgm->tc->tex_count, vgl->texture_buffer_object);
 
+#if !defined(USE_OPENGL_ES2)
     // During init, enable debug output
     vgl->vt.Enable              ( GL_DEBUG_OUTPUT );
     vgl->vt.DebugMessageCallback( MessageCallback, 0 );
-
+#endif
 
     /* */
     vgl->region = NULL;
