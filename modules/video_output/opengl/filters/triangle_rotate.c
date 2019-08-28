@@ -51,7 +51,8 @@ struct vlc_gl_filter_sys
 };
 
 static const char *vertex_shader =
-    "#version 130\n"
+    "#version 100\n"
+    "precision highp float;\n"
     "varying vec3 Color;\n"
     "attribute vec2 VertexPosition;\n"
     "attribute vec3 VertexColor;\n"
@@ -62,7 +63,8 @@ static const char *vertex_shader =
     "}";
 
 static const char *fragment_shader =
-    "#version 130\n"
+    "#version 100\n"
+    "precision highp float;\n"
     "varying vec3 Color;\n"
     "void main() {\n"
     " gl_FragColor = vec4(Color, 0.5);\n"
