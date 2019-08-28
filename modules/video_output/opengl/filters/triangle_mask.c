@@ -151,9 +151,6 @@ static int Open(struct vlc_gl_filter *filter,
 {
     (void) config;
 
-
-    fprintf(stderr, "======== triangle mask\n");
-
     struct vlc_gl_filter_sys *sys = filter->sys = malloc(sizeof(*sys));
     if (!sys)
     {
