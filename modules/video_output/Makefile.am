@@ -85,11 +85,6 @@ libgl_plugin_la_CFLAGS += -DHAVE_GL_CORE_SYMBOLS
 libgl_plugin_la_LIBADD += $(GL_LIBS)
 endif
 
-libgl_filter_spu_plugin_la_SOURCES = video_output/opengl/filters/spu.c $(OPENGL_COMMONSOURCES) \
-									 video_output/opengl/shader_builder.c
-libgl_filter_spu_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
-libgl_filter_spu_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
-
 libgl_filter_triangle_plugin_la_SOURCES = video_output/opengl/filters/triangle.c \
 										  $(OPENGL_COMMONSOURCES) \
 									      video_output/opengl/shader_builder.c
@@ -122,7 +117,6 @@ libglconv_vdpau_plugin_la_LIBADD = $(LIBDL) libvlc_vdpau.la $(X_LIBS) $(X_PRE_LI
 if HAVE_GL
 vout_LTLIBRARIES += \
 	libgl_plugin.la \
-	libgl_filter_spu_plugin.la \
 	libgl_filter_triangle_plugin.la \
 	libgl_filter_triangle_rotate_plugin.la \
 	libgl_filter_triangle_mask_plugin.la
