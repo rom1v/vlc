@@ -158,7 +158,12 @@ static int Open(vout_display_t *vd, const vout_display_cfg_t *cfg,
             next_module = leftover;
 
             if (name != NULL)
-                vout_display_opengl_AppendFilter(sys->vgl, name, chain);
+            {
+                int ret =
+                    vout_display_opengl_AppendFilter(sys->vgl, name, chain);
+                if (ret != VLC_SUCCESS)
+                    msg_Err(vd, "Could not load GL filter: %s", name);
+            }
             config_ChainDestroy(chain);
             free(name);
         }
