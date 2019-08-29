@@ -1844,7 +1844,7 @@ vout_display_opengl_AppendConverter(vout_display_opengl_t *vgl,
     int ret = video_format_Copy(&wrapper->fmt_in, fmt_in);
     if (ret != VLC_SUCCESS)
     {
-        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
         return NULL;
     }
 
@@ -1852,7 +1852,7 @@ vout_display_opengl_AppendConverter(vout_display_opengl_t *vgl,
     if (ret != VLC_SUCCESS)
     {
         video_format_Clean(&wrapper->fmt_in);
-        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
         return NULL;
     }
 
@@ -1870,7 +1870,7 @@ vout_display_opengl_AppendConverter(vout_display_opengl_t *vgl,
     {
         video_format_Clean(&wrapper->fmt_out);
         video_format_Clean(&wrapper->fmt_in);
-        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
         return NULL;
     }
 
@@ -1950,8 +1950,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         if (!converter)
         {
             module_unneed(vgl->gl, wrapper->module);
-            vlc_object_release(VLC_OBJECT(&wrapper->filter));
-            free(wrapper);
+            vlc_object_delete(VLC_OBJECT(&wrapper->filter));
             return VLC_EGENERIC;
         }
 
@@ -1966,7 +1965,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     if (prev_filter && filter_UpdateFramebuffer(vgl, prev_filter) != VLC_SUCCESS)
     {
         wrapper->filter.close(&wrapper->filter);
-        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
         return VLC_EGENERIC;
     }
 
@@ -1974,7 +1973,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     {
         // TODO remove converter possibly just added
         wrapper->filter.close(&wrapper->filter);
-        vlc_object_release(VLC_OBJECT(&wrapper->filter));
+        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
         return VLC_EGENERIC;
     }
 
