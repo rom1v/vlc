@@ -40,8 +40,7 @@ struct vlc_gl_filter_sys
     struct {
         GLint vertex_pos;
         GLint yuv_to_rgb;
-        GLint tex_y;
-        GLint tex_uv;
+        GLint planes[3];
     } loc;
 };
 
@@ -57,29 +56,49 @@ static const char *vertex_shader =
     "                   (vertex_pos.y + 1.0) / 2.0);\n"
     "}";
 
-static const char *fragment_shader =
+static const char *fragment_shader_header =
     "#version 300 es\n"
     "precision mediump float;\n"
     "in vec2 tex_coord;\n"
-    "uniform mat3 yuv_to_rgb;\n"
-    "uniform sampler2D tex_y;\n"
-    "uniform sampler2D tex_uv;\n"
-    "out vec4 frag_color;\n"
+    "uniform sampler2D planes[3];\n"
+    "out vec4 frag_color;\n";
+
+static const char *fragment_shader_main =
     "void main() {\n"
-    " vec3 yuv = vec3(\n"
-    "                 texture2D(tex_y, tex_coord).x,\n"
-    "                 texture2D(tex_uv, tex_coord).x - 0.5,\n"
-    "                 texture2D(tex_uv, tex_coord).y - 0.5);\n"
-    " vec3 rgb = yuv_to_rgb * yuv;\n"
+    " vec3 rgb = conversion_matrix * color_sample();\n"
     " frag_color = vec4(rgb, 1.0);\n"
     "}";
+
+static const char *fragment_sample_nv12 =
+    "vec3 color_sample() {\n"
+    " return vec3(\n"
+    "             texture2D(planes[0], tex_coord).x,\n"
+    "             texture2D(planes[1], tex_coord).x - 0.5,\n"
+    "             texture2D(planes[1], tex_coord).y - 0.5);\n"
+    "}\n";
+
+static const char *conversion_matrix_bt709_to_rgb =
+    "/* bt709 -> RGB */\n"
+    "const mat3 conversion_matrix = mat3(\n"
+    "    1.0,           1.0,          1.0,\n"
+    "    0.0,          -0.21482,      2.12798,\n"
+    "    1.28033,      -0.38059,      0.0\n"
+    ");\n";
+
+static const char *conversion_matrix_bt601_to_rgb =
+    "/* bt601 -> RGB */\n"
+    "const mat3 conversion_matrix = mat3(\n"
+    "    1.0,           1.0,          1.0,\n"
+    "    1.0,          -0.39465,      2.03211,\n"
+    "    1.13983,      -0.5806,       0.0\n"
+    ");\n";
 
 static int FilterInput(struct vlc_gl_filter *filter,
                        const struct vlc_gl_filter_input *input)
 {
     struct vlc_gl_filter_sys *sys = filter->sys;
 
-    assert(input->picture.texture_count == 2);
+    //assert(input->picture.texture_count == 2);
 
     GLuint program = vlc_gl_shader_program_GetId(sys->program);
     filter->vt->UseProgram(program);
@@ -91,22 +110,7 @@ static int FilterInput(struct vlc_gl_filter *filter,
         1, -1,
     };
 
-    // <https://en.wikipedia.org/wiki/YUV>
-    // in row major order
-    static const GLfloat bt709_to_rgb[] = {
-        1.f, 0.f, 1.28033f,
-        1.f, -0.21482f, -0.38059f,
-        1.f, 2.12798f, 0.f,
-    };
-    static const GLfloat bt601_to_rgb[] = {
-        1.f,  1.f,       1.13983f,
-        1.f, -0.39465f, -0.5806f,
-        1.f,  2.03211f,  0.f,
-    };
-
     // TODO use the right matrix
-
-    filter->vt->UniformMatrix3fv(sys->loc.yuv_to_rgb, 1, GL_TRUE, bt601_to_rgb);
 
     const struct vlc_gl_picture *pic = &input->picture;
 
@@ -118,8 +122,12 @@ static int FilterInput(struct vlc_gl_filter *filter,
     filter->vt->ActiveTexture(GL_TEXTURE1);
     filter->vt->BindTexture(GL_TEXTURE_2D, pic->textures[1]);
 
-    filter->vt->Uniform1i(sys->loc.tex_y, 0);
-    filter->vt->Uniform1i(sys->loc.tex_uv, 1);
+    /* NV12 */
+    filter->vt->Uniform1i(sys->loc.planes[0], 0);
+    filter->vt->Uniform1i(sys->loc.planes[1], 1);
+
+    /* I420 */
+    filter->vt->Uniform1i(sys->loc.planes[2], 2);
 
     filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->vbo);
     filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
@@ -131,6 +139,8 @@ static int FilterInput(struct vlc_gl_filter *filter,
     filter->vt->ActiveTexture(GL_TEXTURE0);
     filter->vt->BindTexture(GL_TEXTURE_2D, 0);
     filter->vt->ActiveTexture(GL_TEXTURE1);
+    filter->vt->BindTexture(GL_TEXTURE_2D, 0);
+    filter->vt->ActiveTexture(GL_TEXTURE2);
     filter->vt->BindTexture(GL_TEXTURE_2D, 0);
 
     return VLC_SUCCESS;
@@ -155,8 +165,8 @@ create_program(struct vlc_gl_filter *filter)
     }
 
     int ret;
-    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_VERTEX, "",
-                                           vertex_shader);
+    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_VERTEX, NULL, 0,
+                                           &vertex_shader, 1);
     if (ret != VLC_SUCCESS)
     {
         msg_Err(filter, "cannot attach vertex shader");
@@ -164,8 +174,15 @@ create_program(struct vlc_gl_filter *filter)
         return NULL;
     }
 
-    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_FRAGMENT, "",
-                                           fragment_shader);
+    const char *fragment_sources[] = {
+        fragment_shader_header,
+        conversion_matrix_bt709_to_rgb,
+        fragment_sample_nv12,
+        fragment_shader_main
+    };
+
+    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_FRAGMENT, NULL, 0,
+                                           fragment_sources, ARRAY_SIZE(fragment_sources));
     if (ret != VLC_SUCCESS)
     {
         msg_Err(filter, "cannot attach fragment shader");
@@ -186,7 +203,7 @@ Open(struct vlc_gl_filter *filter,
      video_format_t *fmt_in,
      video_format_t *fmt_out)
 {
-    if (fmt_in->i_chroma != VLC_CODEC_NV12) {
+    if (fmt_in->i_chroma != VLC_CODEC_NV12 && fmt_in->i_chroma != VLC_CODEC_I420) {
         return VLC_EGENERIC;
     }
 
@@ -210,8 +227,9 @@ Open(struct vlc_gl_filter *filter,
 
     sys->loc.vertex_pos = filter->vt->GetAttribLocation(program, "vertex_pos");
     sys->loc.yuv_to_rgb = filter->vt->GetUniformLocation(program, "yuv_to_rgb");
-    sys->loc.tex_y = filter->vt->GetUniformLocation(program, "tex_y");
-    sys->loc.tex_uv = filter->vt->GetUniformLocation(program, "tex_uv");
+    sys->loc.planes[0] = filter->vt->GetUniformLocation(program, "planes[0]");
+    sys->loc.planes[1] = filter->vt->GetUniformLocation(program, "planes[1]");
+    sys->loc.planes[2] = filter->vt->GetUniformLocation(program, "planes[2]");
 
     filter->filter = FilterInput;
     filter->close = FilterClose;
