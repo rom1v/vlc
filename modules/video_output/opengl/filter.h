@@ -75,6 +75,20 @@ struct vlc_gl_filter
                   const struct vlc_gl_filter_input *input);
 
     /**
+     * Called when previous filter output has been resized. The filter
+     * implementation should override `*width` and `*height` if the new
+     * output size of the filter should be different from the input.
+     *
+     * @param filter the running filter instance
+     * @param width the new input width and output width
+     * @param height the new input height and output width
+     * @return VLC_SUCCESS if resize is accepted, VLC_EGENERIC if the filter
+     *         cannot adapt to this new size
+     */
+    int (*resize)(struct vlc_gl_filter *filter,
+                  unsigned *width, unsigned *height);
+
+    /**
      *
      */
     void (*close)(struct vlc_gl_filter *filter);
