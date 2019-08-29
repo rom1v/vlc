@@ -148,8 +148,8 @@ void vlc_gl_shader_builder_Release(
 int vlc_gl_shader_AttachShaderSource(
     struct vlc_gl_shader_builder *builder,
     enum vlc_gl_shader_type shader_type,
-    const char *header,
-    const char *body)
+    const char **headers, size_t header_count,
+    const char **bodies, size_t body_count)
 {
     const opengl_vtable_t *vt = builder->vt;
     /* We can only set shader once
@@ -161,13 +161,13 @@ int vlc_gl_shader_AttachShaderSource(
     GLuint shader = 0;
     int ret = VLC_EGENERIC;
 
-    const char *headers[] =
-    {
-        /* Base header for defines and common stuff */
-        builder->header,
-        /* User-define header data */
-        header,
-    };
+    //const char *headers[] =
+    //{
+    //    /* Base header for defines and common stuff */
+    //    builder->header,
+    //    /* User-define header data */
+    //    header,
+    //};
 
     /* Call
      * TODO: move this into a module
@@ -176,11 +176,13 @@ int vlc_gl_shader_AttachShaderSource(
     {
         case VLC_GL_SHADER_VERTEX:
             ret = BuildVertexShader(builder->vt, &shader, builder->sampler,
-                                    builder->tc, headers, 2, &body, 1);
+                                    builder->tc, headers, header_count,
+                                    bodies, body_count);
             break;
         case VLC_GL_SHADER_FRAGMENT:
             ret = BuildFragmentShader(builder->vt, &shader, builder->tc,
-                                      builder->sampler, headers, 2, &body, 1);
+                                      builder->sampler, headers, header_count,
+                                      bodies, body_count);
             break;
     }
 
@@ -206,7 +208,8 @@ int vlc_gl_shader_AttachShaderSource(
 
     if (shader != 0 && (ret != VLC_SUCCESS || success == GL_FALSE))
     {
-        fprintf(stderr, "Shader compilation error:\n%s\n", body);
+        /* TODO: display shader */
+        fprintf(stderr, "Shader compilation error\n");
         vt->DeleteShader(shader);
         return VLC_EGENERIC;
     }

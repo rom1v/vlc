@@ -103,8 +103,8 @@ void vlc_gl_shader_builder_Release(
 int vlc_gl_shader_AttachShaderSource(
     struct vlc_gl_shader_builder *builder,
     enum vlc_gl_shader_type shader_type,
-    const char *header,
-    const char *body);
+    const char **headers, size_t header_count,
+    const char **bodies, size_t body_count);
 
 struct vlc_gl_shader_program*
 vlc_gl_shader_program_Create(struct vlc_gl_shader_builder *builder);

@@ -118,8 +118,8 @@ create_program(struct vlc_gl_filter *filter)
     }
 
     int ret;
-    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_VERTEX, "",
-                                           vertex_shader);
+    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_VERTEX, NULL, 0,
+                                           &vertex_shader, 1);
     if (ret != VLC_SUCCESS)
     {
         msg_Err(filter, "cannot attach vertex shader");
@@ -127,8 +127,8 @@ create_program(struct vlc_gl_filter *filter)
         return NULL;
     }
 
-    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_FRAGMENT, "",
-                                           fragment_shader);
+    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_FRAGMENT, NULL, 0,
+                                           &fragment_shader, 1);
     if (ret != VLC_SUCCESS)
     {
         msg_Err(filter, "cannot attach fragment shader");
