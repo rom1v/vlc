@@ -1833,8 +1833,8 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
 static struct vout_display_opengl_filter *
 vout_display_opengl_AppendConverter(vout_display_opengl_t *vgl,
-                                    video_format_t *fmt_in,
-                                    video_format_t *fmt_out)
+                                    const video_format_t *fmt_in,
+                                    const video_format_t *fmt_out)
 {
     struct vout_display_opengl_filter *wrapper =
         vlc_object_create(vgl->gl, sizeof(*wrapper));
