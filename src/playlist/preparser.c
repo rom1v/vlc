@@ -39,6 +39,46 @@ struct playlist_preparser_t
     atomic_bool deactivated;
 };
 
+struct input_preparser_req
+{
+    input_item_t *item;
+    atomic_uint rc;
+};
+
+struct input_preparser_task
+{
+    struct input_preparser_req *req;
+    input_thread_t *input;
+};
+
+static struct input_preparser_req *
+input_preparser_req_new(input_item_t *item)
+{
+    struct input_preparser_req *req = malloc(sizeof(*req));
+    if (!req)
+        return NULL;
+
+    req->item = input_item_Hold(item);
+    atomic_init(&req->rc, 1);
+    return req;
+}
+
+static void
+input_preparser_req_Hold(struct input_preparser_req *req)
+{
+    atomic_fetch_add(&req->rc, 1);
+}
+
+static void
+input_preparser_req_Release(struct input_preparser_req *req)
+{
+    if (atomic_fetch_sub(&req->rc, 1) != 1)
+        return;
+
+    input_item_Release(req->item);
+    free(req);
+}
+
 static int InputEvent( vlc_object_t* obj, const char* varname,
     vlc_value_t old, vlc_value_t cur, void* worker )
 {
@@ -50,41 +90,53 @@ static int InputEvent( vlc_object_t* obj, const char* varname,
     return VLC_SUCCESS;
 }
 
-static int PreparserOpenInput( void* preparser_, void* item_, void** out )
+static int PreparserOpenInput( void* preparser_, void* req_, void** out )
 {
     playlist_preparser_t* preparser = preparser_;
+    struct input_preparser_req *req = req_;
 
-    input_thread_t* input = input_CreatePreparser( preparser->owner, item_ );
-    if( !input )
-    {
-        input_item_SignalPreparseEnded( item_, ITEM_PREPARSE_FAILED );
-        return VLC_EGENERIC;
-    }
+    struct input_preparser_task *task = malloc(sizeof(*task));
+    if (!task)
+        goto error;
+
+    input_thread_t *input = input_CreatePreparser(preparser->owner, req->item);
+    if (!input)
+        goto error;
+
+    task->req = req;
+    task->input = input;
 
     var_AddCallback( input, "intf-event", InputEvent, preparser->worker );
     if( input_Start( input ) )
     {
         var_DelCallback( input, "intf-event", InputEvent, preparser->worker );
         input_Close( input );
-        input_item_SignalPreparseEnded( item_, ITEM_PREPARSE_FAILED );
-        return VLC_EGENERIC;
+        goto error;
     }
 
-    *out = input;
+    *out = task;
+
     return VLC_SUCCESS;
+
+error:
+    free(task);
+    input_item_SignalPreparseEnded( req->item, ITEM_PREPARSE_FAILED );
+    return VLC_EGENERIC;
 }
 
-static int PreparserProbeInput( void* preparser_, void* input_ )
+static int PreparserProbeInput( void* preparser_, void* task_ )
 {
-    int state = input_GetState( input_ );
+    struct input_preparser_task *task = task_;
+    int state = input_GetState( task->input );
     return state == END_S || state == ERROR_S;
     VLC_UNUSED( preparser_ );
 }
 
-static void PreparserCloseInput( void* preparser_, void* input_ )
+static void PreparserCloseInput( void* preparser_, void* task_ )
 {
+    struct input_preparser_task *task = task_;
     playlist_preparser_t* preparser = preparser_;
-    input_thread_t* input = input_;
+    input_thread_t* input = task->input;
     input_item_t* item = input_priv(input)->p_item;
 
     var_DelCallback( input, "intf-event", InputEvent, preparser->worker );
@@ -105,6 +157,8 @@ static void PreparserCloseInput( void* preparser_, void* input_ )
     input_Stop( input );
     input_Close( input );
 
+    free(task);
+
     if( preparser->fetcher )
     {
         if( !playlist_fetcher_Push( preparser->fetcher, item, 0, status ) )
@@ -115,8 +169,8 @@ static void PreparserCloseInput( void* preparser_, void* input_ )
     input_item_SignalPreparseEnded( item, status );
 }
 
-static void InputItemRelease( void* item ) { input_item_Release( item ); }
-static void InputItemHold( void* item ) { input_item_Hold( item ); }
+static void ReqRelease(void *req) { input_preparser_req_Release(req); }
+static void ReqHold(void* req) { input_preparser_req_Hold(req); }
 
 playlist_preparser_t* playlist_preparser_New( vlc_object_t *parent )
 {
@@ -127,8 +181,8 @@ playlist_preparser_t* playlist_preparser_New( vlc_object_t *parent )
         .pf_start = PreparserOpenInput,
         .pf_probe = PreparserProbeInput,
         .pf_stop = PreparserCloseInput,
-        .pf_release = InputItemRelease,
-        .pf_hold = InputItemHold };
+        .pf_release = ReqRelease,
+        .pf_hold = ReqHold };
 
 
     if( likely( preparser ) )
@@ -175,8 +229,17 @@ void playlist_preparser_Push( playlist_preparser_t *preparser,
             return;
     }
 
-    if( background_worker_Push( preparser->worker, item, id, timeout ) )
+    struct input_preparser_req *req = input_preparser_req_new(item);
+    if (!req)
+    {
         input_item_SignalPreparseEnded( item, ITEM_PREPARSE_FAILED );
+        return;
+    }
+
+    if( background_worker_Push( preparser->worker, req, id, timeout ) )
+        input_item_SignalPreparseEnded( item, ITEM_PREPARSE_FAILED );
+
+    input_preparser_req_Release(req);
 }
 
 void playlist_preparser_fetcher_Push( playlist_preparser_t *preparser,
