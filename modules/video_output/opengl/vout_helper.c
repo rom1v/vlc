@@ -1724,6 +1724,10 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
                                 const video_format_t *source)
 {
     GL_ASSERT_NOERROR();
+
+    if (vgl->viewport.width == 0 || vgl->viewport.height == 0)
+        return VLC_SUCCESS;
+
     vgl->vt.Viewport(vgl->viewport.x, vgl->viewport.y,
                      vgl->viewport.width, vgl->viewport.height);
 
