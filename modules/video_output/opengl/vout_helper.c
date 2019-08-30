@@ -1946,7 +1946,8 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     if (fmt_in->i_chroma != wrapper->fmt_in.i_chroma)
     {
         converter =
-            vout_display_opengl_AppendConverter(vgl, fmt_in, &wrapper->fmt_out);
+            vout_display_opengl_AppendConverter(vgl, fmt_in, &wrapper->fmt_in);
+
         if (!converter)
             goto error;
 
