@@ -1943,6 +1943,8 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     if (ret != VLC_SUCCESS)
         goto error;
 
+    /* By default, the output format will be the same as input format, but
+     * the filter can decide to change it in the Open function. */
     ret = video_format_Copy(&wrapper->fmt_out, &wrapper->fmt_in);
     if (ret != VLC_SUCCESS)
         goto error;
