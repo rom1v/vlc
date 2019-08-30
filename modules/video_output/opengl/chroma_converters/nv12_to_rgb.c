@@ -77,6 +77,14 @@ static const char *fragment_sample_nv12 =
     "             texture2D(planes[1], tex_coord).y - 0.5);\n"
     "}\n";
 
+static const char *fragment_sample_i420 =
+    "/* i420 sampling */\n"
+    "vec3 color_sample() {\n"
+    " return vec3(\n"
+    "             texture2D(planes[0], tex_coord).x,\n"
+    "             texture2D(planes[1], tex_coord).x - 0.5,\n"
+    "             texture2D(planes[2], tex_coord).x - 0.5);\n"
+    "}\n";
 static const char *conversion_matrix_bt709_to_rgb =
     "/* bt709 -> RGB */\n"
     "const mat3 conversion_matrix = mat3(\n"
@@ -154,7 +162,7 @@ static void FilterClose(struct vlc_gl_filter *filter)
 }
 
 static struct vlc_gl_shader_program *
-create_program(struct vlc_gl_filter *filter)
+create_program(struct vlc_gl_filter *filter, const video_format_t *fmt_in)
 {
     struct vlc_gl_shader_builder *builder =
         vlc_gl_shader_builder_Create(filter->vt, NULL, NULL);
@@ -174,10 +182,28 @@ create_program(struct vlc_gl_filter *filter)
         return NULL;
     }
 
+    const char *sample_function = NULL;
+
+    switch (fmt_in->i_chroma)
+    {
+        case VLC_CODEC_NV12:
+            sample_function = fragment_sample_nv12;
+            break;
+        case VLC_CODEC_I420:
+            sample_function = fragment_sample_i420;
+            break;
+        default:
+            break;
+    }
+
+    /* TODO */
+    if (sample_function == NULL)
+        return NULL;
+
     const char *fragment_sources[] = {
         fragment_shader_header,
         conversion_matrix_bt709_to_rgb,
-        fragment_sample_nv12,
+        sample_function,
         fragment_shader_main
     };
 
@@ -200,12 +226,20 @@ create_program(struct vlc_gl_filter *filter)
 
 static int
 Open(struct vlc_gl_filter *filter,
-     video_format_t *fmt_in,
-     video_format_t *fmt_out)
+     const video_format_t *fmt_in,
+     const video_format_t *fmt_out)
 {
-    if (fmt_in->i_chroma != VLC_CODEC_NV12 && fmt_in->i_chroma != VLC_CODEC_I420) {
-        return VLC_EGENERIC;
+    switch (fmt_in->i_chroma)
+    {
+        case VLC_CODEC_NV12:
+        case VLC_CODEC_I420:
+            break;
+        default:
+            return VLC_EGENERIC;
     }
+
+    if (fmt_out->i_chroma != VLC_CODEC_RGBA)
+        return VLC_EGENERIC;
 
     struct vlc_gl_filter_sys *sys = filter->sys = malloc(sizeof(*sys));
     if (!sys)
@@ -214,7 +248,7 @@ Open(struct vlc_gl_filter *filter,
         return VLC_ENOMEM;
     }
 
-    sys->program = create_program(filter);
+    sys->program = create_program(filter, fmt_in);
     if (!sys->program)
     {
         msg_Err(filter, "cannot create vlc_gl_shader_program");
@@ -234,7 +268,6 @@ Open(struct vlc_gl_filter *filter,
     filter->filter = FilterInput;
     filter->close = FilterClose;
 
-    fmt_out->i_chroma = VLC_CODEC_RGBA;
     return VLC_SUCCESS;
 }
 
