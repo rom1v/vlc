@@ -183,6 +183,7 @@ create_program(struct vlc_gl_filter *filter, const video_format_t *fmt_in)
     }
 
     const char *sample_function = NULL;
+    const char *conversion_matrix = NULL;
 
     switch (fmt_in->i_chroma)
     {
@@ -196,13 +197,26 @@ create_program(struct vlc_gl_filter *filter, const video_format_t *fmt_in)
             break;
     }
 
+    switch (fmt_in->primaries)
+    {
+        case COLOR_PRIMARIES_BT601_525:
+        case COLOR_PRIMARIES_BT601_625:
+            conversion_matrix = conversion_matrix_bt601_to_rgb;
+            break;
+        case COLOR_PRIMARIES_BT709:
+            conversion_matrix = conversion_matrix_bt709_to_rgb;
+            break;
+        default:
+            break;
+    }
+
     /* TODO */
-    if (sample_function == NULL)
+    if (sample_function == NULL || conversion_matrix == NULL)
         return NULL;
 
     const char *fragment_sources[] = {
         fragment_shader_header,
-        conversion_matrix_bt709_to_rgb,
+        conversion_matrix,
         sample_function,
         fragment_shader_main
     };
