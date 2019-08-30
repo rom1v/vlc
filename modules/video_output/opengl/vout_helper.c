@@ -423,11 +423,16 @@ static int filter_UpdateFramebuffer(
 
     vgl->vt.DrawBuffer(GL_COLOR_ATTACHMENT0);
 
+    if (filter->fmt_out.i_width == 0 || filter->fmt_out.i_height == 0)
+        goto exit;
+
     GLenum status = vgl->vt.CheckFramebufferStatus(GL_FRAMEBUFFER);
     assert(status == GL_FRAMEBUFFER_COMPLETE);
 
     if (status != GL_FRAMEBUFFER_COMPLETE)
         return VLC_EGENERIC;
+
+exit:
 
     vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, 0);
     return VLC_SUCCESS;
