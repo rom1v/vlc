@@ -1888,8 +1888,14 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     struct vout_display_opengl_filter *wrapper =
         vlc_object_create(vgl->gl, sizeof(*wrapper));
 
+    /* If needed, a converter will be added to the chain. */
+    struct vout_display_opengl_filter *converter = NULL;
+
     if (wrapper == NULL)
         return VLC_ENOMEM;
+
+    /* Error container for the whole function. */
+    int ret = VLC_SUCCESS;
 
     /* TODO framebuffer configuration */
 
@@ -1912,18 +1918,13 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         fmt_in = &prev_filter->fmt_out;
     }
 
-    video_format_Init(&wrapper->fmt_in, fmt_in->i_chroma);
-    wrapper->fmt_in.i_visible_width = vgl->fmt.i_visible_width;
-    wrapper->fmt_in.i_width = vgl->fmt.i_visible_width;
-    wrapper->fmt_in.i_visible_height = vgl->fmt.i_visible_height;
-    wrapper->fmt_in.i_height = vgl->fmt.i_visible_height;
-
-    int ret = video_format_Copy(&wrapper->fmt_out, &wrapper->fmt_in);
+    ret = video_format_Copy(&wrapper->fmt_in, fmt_in);
     if (ret != VLC_SUCCESS)
-    {
-        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
-        return ret;
-    }
+        goto error;
+
+    ret = video_format_Copy(&wrapper->fmt_out, &wrapper->fmt_in);
+    if (ret != VLC_SUCCESS)
+        goto error;
 
     wrapper->module = vlc_module_load(vgl->gl, "opengl filter", name, true,
                                       EnableOpenglFilter,
@@ -1932,10 +1933,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
                                       &wrapper->fmt_in, &wrapper->fmt_out);
 
     if (wrapper->module == NULL)
-    {
-        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
-        return VLC_EGENERIC;
-    }
+        goto error;
 
     assert(wrapper->filter.filter);
     assert(wrapper->filter.close);
@@ -1945,37 +1943,53 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
      * the rendering target for the previous filter. */
     if (fmt_in->i_chroma != wrapper->fmt_in.i_chroma)
     {
-        struct vout_display_opengl_filter *converter =
+        converter =
             vout_display_opengl_AppendConverter(vgl, fmt_in, &wrapper->fmt_out);
         if (!converter)
-        {
-            module_unneed(vgl->gl, wrapper->module);
-            vlc_object_delete(VLC_OBJECT(&wrapper->filter));
-            return VLC_EGENERIC;
-        }
+            goto error;
 
         if (!vlc_vector_push(&vgl->filters, converter))
-        {
-            wrapper->filter.close(&wrapper->filter);
-            vlc_object_delete(VLC_OBJECT(&wrapper->filter));
-            return VLC_EGENERIC;
-        }
+            goto error;
     }
 
-    if (prev_filter && filter_UpdateFramebuffer(vgl, prev_filter) != VLC_SUCCESS)
-    {
-        wrapper->filter.close(&wrapper->filter);
-        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
-        return VLC_EGENERIC;
-    }
+    if (prev_filter)
+        ret = filter_UpdateFramebuffer(vgl, prev_filter);
+
+    if (ret != VLC_SUCCESS)
+        goto error;
 
     if (!vlc_vector_push(&vgl->filters, wrapper))
     {
-        // TODO remove converter possibly just added
-        wrapper->filter.close(&wrapper->filter);
-        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
-        return VLC_EGENERIC;
+        ret = VLC_ENOMEM;
+        goto error;
     }
 
     return VLC_SUCCESS;
+
+error:
+    if (wrapper->filter.close != NULL)
+        wrapper->filter.close(&wrapper->filter);
+
+    if (wrapper)
+    {
+        video_format_Clean(&wrapper->fmt_in);
+        video_format_Clean(&wrapper->fmt_out);
+    }
+
+    if (wrapper != NULL)
+        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
+
+    if (converter != NULL)
+    {
+        converter->filter.close(&converter->filter);
+        video_format_Clean(&converter->fmt_in);
+        video_format_Clean(&converter->fmt_out);
+
+        if (vgl->filters.data[vgl->filters.size - 1] == converter)
+            vlc_vector_swap_remove(&vgl->filters, vgl->filters.size -1);
+
+        vlc_object_delete(VLC_OBJECT(&converter->filter));
+    }
+
+    return ret == VLC_SUCCESS ? VLC_EGENERIC : ret;
 }
