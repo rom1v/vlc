@@ -1963,17 +1963,25 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     wrapper->filter.info.blend = false;
 
     struct vout_display_opengl_filter *prev_filter;
-    video_format_t *fmt_in;
-    if (!vgl->filters.size)
-    {
-        prev_filter = NULL;
-        fmt_in = &vgl->fmt;
-    }
-    else
-    {
+
+    video_format_t fmt_display;
+    video_format_Copy(&fmt_display, &vgl->fmt);
+    fmt_display.i_width  = fmt_display.i_visible_width  = vgl->viewport.width;
+    fmt_display.i_height = fmt_display.i_visible_height = vgl->viewport.height;
+
+    video_format_t *fmt_in = NULL;
+
+    /* Are we the first input or not ? */
+    prev_filter = NULL;
+    if (vgl->filters.size > 0)
         prev_filter = vgl->filters.data[vgl->filters.size - 1];
+
+    /* Initialize filter format from current available format. We keep track
+     * of the previous filter format in fmt_in so as to detect format change. */
+    if (prev_filter == NULL)
+        fmt_in = &fmt_display;
+    else
         fmt_in = &prev_filter->fmt_out;
-    }
 
     ret = video_format_Copy(&wrapper->fmt_in, fmt_in);
     if (ret != VLC_SUCCESS)
