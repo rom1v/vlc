@@ -1841,20 +1841,15 @@ vout_display_opengl_AppendConverter(vout_display_opengl_t *vgl,
     if (!wrapper)
         return NULL;
 
-    int ret = video_format_Copy(&wrapper->fmt_in, fmt_in);
+    int ret = VLC_SUCCESS;
+
+    ret = video_format_Copy(&wrapper->fmt_in, fmt_in);
     if (ret != VLC_SUCCESS)
-    {
-        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
-        return NULL;
-    }
+        goto error;
 
     ret = video_format_Copy(&wrapper->fmt_out, fmt_out);
     if (ret != VLC_SUCCESS)
-    {
-        video_format_Clean(&wrapper->fmt_in);
-        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
-        return NULL;
-    }
+        goto error;
 
     wrapper->framebuffer = 0;
     wrapper->texture_count = 0;
@@ -1867,16 +1862,23 @@ vout_display_opengl_AppendConverter(vout_display_opengl_t *vgl,
                         EnableOpenglConverter, &wrapper->filter,
                         &wrapper->fmt_in, &wrapper->fmt_out);
     if (!wrapper->module)
-    {
-        video_format_Clean(&wrapper->fmt_out);
-        video_format_Clean(&wrapper->fmt_in);
-        vlc_object_delete(VLC_OBJECT(&wrapper->filter));
-        return NULL;
-    }
+        goto error;
 
     filter_UpdateFramebuffer(vgl, wrapper);
 
     return wrapper;
+
+error:
+
+    if (wrapper->filter.close)
+        wrapper->filter.close(&wrapper->filter);
+
+    video_format_Clean(&wrapper->fmt_in);
+    video_format_Clean(&wrapper->fmt_out);
+
+    vlc_object_delete(VLC_OBJECT(&wrapper->filter));
+
+    return NULL;
 }
 
 int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
