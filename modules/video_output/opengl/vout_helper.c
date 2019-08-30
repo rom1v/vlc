@@ -1185,6 +1185,13 @@ void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
     vgl->viewport.y = y;
     vgl->viewport.width  = width;
     vgl->viewport.height = height;
+
+    struct vout_display_opengl_filter *wrapper;
+    vlc_vector_foreach(wrapper, &vgl->filters)
+    {
+        if (wrapper->framebuffer != 0)
+            filter_UpdateFramebuffer(vgl, wrapper);
+    }
 }
 
 bool vout_display_opengl_HasPool(const vout_display_opengl_t *vgl)
