@@ -244,6 +244,22 @@ vlc_gl_shader_program_Create(struct vlc_gl_shader_builder *builder)
 
     vt->LinkProgram(program_id);
 
+    GLint link_status = 0;
+    vt->GetProgramiv(program_id, GL_LINK_STATUS, &link_status);
+
+    if (link_status == GL_FALSE)
+    {
+        GLsizei info_length;
+        vt->GetProgramiv(program_id, GL_INFO_LOG_LENGTH, &info_length);
+        char *info = malloc(info_length+1);
+        vt->GetProgramInfoLog(program_id, info_length+1, NULL, info);
+        fprintf(stderr, "Program info: %s\n", info);
+        free(info);
+
+        vt->DeleteProgram(program_id);
+        return NULL;
+    }
+
     int error;
     while ((error = vt->GetError()) != GL_NO_ERROR)
     {
