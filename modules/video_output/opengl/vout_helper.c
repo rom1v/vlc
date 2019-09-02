@@ -1186,11 +1186,38 @@ void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
     vgl->viewport.width  = width;
     vgl->viewport.height = height;
 
-    struct vout_display_opengl_filter *wrapper;
+    struct vout_display_opengl_filter *wrapper, *prev_filter = NULL;
     vlc_vector_foreach(wrapper, &vgl->filters)
     {
+        if (prev_filter == NULL)
+        {
+            wrapper->fmt_in.i_width =
+            wrapper->fmt_in.i_visible_width = width;
+
+            wrapper->fmt_in.i_height =
+            wrapper->fmt_in.i_visible_height = height;
+        }
+        else
+        {
+            wrapper->fmt_in.i_width =
+            wrapper->fmt_in.i_visible_width = prev_filter->fmt_out.i_width;
+
+            wrapper->fmt_in.i_height =
+            wrapper->fmt_in.i_visible_height = prev_filter->fmt_out.i_height;
+        }
+
+        /* TODO: update with a resize callback: don't copy */
+        wrapper->fmt_out.i_width =
+        wrapper->fmt_out.i_visible_width = wrapper->fmt_in.i_width;
+
+        wrapper->fmt_out.i_height =
+        wrapper->fmt_out.i_visible_height = wrapper->fmt_in.i_height;
+
         if (wrapper->framebuffer != 0)
             filter_UpdateFramebuffer(vgl, wrapper);
+
+        /* Store previous buffer to chain correctly. */
+        prev_filter = wrapper;
     }
 }
 
@@ -1805,6 +1832,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, last_framebuffer);
         vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, wrapper->framebuffer);
 
+        vgl->vt.Viewport(0, 0, wrapper->fmt_out.i_visible_width, wrapper->fmt_out.i_visible_height);
 
         if (!object->info.blend)
         {
