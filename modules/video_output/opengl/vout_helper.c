@@ -1883,6 +1883,9 @@ vout_display_opengl_AppendConverter(vout_display_opengl_t *vgl,
                                     const video_format_t *fmt_in,
                                     const video_format_t *fmt_out)
 {
+    msg_Dbg(vgl->gl, "Looking for hw converter %4.4s -> %4.4s",
+            (const char*)&fmt_in->i_chroma, (const char*)&fmt_out->i_chroma);
+
     struct vout_display_opengl_filter *wrapper =
         vlc_object_create(vgl->gl, sizeof(*wrapper));
     if (!wrapper)
@@ -1988,6 +1991,10 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
     assert(wrapper->filter.filter);
     assert(wrapper->filter.close);
+
+    msg_Dbg(vgl->gl, "Filter format is %4.4s -> %4.4s",
+            (const char*)&wrapper->fmt_in.i_chroma,
+            (const char*)&wrapper->fmt_out.i_chroma);
 
     /* If we already have filters, we need to be sure we can convert from the
      * previous filter to the next filter format. In the mean time, configure
