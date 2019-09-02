@@ -1211,12 +1211,18 @@ void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
             wrapper->fmt_in.i_visible_height = prev_filter->fmt_out.i_height;
         }
 
+        unsigned out_width  = wrapper->fmt_in.i_width;
+        unsigned out_height = wrapper->fmt_in.i_height;
+
+        if (wrapper->filter.resize)
+            wrapper->filter.resize(&wrapper->filter, &out_width, &out_height);
+
         /* TODO: update with a resize callback: don't copy */
         wrapper->fmt_out.i_width =
-        wrapper->fmt_out.i_visible_width = wrapper->fmt_in.i_width;
+        wrapper->fmt_out.i_visible_width = out_width;
 
         wrapper->fmt_out.i_height =
-        wrapper->fmt_out.i_visible_height = wrapper->fmt_in.i_height;
+        wrapper->fmt_out.i_visible_height = out_height;
 
         if (wrapper->framebuffer != 0)
             filter_UpdateFramebuffer(vgl, wrapper);
