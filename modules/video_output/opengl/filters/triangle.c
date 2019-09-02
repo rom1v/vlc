@@ -188,6 +188,9 @@ static int Open(struct vlc_gl_filter *filter,
     filter->close = FilterClose;
     filter->info.blend = true;
 
+    fmt_in->i_chroma = VLC_CODEC_RGBA;
+    fmt_out->i_chroma = VLC_CODEC_RGBA;
+
     VLC_UNUSED(config);
     VLC_UNUSED(fmt_in);
     VLC_UNUSED(fmt_out);
