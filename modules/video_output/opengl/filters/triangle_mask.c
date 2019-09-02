@@ -176,6 +176,7 @@ static int Open(struct vlc_gl_filter *filter,
     filter->close = FilterClose;
 
     fmt_in->i_chroma = VLC_CODEC_RGBA;
+    fmt_out->i_chroma = VLC_CODEC_RGBA;
 
     return VLC_SUCCESS;
 }
