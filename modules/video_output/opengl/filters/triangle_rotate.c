@@ -77,9 +77,15 @@ static const char *fragment_shader =
 #define TRIANGLE_ROTATE_CFG_PREFIX "triangle-"
 static const char * const filter_options[] = { "angle", NULL };
 
+static void CleanupVariables(struct vlc_gl_filter *filter)
+{
+    var_Destroy(filter, TRIANGLE_ROTATE_CFG_PREFIX "angle");
+}
+
 static int FilterInput(struct vlc_gl_filter *filter,
                        const struct vlc_gl_filter_input *input)
 {
+    VLC_UNUSED(input);
 
     struct vlc_gl_filter_sys *sys = filter->sys;
 
@@ -95,8 +101,6 @@ static int FilterInput(struct vlc_gl_filter *filter,
     filter->vt->Enable(GL_BLEND);
     filter->vt->BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    /* TODO: enabled texture tracking ? */
-    struct vlc_gl_picture *pic = &input->picture;
     const GLfloat vertexCoord[] = {
          0,  1,
         -1, -1,
@@ -109,15 +113,6 @@ static int FilterInput(struct vlc_gl_filter *filter,
         0.f, 0.f, 1.f,
     };
 
-    assert(pic->textures[0]);
-    /* TODO: binded texture tracker ? */
-    //filter->vt->BindTexture(tc->tex_target, glr->texture);
-
-    /* TODO: as above, texture_converter and shaders are dual and this
-     *       should be more transparent. */
-    //tc->pf_prepare_shader(tc, &glr->width, &glr->height, glr->alpha);
-
-    /* TODO: attribute handling in shader ? */
     filter->vt->EnableVertexAttribArray(sys->aloc.VertexPosition);
     filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->buffer_objects[1]);
     filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
@@ -143,64 +138,56 @@ static int FilterInput(struct vlc_gl_filter *filter,
     return VLC_SUCCESS;
 }
 
+
 static void FilterClose(struct vlc_gl_filter *filter)
 {
     struct vlc_gl_filter_sys *sys = filter->sys;
     vlc_gl_shader_program_Release(sys->program);
     filter->vt->DeleteBuffers(3, sys->buffer_objects);
 
-    var_Destroy(filter, TRIANGLE_ROTATE_CFG_PREFIX "angle");
+    CleanupVariables(filter);
 
     free(sys);
 }
 
 static int Open(struct vlc_gl_filter *filter,
-                config_chain_t *config,
+                const config_chain_t *config,
                 video_format_t *fmt_in,
                 video_format_t *fmt_out)
 {
     struct vlc_gl_filter_sys *sys = filter->sys =
         malloc(sizeof(*sys));
-        //vlc_obj_malloc(VLC_OBJECT(filter), sizeof(*sys));
 
     if (sys == NULL)
         return VLC_ENOMEM;
 
-    struct vlc_gl_shader_builder *builder =
-        vlc_gl_shader_builder_Create(filter->vt, NULL, NULL);
+    int ret = VLC_SUCCESS;
+    struct vlc_gl_shader_builder *builder = NULL;
+
+    config_ChainParse(filter, TRIANGLE_ROTATE_CFG_PREFIX,
+                      filter_options, config);
+
+    builder = vlc_gl_shader_builder_Create(filter->vt, NULL, NULL);
 
     if (builder == NULL)
-        return VLC_ENOMEM;
-
-    int ret;
+        goto error;
 
     ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_VERTEX, NULL, 0,
                                            &vertex_shader, 1);
 
-    // TODO: free
     if (ret != VLC_SUCCESS)
-    {
-        msg_Err(filter, "cannot attach vertex shader");
-        return VLC_EGENERIC;
-    }
+        goto error;
 
     ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_FRAGMENT, NULL, 0,
                                            &fragment_shader, 1);
     if (ret != VLC_SUCCESS)
-    {
-        msg_Err(filter, "cannot attach fragment shader");
-        return VLC_EGENERIC;
-    }
+        goto error;
 
     sys->program = vlc_gl_shader_program_Create(builder);
+    vlc_gl_shader_builder_Release(builder);
 
     if (sys->program == NULL)
-    {
-        msg_Err(filter, "cannot create vlc_gl_shader_program");
-        return VLC_EGENERIC;
-    }
-
-    vlc_gl_shader_builder_Release(builder);
+        goto error;
 
     filter->vt->GenBuffers(ARRAY_SIZE(sys->buffer_objects),
                            sys->buffer_objects);
@@ -212,9 +199,6 @@ static int Open(struct vlc_gl_filter *filter,
         filter->vt->GetAttribLocation(program, "VertexColor");
     sys->uloc.RotationMatrix =
         filter->vt->GetUniformLocation(program, "RotationMatrix");
-
-    config_ChainParse(filter, TRIANGLE_ROTATE_CFG_PREFIX,
-                      filter_options, config);
 
     float theta = var_InheritFloat(filter, TRIANGLE_ROTATE_CFG_PREFIX "angle");
     theta = theta * 3.141592f / 180.f;
@@ -232,7 +216,16 @@ static int Open(struct vlc_gl_filter *filter,
     filter->close = FilterClose;
     filter->info.blend = true;
 
+    fmt_in->i_chroma = VLC_CODEC_RGBA;
+    fmt_out->i_chroma = VLC_CODEC_RGBA;
+
     return VLC_SUCCESS;
+
+error:
+    CleanupVariables(filter);
+    free(sys);
+
+    return ret == VLC_SUCCESS ? VLC_EGENERIC : ret;
 }
 
 vlc_module_begin()
