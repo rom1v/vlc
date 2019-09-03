@@ -1836,7 +1836,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     filter_input.viewpoint = vgl->vp;
 
     GLuint last_framebuffer = 0;
-    struct vout_display_opengl_filter *wrapper;
+    struct vout_display_opengl_filter *wrapper, *prev_filter = NULL;
     vlc_vector_foreach(wrapper, &vgl->filters)
     {
         struct vlc_gl_filter *object = &wrapper->filter;
@@ -1846,26 +1846,21 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
         vgl->vt.Viewport(0, 0, wrapper->fmt_out.i_visible_width, wrapper->fmt_out.i_visible_height);
 
+        /* Initialize rendering state according to filter type. */
         if (!object->info.blend)
         {
+            vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, last_framebuffer);
+            vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, wrapper->framebuffer);
+
             vgl->vt.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             vgl->vt.Clear(GL_COLOR_BUFFER_BIT);
         }
-
-        if (object->info.blend &&
-            last_framebuffer != wrapper->framebuffer &&
-            last_framebuffer != 0)
+        else
         {
-            /* TODO: it should be able to handle different size
-             * TODO: add filter->resize() when viewport change */
-            vgl->vt.BlitFramebuffer(0, 0,
-                                    vgl->fmt.i_visible_width,
-                                    vgl->fmt.i_visible_height,
-                                    0, 0,
-                                    vgl->fmt.i_visible_width,
-                                    vgl->fmt.i_visible_height,
-                                    GL_COLOR_BUFFER_BIT,
-                                    GL_NEAREST);
+            /* Blend filters can't draw directly on their framebuffer, so a
+             * first filter must be added by the core in case they are at the
+             * beginning of the chain, be it a converter of a normal filter. */
+            assert(prev_filter);
         }
 
         /* texture count may be changed by the filter */
@@ -1873,11 +1868,19 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
         object->filter(object, &filter_input);
 
-        last_framebuffer = wrapper->framebuffer;
-        /* use textures from the wrapper */
-        memcpy(filter_input.picture.textures, wrapper->textures,
-               wrapper->texture_count * sizeof(GLuint));
-        filter_input.picture.texture_count = wrapper->texture_count;
+        /* If the current filter (wrapper) is only blending, we can't use the
+         * result as input for the following filter, so we keep the same
+         * input and don't update the framebuffers. */
+        if (!object->info.blend)
+        {
+            last_framebuffer = wrapper->framebuffer;
+            /* use textures from the wrapper */
+            memcpy(filter_input.picture.textures, wrapper->textures,
+                   wrapper->texture_count * sizeof(GLuint));
+            filter_input.picture.texture_count = wrapper->texture_count;
+        }
+
+        prev_filter = wrapper;
     }
     vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -2032,7 +2035,18 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     }
 
     if (prev_filter)
-        ret = filter_UpdateFramebuffer(vgl, prev_filter);
+    {
+        /* Filters won't blend on previous framebuffer, so generate a
+         * framebuffer for the previous filter output. If the previous
+         * filter is actually a converter, there is no need to generate
+         * the target currently.
+         * TODO: if converters were to be merged into other filters, it
+         *       would be necessary to create intermediate framebuffer. */
+        if (!wrapper->filter.info.blend && !converter)
+        {
+            ret = filter_UpdateFramebuffer(vgl, prev_filter);
+        }
+    }
 
     if (ret != VLC_SUCCESS)
         goto error;
