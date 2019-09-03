@@ -1833,6 +1833,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     memcpy(filter_input.picture.textures, vgl->textures,
            vgl->texture_count * sizeof(GLuint));
     filter_input.picture.texture_count = vgl->texture_count;
+    filter_input.viewpoint = vgl->vp;
 
     GLuint last_framebuffer = 0;
     struct vout_display_opengl_filter *wrapper;
