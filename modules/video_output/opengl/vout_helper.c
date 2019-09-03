@@ -1840,9 +1840,9 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     vlc_vector_foreach(wrapper, &vgl->filters)
     {
         struct vlc_gl_filter *object = &wrapper->filter;
-        msg_Err(vgl->gl, "Binding READ=%u, WRITE=%u", last_framebuffer, wrapper->framebuffer);
-        vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, last_framebuffer);
-        vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, wrapper->framebuffer);
+        msg_Err(vgl->gl, "Module %s: Binding READ=%u, WRITE=%u",
+                module_get_name(wrapper->module, true),
+                last_framebuffer, wrapper->framebuffer);
 
         vgl->vt.Viewport(0, 0, wrapper->fmt_out.i_visible_width, wrapper->fmt_out.i_visible_height);
 
