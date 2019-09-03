@@ -1849,6 +1849,12 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
         vgl->vt.Viewport(0, 0, wrapper->fmt_out.i_visible_width, wrapper->fmt_out.i_visible_height);
 
+        /* If the previous filter was not a blending filter and the current
+         * filter (wrapper) is not blending either, we must update
+         * framebuffers and use the textures from the unified framebuffer. */
+        if (prev_filter && !prev_filter->filter.info.blend && !object->info.blend)
+            last_framebuffer = prev_filter->framebuffer;
+
         /* Initialize rendering state according to filter type. */
         if (!object->info.blend)
         {
@@ -1857,6 +1863,12 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
             vgl->vt.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             vgl->vt.Clear(GL_COLOR_BUFFER_BIT);
+            if (prev_filter && prev_filter->filter.info.blend)
+            {
+                memcpy(filter_input.picture.textures, prev_filter->textures,
+                       prev_filter->texture_count * sizeof(GLuint));
+                filter_input.picture.texture_count = wrapper->texture_count;
+            }
         }
         else
         {
@@ -1867,7 +1879,8 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         }
 
         /* texture count may be changed by the filter */
-        wrapper->texture_count = filter_input.picture.texture_count;
+        /* ??? */
+        //wrapper->texture_count = filter_input.picture.texture_count;
 
         object->filter(object, &filter_input);
 
@@ -1881,6 +1894,14 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
             memcpy(filter_input.picture.textures, wrapper->textures,
                    wrapper->texture_count * sizeof(GLuint));
             filter_input.picture.texture_count = wrapper->texture_count;
+        }
+        else
+        {
+            /* We can't have a NULL prev_filter */
+            assert(prev_filter);
+            memcpy(wrapper->textures, prev_filter->textures,
+                   prev_filter->texture_count * sizeof(GLuint));
+            wrapper->texture_count = prev_filter->texture_count;
         }
 
         prev_filter = wrapper;
@@ -2035,7 +2056,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         vlc_list_append(&converter->node, &vgl->filters);
     }
 
-    if (prev_filter)
+    if (prev_filter && !converter && !wrapper->filter.info.blend)
     {
         /* Filters won't blend on previous framebuffer, so generate a
          * framebuffer for the previous filter output. If the previous
@@ -2043,10 +2064,25 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
          * the target currently.
          * TODO: if converters were to be merged into other filters, it
          *       would be necessary to create intermediate framebuffer. */
-        if (!wrapper->filter.info.blend && !converter)
+
+        struct vlc_list *pointer = &prev_filter->node;
+        struct vout_display_opengl_filter *pointer_current = prev_filter;
+
+        while (pointer_current->filter.info.blend)
         {
-            ret = filter_UpdateFramebuffer(vgl, prev_filter);
+            pointer = pointer->prev;
+
+            /* We reached the beginning of the list. */
+            if (pointer == &vgl->filters)
+                break;
+
+            pointer_current = container_of(
+                    pointer, struct vout_display_opengl_filter, node);
         }
+
+        /* We have an actual previous filter. */
+        if (pointer != &vgl->filters)
+            ret = filter_UpdateFramebuffer(vgl, pointer_current);
     }
 
     if (ret != VLC_SUCCESS)
