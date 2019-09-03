@@ -1838,6 +1838,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     filter_input.picture.texture_count = vgl->texture_count;
     filter_input.viewpoint = vgl->vp;
 
+    msg_Info(vgl->gl, "BEGINNING FILTER PASS");
     GLuint last_framebuffer = 0;
     struct vout_display_opengl_filter *wrapper, *prev_filter = NULL;
     vlc_list_foreach(wrapper, &vgl->filters, node)
