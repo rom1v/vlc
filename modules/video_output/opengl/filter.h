@@ -42,7 +42,10 @@ struct vlc_gl_picture {
 };
 
 struct vlc_gl_filter_input {
-    struct vlc_gl_picture picture;
+    /* Input video frame. */
+    struct vlc_gl_picture   picture;
+    /* Current viewpoint in the renderer. */
+    vlc_viewpoint_t         viewpoint;
 };
 
 /**
