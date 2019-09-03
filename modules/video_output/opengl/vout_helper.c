@@ -39,7 +39,7 @@
 #include <vlc_modules.h>
 #include <vlc_vout.h>
 #include <vlc_viewpoint.h>
-#include <vlc_vector.h>
+#include <vlc_list.h>
 
 #include "vout_helper.h"
 #include "internal.h"
@@ -137,6 +137,8 @@ struct vout_display_opengl_filter
     GLuint framebuffer;
     unsigned texture_count;
     GLuint textures[PICTURE_PLANE_MAX];
+
+    struct vlc_list node;
 };
 
 struct vout_display_opengl_t {
@@ -193,7 +195,7 @@ struct vout_display_opengl_t {
 
     int filter_count;
 
-    struct VLC_VECTOR(struct vout_display_opengl_filter*) filters;
+    struct vlc_list filters;
 
     struct {
         int x;
@@ -1065,6 +1067,8 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         *subpicture_chromas = gl_subpicture_chromas;
     }
 
+    vlc_list_init(&vgl->filters);
+
     GL_ASSERT_NOERROR();
     return vgl;
 }
@@ -1078,12 +1082,11 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vgl->vt.Flush();
 
     struct vout_display_opengl_filter *wrapper;
-    vlc_vector_foreach(wrapper, &vgl->filters)
+    vlc_list_foreach(wrapper, &vgl->filters, node)
     {
         wrapper->filter.close(&wrapper->filter);
         vlc_object_delete(VLC_OBJECT(&wrapper->filter));
     }
-    vlc_vector_destroy(&vgl->filters);
 
     const size_t main_tex_count = vgl->prgm->tc->tex_count;
     const bool main_del_texs = !vgl->prgm->tc->handle_texs_gen;
@@ -1192,7 +1195,7 @@ void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
     vgl->viewport.height = height;
 
     struct vout_display_opengl_filter *wrapper, *prev_filter = NULL;
-    vlc_vector_foreach(wrapper, &vgl->filters)
+    vlc_list_foreach(wrapper, &vgl->filters, node)
     {
         if (prev_filter == NULL)
         {
@@ -1837,7 +1840,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
     GLuint last_framebuffer = 0;
     struct vout_display_opengl_filter *wrapper, *prev_filter = NULL;
-    vlc_vector_foreach(wrapper, &vgl->filters)
+    vlc_list_foreach(wrapper, &vgl->filters, node)
     {
         struct vlc_gl_filter *object = &wrapper->filter;
         msg_Err(vgl->gl, "Module %s: Binding READ=%u, WRITE=%u",
@@ -1982,9 +1985,8 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     video_format_t *fmt_in = NULL;
 
     /* Are we the first input or not ? */
-    prev_filter = NULL;
-    if (vgl->filters.size > 0)
-        prev_filter = vgl->filters.data[vgl->filters.size - 1];
+    prev_filter = vlc_list_last_entry_or_null(
+            &vgl->filters, struct vout_display_opengl_filter, node);
 
     /* Initialize filter format from current available format. We keep track
      * of the previous filter format in fmt_in so as to detect format change. */
@@ -2030,8 +2032,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         if (!converter)
             goto error;
 
-        if (!vlc_vector_push(&vgl->filters, converter))
-            goto error;
+        vlc_list_append(&converter->node, &vgl->filters);
     }
 
     if (prev_filter)
@@ -2051,11 +2052,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     if (ret != VLC_SUCCESS)
         goto error;
 
-    if (!vlc_vector_push(&vgl->filters, wrapper))
-    {
-        ret = VLC_ENOMEM;
-        goto error;
-    }
+    vlc_list_append(&wrapper->node, &vgl->filters);
 
     return VLC_SUCCESS;
 
@@ -2078,8 +2075,7 @@ error:
         video_format_Clean(&converter->fmt_in);
         video_format_Clean(&converter->fmt_out);
 
-        if (vgl->filters.data[vgl->filters.size - 1] == converter)
-            vlc_vector_swap_remove(&vgl->filters, vgl->filters.size -1);
+        vlc_list_remove(&converter->node);
 
         vlc_object_delete(VLC_OBJECT(&converter->filter));
     }
