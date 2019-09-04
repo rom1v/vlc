@@ -1843,15 +1843,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     struct vout_display_opengl_filter *wrapper, *prev_filter = NULL;
     vlc_list_foreach(wrapper, &vgl->filters, node)
     {
-        GLint draw_fbo = 0, read_fbo = 0;
-        vgl->vt.GetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo);
-        vgl->vt.GetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_fbo);
-
         struct vlc_gl_filter *object = &wrapper->filter;
-        msg_Err(vgl->gl, "Module %s: Binding READ=%u, WRITE=%u",
-                module_get_name(wrapper->module, true),
-                read_fbo, draw_fbo);
-
         vgl->vt.Viewport(0, 0, wrapper->fmt_out.i_visible_width, wrapper->fmt_out.i_visible_height);
 
         /* If the previous filter was not a blending filter and the current
@@ -1882,6 +1874,14 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
              * beginning of the chain, be it a converter of a normal filter. */
             assert(prev_filter);
         }
+
+        GLint draw_fbo = 0, read_fbo = 0;
+        vgl->vt.GetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo);
+        vgl->vt.GetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_fbo);
+
+        msg_Err(vgl->gl, "Module %s: Binding READ=%u, WRITE=%u",
+                module_get_name(wrapper->module, true),
+                read_fbo, draw_fbo);
 
         /* texture count may be changed by the filter */
         /* ??? */
