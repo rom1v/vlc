@@ -376,7 +376,8 @@ static inline GLsizei GetAlignedSize(unsigned size)
 
 static int filter_UpdateFramebuffer(
         vout_display_opengl_t *vgl,
-        struct vout_display_opengl_filter *filter
+        struct vout_display_opengl_filter *filter,
+        unsigned char msaa_level
 )
 {
     if (filter->texture_count == 0)
@@ -388,15 +389,32 @@ static int filter_UpdateFramebuffer(
 
     /* enforce one texture output for now
      * TODO: multiple texture support */
-    vgl->vt.BindTexture(GL_TEXTURE_2D, filter->textures[0]);
 
-    /* Set or update texture size */
-    vgl->vt.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                       filter->fmt_out.i_width,
-                       filter->fmt_out.i_height,
-                       0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    vgl->vt.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    vgl->vt.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    GLenum texture_target;
+
+    if (msaa_level > 0)
+    {
+        GLenum texture_target = GL_TEXTURE_2D_MULTISAMPLE;
+        vgl->vt.BindTexture(texture_target, filter->textures[0]);
+        vgl->vt.TexImage2DMultisample(texture_target,
+                                      msaa_level, GL_RGBA,
+                                      filter->fmt_out.i_width,
+                                      filter->fmt_out.i_height,
+                                      false);
+    }
+    else
+    {
+        GLenum texture_target = GL_TEXTURE_2D;
+        vgl->vt.BindTexture(texture_target, filter->textures[0]);
+
+        /* Set or update texture size */
+        vgl->vt.TexImage2D(texture_target, 0, GL_RGBA,
+                           filter->fmt_out.i_width,
+                           filter->fmt_out.i_height,
+                           0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        vgl->vt.TexParameteri(texture_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        vgl->vt.TexParameteri(texture_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
 
     if (filter->framebuffer == 0)
     {
@@ -411,16 +429,16 @@ static int filter_UpdateFramebuffer(
 
     /* TODO: Handle openGL ES Renderbuffers too */
     vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                 GL_TEXTURE_2D,
+                                 texture_target,
                                  filter->textures[0], 0);
 
     if (filter->texture_count >= 2)
         vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
-                                     GL_TEXTURE_2D,
+                                     texture_target,
                                      filter->textures[1], 0);
     if (filter->texture_count >= 3)
         vgl->vt.FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
-                                     GL_TEXTURE_2D,
+                                     texture_target,
                                      filter->textures[2], 0);
 
     vgl->vt.DrawBuffer(GL_COLOR_ATTACHMENT0);
