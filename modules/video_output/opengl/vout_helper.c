@@ -212,21 +212,6 @@ struct vout_display_opengl_t {
     } viewport;
 };
 
-typedef int (*vlc_gl_converter_open)(struct vlc_gl_filter *,
-                                     video_format_t *fmt_in,
-                                     video_format_t *fmt_out);
-
-static int EnableOpenglConverter(void *func, bool forced, va_list args)
-{
-    vlc_gl_converter_open activate = func;
-    struct vlc_gl_filter *filter = va_arg(args, struct vlc_gl_filter *);
-    video_format_t *fmt_in  = va_arg(args, video_format_t*);
-    video_format_t *fmt_out = va_arg(args, video_format_t*);
-
-    VLC_UNUSED(forced);
-    return activate(filter, fmt_in, fmt_out);
-}
-
 typedef int (*vlc_gl_filter_open)(struct vlc_gl_filter *,
                                   config_chain_t *config,
                                   video_format_t *fmt_in,
@@ -2111,59 +2096,6 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     return VLC_SUCCESS;
 }
 
-static struct vout_display_opengl_filter *
-vout_display_opengl_AppendConverter(vout_display_opengl_t *vgl,
-                                    const video_format_t *fmt_in,
-                                    const video_format_t *fmt_out)
-{
-    msg_Dbg(vgl->gl, "Looking for hw converter %4.4s -> %4.4s",
-            (const char*)&fmt_in->i_chroma, (const char*)&fmt_out->i_chroma);
-
-    struct vout_display_opengl_filter *wrapper =
-        vlc_object_create(vgl->gl, sizeof(*wrapper));
-    if (!wrapper)
-        return NULL;
-
-    int ret = VLC_SUCCESS;
-
-    ret = video_format_Copy(&wrapper->fmt_in, fmt_in);
-    if (ret != VLC_SUCCESS)
-        goto error;
-
-    ret = video_format_Copy(&wrapper->fmt_out, fmt_out);
-    if (ret != VLC_SUCCESS)
-        goto error;
-
-    wrapper->framebuffer = 0;
-    wrapper->texture_count = 0;
-    wrapper->filter.config = NULL;
-    wrapper->filter.vt = &vgl->vt;
-    wrapper->filter.info.blend = false;
-
-    wrapper->module =
-        vlc_module_load(vgl->gl, "opengl chroma converter", NULL, false,
-                        EnableOpenglConverter, &wrapper->filter,
-                        &wrapper->fmt_in, &wrapper->fmt_out);
-    if (!wrapper->module)
-        goto error;
-
-    filter_UpdateFramebuffer(vgl, wrapper, 0, false);
-
-    return wrapper;
-
-error:
-
-    if (wrapper->filter.close)
-        wrapper->filter.close(&wrapper->filter);
-
-    video_format_Clean(&wrapper->fmt_in);
-    video_format_Clean(&wrapper->fmt_out);
-
-    vlc_object_delete(VLC_OBJECT(&wrapper->filter));
-
-    return NULL;
-}
-
 int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
                                      const char *name,
                                      const config_chain_t *config)
@@ -2172,9 +2104,6 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
      * rendering configuration. */
     struct vout_display_opengl_filter *wrapper =
         vlc_object_create(vgl->gl, sizeof(*wrapper));
-
-    /* If needed, a converter will be added to the chain. */
-    struct vout_display_opengl_filter *converter = NULL;
 
     if (wrapper == NULL)
         return VLC_ENOMEM;
@@ -2238,28 +2167,12 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
             (const char*)&wrapper->fmt_in.i_chroma,
             (const char*)&wrapper->fmt_out.i_chroma);
 
-    /* If we already have filters, we need to be sure we can convert from the
-     * previous filter to the next filter format. In the mean time, configure
-     * the rendering target for the previous filter. */
-    if (fmt_in->i_chroma != wrapper->fmt_in.i_chroma)
-    {
-        converter =
-            vout_display_opengl_AppendConverter(vgl, fmt_in, &wrapper->fmt_in);
-
-        if (!converter)
-            goto error;
-
-        vlc_list_append(&converter->node, &vgl->filters);
-    }
-
-    if (prev_filter && !converter && !wrapper->filter.info.blend)
+    if (prev_filter && !wrapper->filter.info.blend)
     {
         /* Filters won't blend on previous framebuffer, so generate a
          * framebuffer for the previous filter output. If the previous
          * filter is actually a converter, there is no need to generate
-         * the target currently.
-         * TODO: if converters were to be merged into other filters, it
-         *       would be necessary to create intermediate framebuffer. */
+         * the target currently. */
 
         struct vlc_list *pointer = &prev_filter->node;
         struct vout_display_opengl_filter *pointer_current = prev_filter;
@@ -2315,17 +2228,6 @@ error:
 
     if (wrapper != NULL)
         vlc_object_delete(VLC_OBJECT(&wrapper->filter));
-
-    if (converter != NULL)
-    {
-        converter->filter.close(&converter->filter);
-        video_format_Clean(&converter->fmt_in);
-        video_format_Clean(&converter->fmt_out);
-
-        vlc_list_remove(&converter->node);
-
-        vlc_object_delete(VLC_OBJECT(&converter->filter));
-    }
 
     return ret == VLC_SUCCESS ? VLC_EGENERIC : ret;
 }
