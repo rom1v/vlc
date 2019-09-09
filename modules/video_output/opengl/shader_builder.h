@@ -62,14 +62,14 @@ struct vlc_gl_shader_builder
     const char *header;
 
     const opengl_vtable_t *vt;
-    struct vlc_gl_shader_sampler *sampler;
+    const struct vlc_gl_shader_sampler *sampler;
     struct opengl_tex_converter_t *tc;
 };
 
 struct vlc_gl_shader_program
 {
     GLuint id;
-    struct vlc_gl_shader_sampler *sampler;
+    const struct vlc_gl_shader_sampler *sampler;
     struct opengl_tex_converter_t *tc;
     struct opengl_vtable_t *vt;
 };
@@ -183,7 +183,7 @@ struct vlc_gl_shader_builder *
 vlc_gl_shader_builder_Create(
     const opengl_vtable_t *vt,
     struct opengl_tex_converter_t *tc,
-    struct vlc_gl_shader_sampler *sampler);
+    const struct vlc_gl_shader_sampler *sampler);
 
 void vlc_gl_shader_builder_Release(
     struct vlc_gl_shader_builder *builder);

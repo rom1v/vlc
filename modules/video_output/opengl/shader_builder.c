@@ -30,10 +30,10 @@
 static int BuildVertexShader(
     const opengl_vtable_t *vt,
     GLuint *shader_out,
-    /* Used for sampling code */
-    struct vlc_gl_shader_sampler *sampler,
     /* Used for sampling code and attribute declaration */
     struct opengl_tex_converter_t *tc,
+    /* Used for sampling code */
+    const struct vlc_gl_shader_sampler *sampler,
     /* Used for version, defines, user-defined uniforms or attributes */
     const char **headers,
     /* Number of parts in the \ref headers array */
@@ -43,31 +43,23 @@ static int BuildVertexShader(
     /* Number of parts in the shader */
     size_t part_count)
 {
-    /* TODO: use chroma description or helper ? chroma description won't give opaque planes count */
-    //unsigned int plane_count = vlc_gl_tc_CountPlanes(tc);
+    /* we don't inject any code into the vertex shader */
+    (void) sampler;
 
     GLuint shader = *shader_out = vt->CreateShader(GL_VERTEX_SHADER);
     if (shader == 0)
-    {
-        /* TODO: error */
         return VLC_ENOMEM;
-    }
 
-    /* Will generate varying and attribute TexCoords as well as assign
-     * configuration function, even in non upload mode (framebuffer
-     * input/output) */
-    // TODO
-    //struct vlc_gl_texcoords *texcoords =
-    //    vlc_gl_tc_GenerateTexcoords(tc, sampler, VLC_GL_SHADER_VERTEX);
+    size_t count = header_count + part_count;
 
-    const char **sources = malloc(sizeof(char*) * (header_count + part_count + 1));
-    memcpy(sources, headers, header_count * sizeof(char*));
-    memcpy(sources + header_count + 1,  parts, part_count * sizeof(char*));
-    // TODO
-    // sources[header_count] = texcoords->code;
-    sources[header_count] = "";
+    const char **sources = vlc_alloc(count, sizeof(*sources));
+    if (!sources)
+        return VLC_ENOMEM;
 
-    vt->ShaderSource(shader, header_count + part_count + 1, sources, NULL);
+    memcpy(sources, headers, header_count * sizeof(char *));
+    memcpy(sources + header_count, parts, part_count * sizeof(char *));
+
+    vt->ShaderSource(shader, count, sources, NULL);
 
     /* TODO: check error */
     vt->CompileShader(shader);
@@ -79,13 +71,13 @@ static int BuildVertexShader(
     return VLC_SUCCESS;
 }
 
-static bool BuildFragmentShader(
+static int BuildFragmentShader(
     const opengl_vtable_t *vt,
     GLuint *shader_out,
     /* Used for texture upload code, and sampler and attribute declaration */
     const opengl_tex_converter_t *tc,
     /* Used for sampling code */
-    struct vlc_gl_shader_sampler *sampler,
+    const struct vlc_gl_shader_sampler *sampler,
     /* Used for version */
     const char **headers,
     /* */
@@ -102,14 +94,37 @@ static bool BuildFragmentShader(
 
     GLuint shader = *shader_out = vt->CreateShader(GL_FRAGMENT_SHADER);
     if (shader == 0)
-    {
-        /* TODO: error */
         return VLC_ENOMEM;
+
+    size_t fragment_code_count = sampler ? sampler->fragment_code_count : 0;
+    size_t count = header_count + fragment_code_count + part_count;
+
+    const char **sources = vlc_alloc(count, sizeof(*sources));
+    if (!sources)
+        return VLC_ENOMEM;
+
+    const char **p = sources;
+    if (header_count)
+    {
+        memcpy(p, headers, header_count * sizeof(char *));
+        p += header_count;
     }
 
-    /* Will generate sampling code from previous TexCoords */
+    /* inject sampler code */
+    if (fragment_code_count)
+    {
+        memcpy(p, sampler->fragment_codes,
+               fragment_code_count * sizeof(char *));
+        p += fragment_code_count;
+    }
 
-    vt->ShaderSource(shader, part_count, parts, NULL);
+    if (part_count)
+        memcpy(p, parts, part_count * sizeof(char *));
+
+    vt->ShaderSource(shader, count, sources, NULL);
+
+    free(sources);
+
     vt->CompileShader(shader);
 
     // TODO
@@ -121,7 +136,7 @@ struct vlc_gl_shader_builder *
 vlc_gl_shader_builder_Create(
     const opengl_vtable_t *vt,
     struct opengl_tex_converter_t *tc,
-    struct vlc_gl_shader_sampler *sampler)
+    const struct vlc_gl_shader_sampler *sampler)
 {
     struct vlc_gl_shader_builder *builder = malloc(sizeof(*builder));
     memset(builder->shaders, 0, sizeof(builder->shaders));
@@ -175,8 +190,8 @@ int vlc_gl_shader_AttachShaderSource(
     switch (shader_type)
     {
         case VLC_GL_SHADER_VERTEX:
-            ret = BuildVertexShader(builder->vt, &shader, builder->sampler,
-                                    builder->tc, headers, header_count,
+            ret = BuildVertexShader(builder->vt, &shader, builder->tc,
+                                    builder->sampler, headers, header_count,
                                     bodies, body_count);
             break;
         case VLC_GL_SHADER_FRAGMENT:
