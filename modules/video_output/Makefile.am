@@ -6,7 +6,7 @@ EXTRA_DIST += video_output/README
 OPENGL_COMMONSOURCES = video_output/opengl/vout_helper.c \
 	video_output/opengl/vout_helper.h video_output/opengl/converter.h \
 	video_output/opengl/internal.h video_output/opengl/fragment_shaders.c \
-	video_output/opengl/converter_sw.c
+	video_output/opengl/converter_sw.c video_output/opengl/chroma_converter.h
 if HAVE_LIBPLACEBO
 OPENGL_COMMONSOURCES += video_output/placebo_utils.c video_output/placebo_utils.h
 endif
@@ -109,6 +109,12 @@ libgl_filter_clock_plugin_la_SOURCES = video_output/opengl/filters/clock.c \
 libgl_filter_clock_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
 libgl_filter_clock_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
+libgl_chroma_converter_i420_plugin_la_SOURCES = video_output/opengl/chroma_converters/i420.c \
+                                                $(OPENGL_COMMONSOURCES) \
+                                                video_output/opengl/shader_builder.c
+libgl_chroma_converter_i420_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_chroma_converter_i420_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
+
 libglconv_vaapi_plugin_la_SOURCES = video_output/opengl/converter_vaapi.c \
 	video_output/opengl/converter.h \
 	hw/vaapi/vlc_vaapi.c hw/vaapi/vlc_vaapi.h
@@ -126,7 +132,8 @@ vout_LTLIBRARIES += \
 	libgl_filter_triangle_plugin.la \
 	libgl_filter_triangle_rotate_plugin.la \
 	libgl_filter_triangle_mask_plugin.la \
-	libgl_filter_clock_plugin.la
+	libgl_filter_clock_plugin.la \
+	libgl_chroma_converter_i420_plugin.la
 
 if HAVE_EGL
 if HAVE_VAAPI
