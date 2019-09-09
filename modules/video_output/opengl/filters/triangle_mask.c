@@ -44,8 +44,10 @@ struct vlc_gl_filter_sys
     } loc;
 };
 
-static const char *vertex_shader =
-    "#version 300 es\n"
+static const char *vertex_shader_header =
+    "#version 300 es\n";
+
+static const char *vertex_shader_body =
     "in vec2 vertex_pos;\n"
     "out vec2 tex_coord;\n"
     "void main() {\n"
@@ -54,9 +56,11 @@ static const char *vertex_shader =
     "                   (vertex_pos.y + 1.0) / 2.0);\n"
     "}";
 
-static const char *fragment_shader =
+static const char *fragment_shader_header =
     "#version 300 es\n"
-    "precision mediump float;\n"
+    "precision mediump float;\n";
+
+static const char *fragment_shader_body =
     "in vec2 tex_coord;\n"
     "uniform sampler2D tex;\n"
     "out vec4 frag_color;\n"
@@ -120,8 +124,9 @@ create_program(struct vlc_gl_filter *filter)
     }
 
     int ret;
-    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_VERTEX, NULL, 0,
-                                           &vertex_shader, 1);
+    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_VERTEX,
+                                           &vertex_shader_header, 1,
+                                           &vertex_shader_body, 1);
     if (ret != VLC_SUCCESS)
     {
         msg_Err(filter, "cannot attach vertex shader");
@@ -129,8 +134,9 @@ create_program(struct vlc_gl_filter *filter)
         return NULL;
     }
 
-    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_FRAGMENT, NULL, 0,
-                                           &fragment_shader, 1);
+    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_FRAGMENT,
+                                           &fragment_shader_header, 1,
+                                           &fragment_shader_body, 1);
     if (ret != VLC_SUCCESS)
     {
         msg_Err(filter, "cannot attach fragment shader");
