@@ -26,6 +26,8 @@
 
 struct opengl_tex_converter_t;
 struct opengl_vtable_t;
+struct vlc_gl_picture;
+struct vlc_gl_shader_program;
 typedef struct opengl_vtable_t opengl_vtable_t;
 
 /**
@@ -64,16 +66,6 @@ struct vlc_gl_shader_builder
     struct opengl_tex_converter_t *tc;
 };
 
-struct opengl_tex_converter_t;
-
-/* Eg. placebo sampler module, vanilla sampler module */
-struct vlc_gl_shader_sampler
-{
-    vlc_object_t obj;
-    module_t *module;
-    /* TODO fmt_out */
-};
-
 struct vlc_gl_shader_program
 {
     GLuint id;
@@ -81,6 +73,102 @@ struct vlc_gl_shader_program
     struct opengl_tex_converter_t *tc;
     struct opengl_vtable_t *vt;
 };
+
+struct vlc_gl_shader_sampler
+{
+    /**
+     * Fragment shader code defining the function:
+     *    vec4 vlc_texture(vec2 coords);
+     *
+     * Like in the built-in texture(sampler2D, coords), coords.x and coords.y
+     * are expressed between 0.0 and 1.0.
+     *
+     * The fragment codes will be concatenated when the shader source is
+     * attached to the OpenGL program.
+     */
+    char **fragment_codes;
+
+    /** Number of fragment codes */
+    size_t fragment_code_count;
+
+    /**
+     * Number of textures (or planes) in the input pictures.
+     *
+     * The chroma will always use the firsts GL_TEXTUREx, so the filter may
+     * use textures from GL_TEXTURE{input_texture_count}.
+     */
+    unsigned input_texture_count;
+
+    /**
+     * This function will be called once, after the filter program (containing
+     * the injected shader code) is compiled and linked.
+     *
+     * Its purpose is typically to retrieve uniforms and attributes locations
+     * (in particular, the location of the sampler2D uniforms, where the input
+     * texture is stored).
+     */
+    int
+    (*prepare)(const struct vlc_gl_shader_program *program, void *userdata);
+
+    /**
+     * This function will be called explicitly by the OpenGL filters, for every
+     * picture.
+     *
+     * Its purpose is to load attributes and uniforms. Typically, it will bind
+     * the picture textures and load the sampler2D uniforms.
+     */
+    int
+    (*load)(const struct vlc_gl_picture *pic, void *userdata);
+
+    /**
+     * This function will be called explicitly by the OpenGL filters, for every
+     * picture.
+     *
+     * Its purpose is to unbind textures.
+     */
+    void
+    (*unload)(const struct vlc_gl_picture *pic, void *userdata);
+
+    /**
+     * Opaque pointer passed back to functions.
+     */
+    void *userdata;
+
+};
+
+static inline int
+vlc_gl_shader_sampler_Prepare(const struct vlc_gl_shader_sampler *sampler,
+                              const struct vlc_gl_shader_program *program)
+{
+    if (sampler->prepare)
+        return sampler->prepare(program, sampler->userdata);
+    return VLC_SUCCESS;
+}
+
+static inline int
+vlc_gl_shader_sampler_Load(const struct vlc_gl_shader_sampler *sampler,
+                           const struct vlc_gl_picture *pic)
+{
+    if (sampler->load)
+        return sampler->load(pic, sampler->userdata);
+    return VLC_SUCCESS;
+}
+
+static inline void
+vlc_gl_shader_sampler_Unload(const struct vlc_gl_shader_sampler *sampler,
+                             const struct vlc_gl_picture *pic)
+{
+    if (sampler->unload)
+        sampler->unload(pic, sampler->userdata);
+}
+
+static inline void
+vlc_gl_shader_sampler_Destroy(struct vlc_gl_shader_sampler *sampler)
+{
+    for (size_t i = 0; i < sampler->fragment_code_count; ++i)
+        free(sampler->fragment_codes[i]);
+    free(sampler->fragment_codes);
+}
 
 struct vlc_gl_texcoords
 {
