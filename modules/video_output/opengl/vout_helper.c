@@ -1889,7 +1889,9 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
 
     msg_Info(vgl->gl, "BEGINNING FILTER PASS");
     GLuint last_framebuffer = 0;
-    struct vout_display_opengl_filter *wrapper, *prev_filter = NULL;
+    struct vout_display_opengl_filter *wrapper,
+                                      *prev_filter = NULL,
+                                      *prev_filter_buffered = NULL;
     vlc_list_foreach(wrapper, &vgl->filters, node)
     {
         struct vlc_gl_filter *object = &wrapper->filter;
@@ -1900,6 +1902,35 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
          * framebuffers and use the textures from the unified framebuffer. */
         if (prev_filter && !prev_filter->filter.info.blend && !object->info.blend)
             last_framebuffer = prev_filter->framebuffer;
+
+
+
+        /* If the previous framebuffer is using MSAA, and the current one
+         * doesn't support sampling from it, we must resolve the previous
+         * framebuffer into a new non-multisampled one.
+         * TODO: there is currently no way to support multisampled input. */
+
+        /* prev_filter_buffered must own a framebuffer */
+        assert(!prev_filter_buffered || prev_filter_buffered->framebuffer != 0);
+        if (!wrapper->filter.info.blend &&
+            prev_filter_buffered &&
+            prev_filter_buffered->msaa_level > 0)
+        {
+            vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER,
+                                    prev_filter_buffered->framebuffer);
+            vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                    prev_filter_buffered->framebuffer_resolved);
+            GLint width  = prev_filter_buffered->fmt_out.i_width;
+            GLint height = prev_filter_buffered->fmt_out.i_height;
+
+            msg_Err(vgl->gl, "Resolving MSAA from %u to %u",
+                    prev_filter_buffered->framebuffer,
+                    prev_filter_buffered->framebuffer_resolved);
+
+            vgl->vt.BlitFramebuffer(0, 0, width, height,
+                                    0, 0, width, height,
+                                    GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        }
 
         /* Initialize rendering state according to filter type. */
         if (!object->info.blend)
@@ -1944,7 +1975,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         if (!object->info.blend)
         {
             last_framebuffer = wrapper->framebuffer;
-            /* use textures from the wrapper */
+            /* use resolved textures from the wrapper */
             memcpy(filter_input.picture.textures, wrapper->textures,
                    wrapper->texture_count * sizeof(GLuint));
             filter_input.picture.texture_count = wrapper->texture_count;
@@ -1959,6 +1990,9 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         }
 
         prev_filter = wrapper;
+
+        if (wrapper->framebuffer != 0)
+            prev_filter_buffered = wrapper;
     }
     vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
