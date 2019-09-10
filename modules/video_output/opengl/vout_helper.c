@@ -1274,7 +1274,7 @@ void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
         wrapper->fmt_out.i_visible_height = out_height;
 
         if (wrapper->framebuffer != 0)
-            filter_UpdateFramebuffer(vgl, wrapper);
+            filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, false);
 
         /* Store previous buffer to chain correctly. */
         prev_filter = wrapper;
@@ -2004,7 +2004,7 @@ vout_display_opengl_AppendConverter(vout_display_opengl_t *vgl,
     if (!wrapper->module)
         goto error;
 
-    filter_UpdateFramebuffer(vgl, wrapper);
+    filter_UpdateFramebuffer(vgl, wrapper, 0, false);
 
     return wrapper;
 
@@ -2131,13 +2131,17 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
                     pointer, struct vout_display_opengl_filter, node);
         }
 
-        /* We have an actual previous filter. */
-        if (pointer != &vgl->filters)
-            ret = filter_UpdateFramebuffer(vgl, pointer_current);
-    }
+        /* We have an actual previous filter needing a framebuffer. */
+        if (pointer != &vgl->filters && pointer_current->framebuffer == 0)
+        {
+            ret = filter_UpdateFramebuffer(vgl, pointer_current,
+                                           pointer_current->msaa_level,
+                                           false);
+            if (ret != VLC_SUCCESS)
+                goto error;
 
-    if (ret != VLC_SUCCESS)
-        goto error;
+        }
+    }
 
     vlc_list_append(&wrapper->node, &vgl->filters);
 
