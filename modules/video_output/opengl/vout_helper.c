@@ -125,8 +125,10 @@ struct vout_display_opengl_filter
     struct vlc_gl_filter filter;
     module_t *module;
 
+    /* Filter-related configuration */
     video_format_t fmt_in;
     video_format_t fmt_out;
+    unsigned char msaa_level;
 
     /* determine whether this filter has been added by the user or inserted by
      * the renderer to convert the format */
@@ -134,8 +136,12 @@ struct vout_display_opengl_filter
 
     /* framebuffer configuration, can be set to zero-like value to be able to
      * render to the screen directly */
-    GLuint framebuffer;
-    unsigned texture_count;
+    GLuint framebuffer, framebuffer_resolved;
+    unsigned texture_count, msaa_texture_count;
+
+    /* Multisampled textures */
+    GLuint msaa_textures[PICTURE_PLANE_MAX];
+    /* Output textures */
     GLuint textures[PICTURE_PLANE_MAX];
 
     struct vlc_list node;
@@ -193,6 +199,7 @@ struct vout_display_opengl_t {
     float f_z;    /* Position of the camera on the shpere radius vector */
     float f_sar;
 
+    unsigned char msaa_level;
     struct vlc_list filters;
 
     struct {
