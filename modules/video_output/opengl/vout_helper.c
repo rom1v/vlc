@@ -1276,6 +1276,9 @@ void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
         if (wrapper->framebuffer != 0)
             filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, false);
 
+        if (wrapper->framebuffer_resolved != 0)
+            filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, true);
+
         /* Store previous buffer to chain correctly. */
         prev_filter = wrapper;
     }
@@ -2119,6 +2122,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         struct vlc_list *pointer = &prev_filter->node;
         struct vout_display_opengl_filter *pointer_current = prev_filter;
 
+        /* Browse the list backward */
         while (pointer_current->filter.info.blend)
         {
             pointer = pointer->prev;
@@ -2140,6 +2144,16 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
             if (ret != VLC_SUCCESS)
                 goto error;
 
+            if (pointer_current->msaa_level > 0)
+            {
+                /* Generate resolve texture for filter */
+                ret = filter_UpdateFramebuffer(vgl, pointer_current,
+                                               pointer_current->msaa_level,
+                                               true);
+            }
+
+            if (ret != VLC_SUCCESS)
+                goto error;
         }
     }
 
