@@ -193,8 +193,6 @@ struct vout_display_opengl_t {
     float f_z;    /* Position of the camera on the shpere radius vector */
     float f_sar;
 
-    int filter_count;
-
     struct vlc_list filters;
 
     struct {
