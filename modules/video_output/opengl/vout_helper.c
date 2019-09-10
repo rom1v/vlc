@@ -2126,6 +2126,8 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     assert(wrapper->filter.filter);
     assert(wrapper->filter.close);
 
+    wrapper->msaa_level = 4;
+
     msg_Dbg(vgl->gl, "Filter format is %4.4s -> %4.4s",
             (const char*)&wrapper->fmt_in.i_chroma,
             (const char*)&wrapper->fmt_out.i_chroma);
