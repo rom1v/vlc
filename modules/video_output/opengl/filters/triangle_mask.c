@@ -40,7 +40,6 @@ struct vlc_gl_filter_sys
 
     struct {
         GLint vertex_pos;
-        GLint sampler;
     } loc;
 };
 
@@ -62,10 +61,9 @@ static const char *fragment_shader_header =
 
 static const char *fragment_shader_body =
     "in vec2 tex_coord;\n"
-    "uniform sampler2D tex;\n"
     "out vec4 frag_color;\n"
     "void main() {\n"
-    " frag_color = texture(tex, tex_coord);\n"
+    " frag_color = vlc_texture(tex_coord);\n"
     "}";
 
 static int FilterInput(struct vlc_gl_filter *filter,
@@ -76,22 +74,21 @@ static int FilterInput(struct vlc_gl_filter *filter,
 
     struct vlc_gl_filter_sys *sys = filter->sys;
 
-    /* TODO: program should be a vlc_gl_program loaded by a shader API */
     GLuint program = vlc_gl_shader_program_GetId(sys->program);
     filter->vt->UseProgram(program);
 
-    const struct vlc_gl_picture *pic = &input->picture;
     const GLfloat vertexCoord[] = {
          0,     0.75,
         -0.75, -0.75,
          0.9,  -0.2,
     };
 
-    assert(pic->textures[0]);
-    /* TODO: binded texture tracker ? */
-    filter->vt->ActiveTexture(GL_TEXTURE0);
-    filter->vt->BindTexture(GL_TEXTURE_2D, pic->textures[0]);
-    filter->vt->Uniform1i(sys->loc.sampler, 0);
+    int ret = vlc_gl_shader_sampler_Load(sampler, &input->picture);
+    if (ret != VLC_SUCCESS)
+    {
+        msg_Err(filter, "Cannot load shader sampler data");
+        return ret;
+    }
 
     filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->vbo);
     filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
@@ -100,7 +97,7 @@ static int FilterInput(struct vlc_gl_filter *filter,
 
     filter->vt->DrawArrays(GL_TRIANGLES, 0, 3);
 
-    filter->vt->BindTexture(GL_TEXTURE_2D, 0);
+    vlc_gl_shader_sampler_Unload(sampler, &input->picture);
 
     return VLC_SUCCESS;
 }
@@ -108,15 +105,23 @@ static int FilterInput(struct vlc_gl_filter *filter,
 static void FilterClose(struct vlc_gl_filter *filter)
 {
     struct vlc_gl_filter_sys *sys = filter->sys;
-    vlc_gl_shader_program_Release(sys->program);
-    filter->vt->DeleteBuffers(1, &sys->vbo);
+    if (sys->program)
+    {
+        vlc_gl_shader_program_Release(sys->program);
+        filter->vt->DeleteBuffers(1, &sys->vbo);
+    }
+
+    free(sys);
 }
 
 static struct vlc_gl_shader_program *
-create_program(struct vlc_gl_filter *filter)
+create_program(struct vlc_gl_filter *filter,
+               const struct vlc_gl_shader_sampler *sampler)
 {
+    (void) sampler;
+
     struct vlc_gl_shader_builder *builder =
-        vlc_gl_shader_builder_Create(filter->vt, NULL, NULL);
+        vlc_gl_shader_builder_Create(filter->vt, NULL, sampler);
     if (!builder)
     {
         msg_Err(filter, "cannot alloc vlc_gl_shader_builder");
@@ -152,6 +157,34 @@ create_program(struct vlc_gl_filter *filter)
     return program;
 }
 
+static int
+FilterPrepare(struct vlc_gl_filter *filter,
+              const struct vlc_gl_shader_sampler *sampler)
+{
+    struct vlc_gl_filter_sys *sys = filter->sys;
+    sys->program = create_program(filter, sampler);
+    if (!sys->program)
+    {
+        msg_Err(filter, "cannot create vlc_gl_shader_program");
+        return VLC_EGENERIC;
+    }
+
+    filter->vt->GenBuffers(1, &sys->vbo);
+
+    GLuint program = vlc_gl_shader_program_GetId(sys->program);
+
+    sys->loc.vertex_pos = filter->vt->GetAttribLocation(program, "vertex_pos");
+
+    int ret = vlc_gl_shader_sampler_Prepare(sampler, sys->program);
+    if (ret != VLC_SUCCESS)
+    {
+        msg_Err(filter, "Cannot prepare shader sampler");
+        return ret;
+    }
+
+    return VLC_SUCCESS;
+}
+
 static int Open(struct vlc_gl_filter *filter,
                 const config_chain_t *config,
                 video_format_t *fmt_in,
@@ -165,22 +198,9 @@ static int Open(struct vlc_gl_filter *filter,
         msg_Err(filter, "cannot allocate vlc_gl_filter_sys");
         return VLC_ENOMEM;
     }
+    sys->program = NULL;
 
-    sys->program = create_program(filter);
-    if (!sys->program)
-    {
-        msg_Err(filter, "cannot create vlc_gl_shader_program");
-        return VLC_EGENERIC;
-    }
-
-    filter->vt->GenBuffers(1, &sys->vbo);
-
-    GLuint program = vlc_gl_shader_program_GetId(sys->program);
-
-    sys->loc.vertex_pos = filter->vt->GetAttribLocation(program, "vertex_pos");
-    sys->loc.sampler = filter->vt->GetUniformLocation(program, "tex");
-
-    filter->prepare = NULL;
+    filter->prepare = FilterPrepare;
     filter->filter = FilterInput;
     filter->close = FilterClose;
 
