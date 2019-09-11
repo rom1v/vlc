@@ -44,9 +44,11 @@ struct vlc_gl_filter_sys
     } aloc;
 };
 
-static const char *vertex_shader =
+static const char *vertex_shader_header =
     "#version 100\n"
-    "precision highp float;\n"
+    "precision highp float;\n";
+
+static const char *vertex_shader_body =
     "varying vec3 Color;\n"
     "attribute vec2 VertexPosition;\n"
     "attribute vec3 VertexColor;\n"
@@ -55,9 +57,11 @@ static const char *vertex_shader =
     " Color = VertexColor;\n"
     "}";
 
-static const char *fragment_shader =
+static const char *fragment_shader_header =
     "#version 100\n"
-    "precision highp float;\n"
+    "precision highp float;\n";
+
+static const char *fragment_shader_body =
     "varying vec3 Color;\n"
     "void main() {\n"
     " gl_FragColor = vec4(Color, 0.5);\n"
@@ -150,8 +154,9 @@ static int Open(struct vlc_gl_filter *filter,
 
     int ret;
 
-    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_VERTEX, NULL, 0,
-                                           &vertex_shader, 1);
+    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_VERTEX,
+                                           &vertex_shader_header, 1,
+                                           &vertex_shader_body, 1);
 
     // TODO: free
     if (ret != VLC_SUCCESS)
@@ -160,8 +165,9 @@ static int Open(struct vlc_gl_filter *filter,
         return VLC_EGENERIC;
     }
 
-    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_FRAGMENT, NULL, 0,
-                                           &fragment_shader, 1);
+    ret = vlc_gl_shader_AttachShaderSource(builder, VLC_GL_SHADER_FRAGMENT,
+                                           &fragment_shader_header, 1,
+                                           &fragment_shader_body, 1);
     if (ret != VLC_SUCCESS)
     {
         msg_Err(filter, "cannot attach fragment shader");
