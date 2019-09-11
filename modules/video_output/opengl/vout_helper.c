@@ -42,6 +42,7 @@
 #include <vlc_list.h>
 
 #include "vout_helper.h"
+#include "chroma_converter.h"
 #include "internal.h"
 #include "filter.h"
 
@@ -125,9 +126,12 @@ struct vout_display_opengl_filter
     struct vlc_gl_filter filter;
     module_t *module;
 
+    struct vlc_gl_chroma_converter_priv *converter_priv;
+
     /* Filter-related configuration */
     video_format_t fmt_in;
     video_format_t fmt_out;
+    struct vlc_gl_shader_sampler sampler;
     unsigned char msaa_level;
 
     /* determine whether this filter has been added by the user or inserted by
@@ -145,6 +149,11 @@ struct vout_display_opengl_filter
     GLuint textures[PICTURE_PLANE_MAX];
 
     struct vlc_list node;
+};
+
+struct vlc_gl_chroma_converter_priv {
+    struct vlc_gl_chroma_converter converter;
+    module_t *module;
 };
 
 struct vout_display_opengl_t {
@@ -211,6 +220,25 @@ struct vout_display_opengl_t {
         unsigned height;
     } viewport;
 };
+
+typedef int
+(*vlc_gl_chroma_converter_open)(struct vlc_gl_filter *,
+                                const video_format_t *fmt_in,
+                                const video_format_t *fmt_out,
+                                struct vlc_gl_shader_sampler *sampler);
+
+static int EnableOpenglChromaConverter(void *func, bool forced, va_list args)
+{
+    vlc_gl_chroma_converter_open activate = func;
+    struct vlc_gl_filter *filter = va_arg(args, struct vlc_gl_filter *);
+    const video_format_t *fmt_in  = va_arg(args, video_format_t*);
+    const video_format_t *fmt_out = va_arg(args, video_format_t*);
+    struct vlc_gl_shader_sampler *sampler =
+        va_arg(args, struct vlc_gl_shader_sampler *);
+
+    VLC_UNUSED(forced);
+    return activate(filter, fmt_in, fmt_out, sampler);
+}
 
 typedef int (*vlc_gl_filter_open)(struct vlc_gl_filter *,
                                   config_chain_t *config,
@@ -1118,6 +1146,13 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vlc_list_foreach(wrapper, &vgl->filters, node)
     {
         wrapper->filter.close(&wrapper->filter);
+
+        struct vlc_gl_chroma_converter *converter =
+            &wrapper->converter_priv->converter;
+        converter->ops->close(converter);
+        vlc_object_delete(converter);
+
+        vlc_gl_shader_sampler_Destroy(&wrapper->sampler);
         vlc_object_delete(VLC_OBJECT(&wrapper->filter));
     }
 
@@ -2096,6 +2131,32 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     return VLC_SUCCESS;
 }
 
+static struct vlc_gl_chroma_converter_priv *
+LoadChromaConverterSampler(vout_display_opengl_t *vgl,
+                           const video_format_t *fmt_in,
+                           const video_format_t *fmt_out,
+                           struct vlc_gl_shader_sampler *sampler)
+{
+    struct vlc_gl_chroma_converter_priv *priv =
+        vlc_object_create(vgl->gl, sizeof(*priv));
+    if (!priv)
+        return NULL;
+
+    priv->converter.vt = &vgl->vt;
+
+    priv->module =
+        vlc_module_load(vgl->gl, "opengl chroma converter", NULL, false,
+                        EnableOpenglChromaConverter, &priv->converter,
+                        fmt_in, fmt_out, sampler);
+    if (!priv->module)
+    {
+        vlc_object_delete(VLC_OBJECT(&priv->converter));
+        return NULL;
+    }
+
+    return priv;
+}
+
 int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
                                      const char *name,
                                      const config_chain_t *config)
@@ -2167,6 +2228,12 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
             (const char*)&wrapper->fmt_in.i_chroma,
             (const char*)&wrapper->fmt_out.i_chroma);
 
+    wrapper->converter_priv =
+        LoadChromaConverterSampler(vgl, fmt_in, &wrapper->fmt_in,
+                                   &wrapper->sampler);
+    if (!wrapper->converter_priv)
+        goto error;
+
     if (prev_filter && !wrapper->filter.info.blend)
     {
         /* Filters won't blend on previous framebuffer, so generate a
@@ -2219,6 +2286,14 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 error:
     if (wrapper->filter.close != NULL)
         wrapper->filter.close(&wrapper->filter);
+
+    if (wrapper->converter_priv)
+    {
+        struct vlc_gl_chroma_converter *converter =
+            &wrapper->converter_priv->converter;
+        converter->ops->close(converter);
+        vlc_object_delete(converter);
+    }
 
     if (wrapper)
     {
