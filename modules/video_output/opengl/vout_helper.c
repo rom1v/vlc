@@ -2234,6 +2234,13 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     if (!wrapper->converter_priv)
         goto error;
 
+    if (wrapper->filter.prepare)
+    {
+        ret = wrapper->filter.prepare(&wrapper->filter, &wrapper->sampler);
+        if (ret != VLC_SUCCESS)
+            goto error;
+    }
+
     if (prev_filter && !wrapper->filter.info.blend)
     {
         /* Filters won't blend on previous framebuffer, so generate a

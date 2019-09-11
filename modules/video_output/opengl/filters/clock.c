@@ -215,6 +215,7 @@ static int Open(struct vlc_gl_filter *filter,
     assert(sys->aloc.VertexColor >= 0);
     assert(sys->uloc.TimeSec >= 0);
 
+    filter->prepare = NULL;
     filter->filter = FilterInput;
     filter->close = FilterClose;
     filter->info.blend = true;

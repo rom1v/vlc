@@ -212,6 +212,7 @@ static int Open(struct vlc_gl_filter *filter,
         0,              0,              0,      1,
     }, sizeof(sys->RotationMatrix));
 
+    filter->prepare = NULL;
     filter->filter = FilterInput;
     filter->close = FilterClose;
     filter->info.blend = true;

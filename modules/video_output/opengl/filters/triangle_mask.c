@@ -172,6 +172,7 @@ static int Open(struct vlc_gl_filter *filter,
     sys->loc.vertex_pos = filter->vt->GetAttribLocation(program, "vertex_pos");
     sys->loc.sampler = filter->vt->GetUniformLocation(program, "tex");
 
+    filter->prepare = NULL;
     filter->filter = FilterInput;
     filter->close = FilterClose;
 

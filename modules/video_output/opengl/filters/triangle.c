@@ -184,6 +184,7 @@ static int Open(struct vlc_gl_filter *filter,
     sys->aloc.VertexColor =
         filter->vt->GetAttribLocation(program, "VertexColor");
 
+    filter->prepare = NULL;
     filter->filter = FilterInput;
     filter->close = FilterClose;
     filter->info.blend = true;

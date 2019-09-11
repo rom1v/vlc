@@ -32,6 +32,7 @@ extern "C" {
 
 /* TODO: forward declaration opengl_vtable_t */
 struct opengl_vtable_t;
+struct vlc_gl_shader_sampler;
 typedef struct opengl_vtable_t opengl_vtable_t;
 
 struct opengl_tex_converter_t;
@@ -73,6 +74,15 @@ struct vlc_gl_filter
      */
     const opengl_vtable_t *vt;
     vlc_gl_t *gl;
+
+    /**
+     * Called once after the module Open() function, with a shader sampler
+     * (matching the filter requested input format) is initialized by the core.
+     *
+     * Typically, a module must compile its OpenGL program from this function.
+     */
+    int (*prepare)(struct vlc_gl_filter *filter,
+                   const struct vlc_gl_shader_sampler *sampler);
 
     /**
      *
