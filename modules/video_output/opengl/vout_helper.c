@@ -2094,7 +2094,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         /* ??? */
         //wrapper->texture_count = filter_input.picture.texture_count;
 
-        object->filter(object, &filter_input);
+        object->filter(object, &wrapper->sampler, &filter_input);
 
         /* If the current filter (wrapper) is only blending, we can't use the
          * result as input for the following filter, so we keep the same

@@ -88,6 +88,7 @@ struct vlc_gl_filter
      *
      */
     int (*filter)(struct vlc_gl_filter *filter,
+                  const struct vlc_gl_shader_sampler *sampler,
                   const struct vlc_gl_filter_input *input);
 
     /**

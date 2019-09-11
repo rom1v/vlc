@@ -64,9 +64,12 @@ static const char *fragment_shader =
     "}";
 
 static int FilterInput(struct vlc_gl_filter *filter,
+                       const struct vlc_gl_shader_sampler *sampler,
                        const struct vlc_gl_filter_input *input)
 {
     (void) input;
+    (void) sampler;
+
     struct vlc_gl_filter_sys *sys = filter->sys;
 
     /* Draw the subpictures */

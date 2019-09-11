@@ -83,9 +83,11 @@ static void CleanupVariables(struct vlc_gl_filter *filter)
 }
 
 static int FilterInput(struct vlc_gl_filter *filter,
+                       const struct vlc_gl_shader_sampler *sampler,
                        const struct vlc_gl_filter_input *input)
 {
-    VLC_UNUSED(input);
+    (void) sampler;
+    (void) input;
 
     struct vlc_gl_filter_sys *sys = filter->sys;
 
