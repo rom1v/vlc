@@ -109,6 +109,12 @@ libgl_filter_clock_plugin_la_SOURCES = video_output/opengl/filters/clock.c \
 libgl_filter_clock_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
 libgl_filter_clock_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
+libgl_filter_identity_plugin_la_SOURCES = video_output/opengl/filters/identity.c \
+                                          $(OPENGL_COMMONSOURCES) \
+                                          video_output/opengl/shader_builder.c
+libgl_filter_identity_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_filter_identity_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
+
 libgl_chroma_converter_identity_plugin_la_SOURCES = video_output/opengl/chroma_converters/identity.c \
                                                     $(OPENGL_COMMONSOURCES) \
                                                     video_output/opengl/shader_builder.c
@@ -139,6 +145,7 @@ vout_LTLIBRARIES += \
 	libgl_filter_triangle_rotate_plugin.la \
 	libgl_filter_triangle_mask_plugin.la \
 	libgl_filter_clock_plugin.la \
+	libgl_filter_identity_plugin.la \
 	libgl_chroma_converter_i420_plugin.la \
 	libgl_chroma_converter_identity_plugin.la
 
