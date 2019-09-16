@@ -2298,6 +2298,34 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
             (const char*)&wrapper->fmt_out.i_chroma);
 
     int ret = VLC_SUCCESS;
+    struct vout_display_opengl_filter *identity_filter = NULL;
+
+    if (wrapper->filter.info.blend)
+    {
+        /* we always need a filter to render the picture to blend with */
+        bool insert_identity_filter = !prev_filter;
+
+        if (!insert_identity_filter)
+        {
+            /* if the chroma is not the same, we need to convert chroma first */
+            const char *chroma_module =
+                module_get_name(wrapper->converter_priv->module, false);
+            bool same_chroma = !strcmp("identity", chroma_module);
+            insert_identity_filter = !same_chroma;
+        }
+
+        if (insert_identity_filter)
+        {
+            /* insert a filter which does nothing in itself, but its sampler
+             * will render the input picture with chroma converted */
+            identity_filter = CreateFilter(vgl, "identity", NULL, fmt_in);
+            if (!identity_filter)
+            {
+                msg_Err(vgl->gl, "Cannot insert identity filter for blending");
+                goto error;
+            }
+        }
+    }
 
     if (prev_filter && !wrapper->filter.info.blend)
     {
@@ -2344,11 +2372,15 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         }
     }
 
+    if (identity_filter)
+        vlc_list_append(&identity_filter->node, &vgl->filters);
     vlc_list_append(&wrapper->node, &vgl->filters);
 
     return VLC_SUCCESS;
 
 error:
+    if (identity_filter)
+        DeleteFilter(identity_filter);
     DeleteFilter(wrapper);
 
     return ret == VLC_SUCCESS ? VLC_EGENERIC : ret;
