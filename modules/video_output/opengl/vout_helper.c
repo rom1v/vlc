@@ -184,6 +184,8 @@ struct vout_display_opengl_t {
         unsigned int i_y_offset;
         unsigned int i_visible_width;
         unsigned int i_visible_height;
+        vlc_tick_t   picture_date;
+        vlc_tick_t   rendering_date;
     } last_source;
 
     /* Non-power-of-2 texture size support */
@@ -1398,6 +1400,8 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
     }
     free(last);
 
+    vgl->last_source.picture_date = picture->date;
+
     GL_ASSERT_NOERROR();
     return ret;
 }
@@ -1886,6 +1890,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
            vgl->texture_count * sizeof(GLuint));
     filter_input.picture.texture_count = vgl->texture_count;
     filter_input.viewpoint = vgl->vp;
+    filter_input.picture_date = vgl->last_source.picture_date;
 
     msg_Info(vgl->gl, "BEGINNING FILTER PASS");
     GLuint last_framebuffer = 0;
