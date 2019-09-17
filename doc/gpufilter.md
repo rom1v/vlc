@@ -122,3 +122,21 @@ The example [`triangle_mask`] shows a basic `RGB` example where the input
 picture is extracted and masked, only drawn on a triangle.
 
 [`triangle_mask`]: modules/video_output/opengl/filters/triangle_mask.c
+
+## Using time in filters
+
+With the features presented above, any pixel transformation or deformation can
+be written as a fitler. However, advanced filters might need a way to produce
+effects based on precise timing while playing the video, with a reproductible
+behaviour.
+
+To achieve this, filter input exposes a `picture_date` which correspond to the
+PTS of the current frame, and a `rendered_date` which corresponds to the time at
+which the picture will be rendered if not late.
+
+The user wanting reproductibility of its effects might want to configure the
+processing of its filter on top of timestamp related to `picture_date`.
+
+The example [`clock.c`] shows a basic example of filter using time. It draws a
+triangle which turns around at the speed of one turn per minute, corresponding
+to the current time of the video.
