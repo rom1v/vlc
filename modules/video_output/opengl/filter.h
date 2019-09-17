@@ -46,6 +46,9 @@ struct vlc_gl_filter_input {
     struct vlc_gl_picture   picture;
     /* Current viewpoint in the renderer. */
     vlc_viewpoint_t         viewpoint;
+
+    vlc_tick_t   picture_date;
+    vlc_tick_t   rendering_date;
 };
 
 /**
