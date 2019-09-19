@@ -101,7 +101,9 @@ int vout_display_opengl_SetViewpoint(vout_display_opengl_t *vgl, const vlc_viewp
 void vout_display_opengl_SetWindowAspectRatio(vout_display_opengl_t *vgl,
                                               float f_sar);
 
-void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
+void vout_display_opengl_InputChange(vout_display_opengl_t *vgl,
+                                  unsigned width, unsigned height);
+void vout_display_opengl_OutputChange(vout_display_opengl_t *vgl, int x, int y,
                                   unsigned width, unsigned height);
 
 int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,

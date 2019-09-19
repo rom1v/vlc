@@ -91,8 +91,40 @@ struct vlc_gl_filter
      * @return VLC_SUCCESS if resize is accepted, VLC_EGENERIC if the filter
      *         cannot adapt to this new size
      */
-    int (*resize)(struct vlc_gl_filter *filter,
-                  unsigned *width, unsigned *height);
+    /* int (*resize)(struct vlc_gl_filter *filter,
+                  unsigned *width, unsigned *height);*/
+
+    /**
+     * Called when previous filter *output* has been resized. The filter
+     * implementation should override fmt_out if it should be different from
+     * the previous output.
+     *
+     * @param filter the running filter instance
+     * @param width the new input width and output width
+     * @param height the new input height and output width
+     * @return VLC_SUCCESS if change is accepted, VLC_EGENERIC if the filter
+     *         cannot adapt to this new format
+     */
+    int (*input_change)(struct vlc_gl_filter *filter,
+            video_format_t *fmt_in,
+            video_format_t *fmt_out
+            );
+
+    /**
+     * Called when previous filter *input* has been resized. The filter
+     * implementation should override fmt_in if it should be different from
+     * the previous output.
+     *
+     * @param filter the running filter instance
+     * @param fmt_in The current expected fmt_in
+     * @param fmt_out The changed fmt_out
+     * @return VLC_SUCCESS if change is accepted, VLC_EGENERIC if the filter
+     *         cannot adapt to this new format
+     */
+    int (*output_change)(struct vlc_gl_filter *filter,
+            video_format_t *fmt_in,
+            video_format_t *fmt_out
+            );
 
     /**
      *

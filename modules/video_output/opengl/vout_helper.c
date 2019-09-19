@@ -1234,54 +1234,102 @@ void vout_display_opengl_SetWindowAspectRatio(vout_display_opengl_t *vgl,
     getViewpointMatrixes(vgl, vgl->fmt.projection_mode, vgl->prgm);
 }
 
-void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
+void vout_display_opengl_OutputChange(vout_display_opengl_t *vgl, int x, int y,
                                   unsigned width, unsigned height)
 {
+    struct vout_display_opengl_filter   *wrapper;
+    struct vout_display_opengl_filter   *prev_filter = NULL;
+
     vgl->viewport.x = x;
     vgl->viewport.y = y;
-    vgl->viewport.width  = width;
+    vgl->viewport.width = width;
     vgl->viewport.height = height;
 
-    struct vout_display_opengl_filter *wrapper, *prev_filter = NULL;
-    vlc_list_foreach(wrapper, &vgl->filters, node)
+    /* We received the viewport in parameters,
+     * Update the last fmt_out and bubble up changes,
+     * filters by filters */
+    vlc_list_reverse_foreach(wrapper, &vgl->filters, node)
     {
+        video_format_t fmt_in;
+
+        video_format_Copy(&fmt_in, &wrapper->fmt_in);
         if (prev_filter == NULL)
         {
-            wrapper->fmt_in.i_width =
-            wrapper->fmt_in.i_visible_width = width;
-
-            wrapper->fmt_in.i_height =
-            wrapper->fmt_in.i_visible_height = height;
+            wrapper->fmt_out.i_width =
+                wrapper->fmt_out.i_visible_width = width;
+            wrapper->fmt_out.i_height =
+                wrapper->fmt_out.i_visible_height = height;
         }
         else
         {
-            wrapper->fmt_in.i_width =
-            wrapper->fmt_in.i_visible_width = prev_filter->fmt_out.i_width;
-
-            wrapper->fmt_in.i_height =
-            wrapper->fmt_in.i_visible_height = prev_filter->fmt_out.i_height;
+            video_format_Copy(&prev_filter->fmt_in, &wrapper->fmt_out);
         }
 
-        unsigned out_width  = wrapper->fmt_in.i_width;
-        unsigned out_height = wrapper->fmt_in.i_height;
+        if (wrapper->filter.output_change != NULL)
+        {
+            /* TODO: Handle fmt_out changes
+             * Should propagate changes to the next */
+            if (wrapper->filter.output_change(
+                &wrapper->filter,
+                &wrapper->fmt_in,
+                &wrapper->fmt_out) != VLC_SUCCESS)
+            {
+                /* TODO: Do something else ? */
+                break ;
+            }
+            if (wrapper->framebuffer != 0)
+                filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, false);
 
-        if (wrapper->filter.resize)
-            wrapper->filter.resize(&wrapper->filter, &out_width, &out_height);
+            if (wrapper->framebuffer_resolved != 0)
+                filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, true);
+        }
+        if (video_format_IsSimilar(&wrapper->fmt_in, &fmt_in))
+            break ;
 
-        /* TODO: update with a resize callback: don't copy */
-        wrapper->fmt_out.i_width =
-        wrapper->fmt_out.i_visible_width = out_width;
+        prev_filter = wrapper;
+    }
+}
 
-        wrapper->fmt_out.i_height =
-        wrapper->fmt_out.i_visible_height = out_height;
+void vout_display_opengl_InputChange(vout_display_opengl_t *vgl,
+                                  unsigned width, unsigned height)
+{
+    struct vout_display_opengl_filter   *wrapper;
+    struct vout_display_opengl_filter   *prev_filter = NULL;
 
+    vlc_list_foreach(wrapper, &vgl->filters, node)
+    {
+        video_format_t fmt_out;
+
+        video_format_Copy(&fmt_out, &wrapper->fmt_out);
+        if (prev_filter == NULL)
+        {
+            wrapper->fmt_in.i_width =
+                wrapper->fmt_in.i_visible_width = width;
+            wrapper->fmt_in.i_height =
+                wrapper->fmt_in.i_visible_height = height;
+        }
+        else
+        {
+            video_format_Copy(&prev_filter->fmt_out, &wrapper->fmt_in);
+        }
+
+        if (wrapper->filter.input_change != NULL)
+        {
+            /* TODO: handle VLC_EGENERIC */
+            wrapper->filter.input_change(
+                &wrapper->filter,
+                &wrapper->fmt_in,
+                &wrapper->fmt_out);
+        }
         if (wrapper->framebuffer != 0)
             filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, false);
 
         if (wrapper->framebuffer_resolved != 0)
             filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, true);
 
-        /* Store previous buffer to chain correctly. */
+        if (video_format_IsSimilar(&fmt_out, &wrapper->fmt_out))
+            break ;
+
         prev_filter = wrapper;
     }
 }
@@ -1900,7 +1948,14 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     vlc_list_foreach(wrapper, &vgl->filters, node)
     {
         struct vlc_gl_filter *object = &wrapper->filter;
-        vgl->vt.Viewport(0, 0, wrapper->fmt_out.i_visible_width, wrapper->fmt_out.i_visible_height);
+
+        if (wrapper->framebuffer == 0)
+            vgl->vt.Viewport(vgl->viewport.x, vgl->viewport.y,
+                             vgl->viewport.width, vgl->viewport.height);
+        else
+            vgl->vt.Viewport(0, 0,
+                             wrapper->fmt_out.i_visible_width,
+                             wrapper->fmt_out.i_visible_height);
 
         /* If the previous filter was not a blending filter and the current
          * filter (wrapper) is not blending either, we must update
@@ -1943,7 +1998,6 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
             vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, last_framebuffer);
             vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, wrapper->framebuffer);
 
-            vgl->vt.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             vgl->vt.Clear(GL_COLOR_BUFFER_BIT);
             if (prev_filter && prev_filter->filter.info.blend)
             {
@@ -1994,13 +2048,15 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
             wrapper->texture_count = prev_filter->texture_count;
         }
 
+        if (wrapper->framebuffer != 0)
+            filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, false);
+
         prev_filter = wrapper;
 
         if (wrapper->framebuffer != 0)
             prev_filter_buffered = wrapper;
     }
-    vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-    vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    vgl->vt.BindFramebuffer(GL_FRAMEBUFFER, 0);
 
     /* Display */
     vlc_gl_Swap(vgl->gl);
