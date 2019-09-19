@@ -127,6 +127,18 @@ libgl_chroma_converter_i420_plugin_la_SOURCES = video_output/opengl/chroma_conve
 libgl_chroma_converter_i420_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
 libgl_chroma_converter_i420_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
+libgl_filter_commandblend_plugin_la_SOURCES = video_output/opengl/filters/commandblend.c \
+										  $(OPENGL_COMMONSOURCES) \
+									      video_output/opengl/shader_builder.c
+libgl_filter_commandblend_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_filter_commandblend_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
+
+libgl_chroma_converter_nv12_to_rgb_plugin_la_SOURCES = video_output/opengl/chroma_converters/nv12_to_rgb.c \
+                                                       $(OPENGL_COMMONSOURCES) \
+                                                       video_output/opengl/shader_builder.c
+libgl_chroma_converter_nv12_to_rgb_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_chroma_converter_nv12_to_rgb_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
+
 libglconv_vaapi_plugin_la_SOURCES = video_output/opengl/converter_vaapi.c \
 	video_output/opengl/converter.h \
 	hw/vaapi/vlc_vaapi.c hw/vaapi/vlc_vaapi.h
@@ -147,7 +159,8 @@ vout_LTLIBRARIES += \
 	libgl_filter_clock_plugin.la \
 	libgl_filter_identity_plugin.la \
 	libgl_chroma_converter_i420_plugin.la \
-	libgl_chroma_converter_identity_plugin.la
+	libgl_chroma_converter_identity_plugin.la \
+	libgl_filter_commandblend_plugin.la
 
 if HAVE_EGL
 if HAVE_VAAPI
