@@ -2157,6 +2157,50 @@ LoadChromaConverterSampler(vout_display_opengl_t *vgl,
     return priv;
 }
 
+static void
+DeleteChromaConverter(struct vlc_gl_chroma_converter_priv *priv)
+{
+    struct vlc_gl_chroma_converter *converter = &priv->converter;
+    converter->ops->close(converter);
+    vlc_object_delete(converter);
+}
+
+static int
+InjectChromaConverterAndPrepare(vout_display_opengl_t *vgl,
+                                struct vout_display_opengl_filter *wrapper,
+                                const video_format_t *fmt_in)
+{
+    wrapper->converter_priv =
+        LoadChromaConverterSampler(vgl, fmt_in, &wrapper->fmt_in,
+                                   &wrapper->sampler);
+    if (!wrapper->converter_priv)
+        return VLC_EGENERIC;
+
+    /*
+     * The filter module requested some input format, we just injected a shader
+     * sampler taking care of the conversion, so now its real input format is
+     * the input of the fragment shader.
+     */
+    video_format_Clean(&wrapper->fmt_in);
+    int ret = video_format_Copy(&wrapper->fmt_in, fmt_in);
+    if (ret != VLC_SUCCESS)
+        goto error;
+
+    if (wrapper->filter.prepare)
+    {
+        ret = wrapper->filter.prepare(&wrapper->filter, &wrapper->sampler);
+        if (ret != VLC_SUCCESS)
+            goto error;
+    }
+
+    return VLC_SUCCESS;
+
+error:
+    DeleteChromaConverter(wrapper->converter_priv);
+
+    return VLC_EGENERIC;
+}
+
 static struct vout_display_opengl_filter *
 CreateFilter(vout_display_opengl_t *vgl,
              const char *name,
@@ -2202,38 +2246,12 @@ CreateFilter(vout_display_opengl_t *vgl,
 
     assert(wrapper->filter.filter);
 
-    wrapper->converter_priv =
-        LoadChromaConverterSampler(vgl, fmt_in, &wrapper->fmt_in,
-                                   &wrapper->sampler);
-    if (!wrapper->converter_priv)
-        goto error4;
-
-    /*
-     * The filter module requested some input format, we just injected a shader
-     * sampler taking care of the conversion, so now its real input format is
-     * the input of the fragment shader.
-     */
-    video_format_Clean(&wrapper->fmt_in);
-    ret = video_format_Copy(&wrapper->fmt_in, fmt_in);
+    ret = InjectChromaConverterAndPrepare(vgl, wrapper, fmt_in);
     if (ret != VLC_SUCCESS)
         goto error4;
 
-    if (wrapper->filter.prepare)
-    {
-        ret = wrapper->filter.prepare(&wrapper->filter, &wrapper->sampler);
-        if (ret != VLC_SUCCESS)
-            goto error5;
-    }
-
     return wrapper;
 
-error5:
-    {
-        struct vlc_gl_chroma_converter *converter =
-            &wrapper->converter_priv->converter;
-        converter->ops->close(converter);
-        vlc_object_delete(converter);
-    }
 error4:
     if (wrapper->filter.close)
         wrapper->filter.close(&wrapper->filter);
@@ -2253,10 +2271,7 @@ DeleteFilter(struct vout_display_opengl_filter *wrapper)
     if (wrapper->filter.close)
         wrapper->filter.close(&wrapper->filter);
 
-    struct vlc_gl_chroma_converter *converter =
-        &wrapper->converter_priv->converter;
-    converter->ops->close(converter);
-    vlc_object_delete(converter);
+    DeleteChromaConverter(wrapper->converter_priv);
 
     video_format_Clean(&wrapper->fmt_in);
     video_format_Clean(&wrapper->fmt_out);
