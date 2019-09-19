@@ -2327,7 +2327,8 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         {
             /* insert a filter which does nothing in itself, but its sampler
              * will render the input picture with chroma converted */
-            identity_filter = CreateFilter(vgl, "identity", NULL, fmt_in);
+            identity_filter = CreateFilter(vgl, "identity", NULL,
+                                           &wrapper->fmt_in);
             if (!identity_filter)
             {
                 msg_Err(vgl->gl, "Cannot insert identity filter for blending");
