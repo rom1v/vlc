@@ -2228,6 +2228,7 @@ CreateFilter(vout_display_opengl_t *vgl,
 
     /* TODO framebuffer configuration */
 
+    wrapper->converter_priv = NULL;
     wrapper->framebuffer = 0;
     wrapper->texture_count = 0;
     wrapper->filter.vt = &vgl->vt;
@@ -2246,15 +2247,8 @@ CreateFilter(vout_display_opengl_t *vgl,
 
     assert(wrapper->filter.filter);
 
-    ret = InjectChromaConverterAndPrepare(vgl, wrapper, fmt_in);
-    if (ret != VLC_SUCCESS)
-        goto error4;
-
     return wrapper;
 
-error4:
-    if (wrapper->filter.close)
-        wrapper->filter.close(&wrapper->filter);
 error3:
     video_format_Clean(&wrapper->fmt_out);
 error2:
@@ -2271,7 +2265,8 @@ DeleteFilter(struct vout_display_opengl_filter *wrapper)
     if (wrapper->filter.close)
         wrapper->filter.close(&wrapper->filter);
 
-    DeleteChromaConverter(wrapper->converter_priv);
+    if (wrapper->converter_priv)
+        DeleteChromaConverter(wrapper->converter_priv);
 
     video_format_Clean(&wrapper->fmt_in);
     video_format_Clean(&wrapper->fmt_out);
@@ -2339,6 +2334,24 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
                 goto error;
             }
         }
+    }
+
+    if (identity_filter)
+    {
+        ret = InjectChromaConverterAndPrepare(vgl, identity_filter, fmt_in);
+        if (ret != VLC_SUCCESS)
+            goto error;
+
+        ret = InjectChromaConverterAndPrepare(vgl, wrapper,
+                                              &identity_filter->fmt_out);
+        if (ret != VLC_SUCCESS)
+            goto error;
+    }
+    else
+    {
+        ret = InjectChromaConverterAndPrepare(vgl, wrapper, fmt_in);
+        if (ret != VLC_SUCCESS)
+            goto error;
     }
 
     if (prev_filter && !wrapper->filter.info.blend)
