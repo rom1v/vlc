@@ -140,3 +140,36 @@ processing of its filter on top of timestamp related to `picture_date`.
 The example [`clock.c`] shows a basic example of filter using time. It draws a
 triangle which turns around at the speed of one turn per minute, corresponding
 to the current time of the video.
+
+## Complex pipeline control using filters
+
+We saw that filters could get parameters through the `config_chain_t` object.
+But this doesn't allow complex setup of the processing, for example to
+configure the timing of predefined effects.
+
+In addition, adding one filter per effect might create a long enough pipeline
+to raise performance issues. So the effects must be mutualized, with care
+taken for the order of execution.
+
+To achieve this, the most common use case would be to introduce a command
+pattern that the client application can leverage through intermediate file or
+primitives like pipes.
+
+This section explains the creation of such filter [`commandblend.c`] using an
+intermediate file.
+
+Example of command configuration file:
+
+```
+r 0 0 1000 1000
+c 100 0 0
+r 1000 1000 2000 200
+
+s 1000000
+r 0 0 2000 2000
+e 2000000
+
+s 4000000
+r 0 0 2000 2000
+e 5000000
+```
