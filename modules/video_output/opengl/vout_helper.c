@@ -2208,6 +2208,16 @@ CreateFilter(vout_display_opengl_t *vgl,
     if (!wrapper->converter_priv)
         goto error4;
 
+    /*
+     * The filter module requested some input format, we just injected a shader
+     * sampler taking care of the conversion, so now its real input format is
+     * the input of the fragment shader.
+     */
+    video_format_Clean(&wrapper->fmt_in);
+    ret = video_format_Copy(&wrapper->fmt_in, fmt_in);
+    if (ret != VLC_SUCCESS)
+        goto error4;
+
     if (wrapper->filter.prepare)
     {
         ret = wrapper->filter.prepare(&wrapper->filter, &wrapper->sampler);
