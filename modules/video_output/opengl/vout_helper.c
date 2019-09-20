@@ -2322,10 +2322,9 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
         if (!insert_identity_filter)
         {
+            bool same_chroma = wrapper->fmt_in.i_chroma ==
+                               wrapper->fmt_out.i_chroma;
             /* if the chroma is not the same, we need to convert chroma first */
-            const char *chroma_module =
-                module_get_name(wrapper->converter_priv->module, false);
-            bool same_chroma = !strcmp("identity", chroma_module);
             insert_identity_filter = !same_chroma;
         }
 
