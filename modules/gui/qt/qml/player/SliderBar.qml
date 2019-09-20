@@ -80,7 +80,7 @@ Slider {
          */
         target: player
         enabled: !_isHold
-        onPositionChanged: control.value = player.position
+        onPositionChanged: control.value = Math.round(control.width * player.position) / control.width
     }
 
     height: control.barHeight + VLCStyle.fontHeight_normal + VLCStyle.margin_xxsmall * 2
