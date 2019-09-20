@@ -938,7 +938,7 @@ PlayerControllerPrivate::PlayerControllerPrivate(PlayerController *playercontrol
     QObject::connect( &m_autoscale, &QVLCBool::valueChanged, q_ptr, &PlayerController::autoscaleChanged );
     QObject::connect( &m_audioVisualization, &VLCVarChoiceModel::hasCurrentChanged, q_ptr, &PlayerController::hasAudioVisualizationChanged );
 
-    m_interpolate_timer.setInterval( 17 ); /* XXX ~60 fps */
+    m_interpolate_timer.setInterval( 8 );
 }
 
 PlayerController::PlayerController( intf_thread_t *_p_intf )
