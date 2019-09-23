@@ -77,20 +77,20 @@ void decoder_Destroy( decoder_t *p_dec )
 
 int decoder_UpdateVideoFormat( decoder_t *dec )
 {
-    vlc_assert( dec->fmt_in.i_cat == VIDEO_ES && dec->cbs != NULL );
-    if ( unlikely(dec->fmt_in.i_cat != VIDEO_ES || dec->cbs == NULL ||
-                  dec->cbs->video.format_update == NULL) )
+    vlc_assert( dec->fmt_in.i_cat == VIDEO_ES && dec->owner_ops != NULL );
+    if ( unlikely(dec->fmt_in.i_cat != VIDEO_ES || dec->owner_ops == NULL ||
+                  dec->owner_ops->video.format_update == NULL) )
         return -1;
 
-    return dec->cbs->video.format_update( dec );
+    return dec->owner_ops->video.format_update( dec );
 }
 
 picture_t *decoder_NewPicture( decoder_t *dec )
 {
-    vlc_assert( dec->fmt_in.i_cat == VIDEO_ES && dec->cbs != NULL );
-    if (dec->cbs->video.buffer_new == NULL)
+    vlc_assert( dec->fmt_in.i_cat == VIDEO_ES && dec->owner_ops != NULL );
+    if (dec->owner_ops->video.buffer_new == NULL)
         return picture_NewFromFormat( &dec->fmt_out.video );
-    return dec->cbs->video.buffer_new( dec );
+    return dec->owner_ops->video.buffer_new( dec );
 }
 
 struct vlc_decoder_device_priv

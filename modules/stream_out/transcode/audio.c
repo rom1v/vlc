@@ -114,14 +114,14 @@ int transcode_audio_init( sout_stream_t *p_stream, const es_format_t *p_fmt,
      */
     dec_get_owner( id->p_decoder )->id = id;
 
-    static const struct decoder_owner_callbacks dec_cbs =
+    static const struct decoder_owner_ops dec_ops =
     {
         .audio = {
             .format_update = audio_update_format,
             .queue = decoder_queue_audio,
         },
     };
-    id->p_decoder->cbs = &dec_cbs;
+    id->p_decoder->owner_ops = &dec_ops;
     id->p_decoder->pf_decode = NULL;
     id->p_decoder->p_module = module_need_var( id->p_decoder, "audio decoder", "codec" );
     if( !id->p_decoder->p_module )

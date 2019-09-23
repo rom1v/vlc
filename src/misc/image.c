@@ -675,14 +675,14 @@ static decoder_t *CreateDecoder( image_handler_t *p_image, const es_format_t *fm
 
     decoder_Init( p_dec, fmt );
 
-    static const struct decoder_owner_callbacks dec_cbs =
+    static const struct decoder_owner_ops dec_ops =
     {
         .video = {
             .format_update = video_update_format,
             .queue = ImageQueueVideo,
         },
     };
-    p_dec->cbs = &dec_cbs;
+    p_dec->owner_ops = &dec_ops;
 
     /* Find a suitable decoder module */
     p_dec->p_module = module_need_var( p_dec, "video decoder", "codec" );

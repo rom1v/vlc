@@ -163,14 +163,14 @@ int transcode_video_init( sout_stream_t *p_stream, const es_format_t *p_fmt,
      */
     dec_get_owner( id->p_decoder )->id = id;
 
-    static const struct decoder_owner_callbacks dec_cbs =
+    static const struct decoder_owner_ops dec_ops =
     {
         .video = {
             .format_update = video_update_format_decoder,
             .queue = decoder_queue_video,
         },
     };
-    id->p_decoder->cbs = &dec_cbs;
+    id->p_decoder->owner_ops = &dec_ops;
 
     id->p_decoder->pf_decode = NULL;
     id->p_decoder->pf_get_cc = NULL;

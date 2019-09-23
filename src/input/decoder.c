@@ -1698,7 +1698,7 @@ static void *DecoderThread( void *p_data )
     vlc_assert_unreachable();
 }
 
-static const struct decoder_owner_callbacks dec_video_cbs =
+static const struct decoder_owner_ops dec_video_ops =
 {
     .video = {
         .format_update = ModuleThread_UpdateVideoFormat,
@@ -1710,7 +1710,7 @@ static const struct decoder_owner_callbacks dec_video_cbs =
     },
     .get_attachments = InputThread_GetInputAttachments,
 };
-static const struct decoder_owner_callbacks dec_thumbnailer_cbs =
+static const struct decoder_owner_ops dec_thumbnailer_ops =
 {
     .video = {
         .format_update = thumbnailer_update_format,
@@ -1719,7 +1719,7 @@ static const struct decoder_owner_callbacks dec_thumbnailer_cbs =
     },
     .get_attachments = InputThread_GetInputAttachments,
 };
-static const struct decoder_owner_callbacks dec_audio_cbs =
+static const struct decoder_owner_ops dec_audio_ops =
 {
     .audio = {
         .format_update = ModuleThread_UpdateAudioFormat,
@@ -1727,7 +1727,7 @@ static const struct decoder_owner_callbacks dec_audio_cbs =
     },
     .get_attachments = InputThread_GetInputAttachments,
 };
-static const struct decoder_owner_callbacks dec_spu_cbs =
+static const struct decoder_owner_ops dec_spu_ops =
 {
     .spu = {
         .buffer_new = ModuleThread_NewSpuBuffer,
@@ -1839,15 +1839,15 @@ static struct decoder_owner * CreateDecoder( vlc_object_t *p_parent,
     {
         case VIDEO_ES:
             if( !b_thumbnailing )
-                p_dec->cbs = &dec_video_cbs;
+                p_dec->owner_ops = &dec_video_ops;
             else
-                p_dec->cbs = &dec_thumbnailer_cbs;
+                p_dec->owner_ops = &dec_thumbnailer_ops;
             break;
         case AUDIO_ES:
-            p_dec->cbs = &dec_audio_cbs;
+            p_dec->owner_ops = &dec_audio_ops;
             break;
         case SPU_ES:
-            p_dec->cbs = &dec_spu_cbs;
+            p_dec->owner_ops = &dec_spu_ops;
             break;
         default:
             msg_Err( p_dec, "unknown ES format" );

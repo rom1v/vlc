@@ -298,14 +298,14 @@ static void *Add( sout_stream_t *p_stream, const es_format_t *p_fmt )
     p_sys->p_decoder->fmt_out.p_extra = 0;
     p_sys->p_decoder->pf_decode = NULL;
 
-    static const struct decoder_owner_callbacks dec_cbs =
+    static const struct decoder_owner_ops dec_ops =
     {
         .video = {
             .format_update = video_update_format_decoder,
             .queue = decoder_queue_video,
         },
     };
-    p_sys->p_decoder->cbs = &dec_cbs;
+    p_sys->p_decoder->owner_ops = &dec_ops;
 
     p_owner->video = p_fmt->video;
     p_owner->p_stream = p_stream;

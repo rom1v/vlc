@@ -451,13 +451,13 @@ VideoDecodedStream::~VideoDecodedStream()
 
 void VideoDecodedStream::setCallbacks()
 {
-    static struct decoder_owner_callbacks dec_cbs;
-    memset(&dec_cbs, 0, sizeof(dec_cbs));
-    dec_cbs.video.format_update = VideoDecCallback_update_format;
-    dec_cbs.video.queue = VideoDecCallback_queue;
-    dec_cbs.video.queue_cc = captionsOutputBuffer ? VideoDecCallback_queue_cc : NULL;
+    static struct decoder_owner_ops dec_ops;
+    memset(&dec_ops, 0, sizeof(dec_ops));
+    dec_ops.video.format_update = VideoDecCallback_update_format;
+    dec_ops.video.queue = VideoDecCallback_queue;
+    dec_ops.video.queue_cc = captionsOutputBuffer ? VideoDecCallback_queue_cc : NULL;
 
-    p_decoder->cbs = &dec_cbs;
+    p_decoder->owner_ops = &dec_ops;
 }
 
 void VideoDecodedStream::setCaptionsOutputBuffer(AbstractStreamOutputBuffer *buf)
@@ -500,7 +500,7 @@ static picture_t *transcode_video_filter_buffer_new(filter_t *p_filter)
     return picture_NewFromFormat(&p_filter->fmt_out.video);
 }
 
-static const struct filter_video_callbacks transcode_filter_video_cbs =
+static const struct filter_video_callbacks transcode_filter_video_ops =
 {
     transcode_video_filter_buffer_new,
 };
@@ -510,7 +510,7 @@ filter_chain_t * VideoDecodedStream::VideoFilterCreate(const es_format_t *p_srcf
     filter_chain_t *p_chain;
     filter_owner_t owner;
     memset(&owner, 0, sizeof(owner));
-    owner.video = &transcode_filter_video_cbs;
+    owner.video = &transcode_filter_video_ops;
 
     p_chain = filter_chain_NewVideo(p_stream, false, &owner);
     if(!p_chain)
@@ -660,11 +660,11 @@ int AudioDecodedStream::AudioDecCallback_update_format(decoder_t *p_dec)
 
 void AudioDecodedStream::setCallbacks()
 {
-    static struct decoder_owner_callbacks dec_cbs;
-    memset(&dec_cbs, 0, sizeof(dec_cbs));
-    dec_cbs.audio.format_update = AudioDecCallback_update_format;
-    dec_cbs.audio.queue = AudioDecCallback_queue;
-    p_decoder->cbs = &dec_cbs;
+    static struct decoder_owner_callbacks dec_ops;
+    memset(&dec_ops, 0, sizeof(dec_ops));
+    dec_ops.audio.format_update = AudioDecCallback_update_format;
+    dec_ops.audio.queue = AudioDecCallback_queue;
+    p_decoder->owner_ops = &dec_ops;
 }
 
 
