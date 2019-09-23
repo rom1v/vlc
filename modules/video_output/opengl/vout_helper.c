@@ -1235,7 +1235,7 @@ void vout_display_opengl_SetWindowAspectRatio(vout_display_opengl_t *vgl,
 }
 
 void vout_display_opengl_OutputChange(vout_display_opengl_t *vgl, int x, int y,
-                                  unsigned width, unsigned height)
+                                      unsigned width, unsigned height)
 {
     struct vout_display_opengl_filter   *wrapper;
     struct vout_display_opengl_filter   *prev_filter = NULL;
@@ -1262,8 +1262,11 @@ void vout_display_opengl_OutputChange(vout_display_opengl_t *vgl, int x, int y,
         }
         else
         {
-            video_format_Copy(&prev_filter->fmt_in, &wrapper->fmt_out);
+            video_format_Copy(&wrapper->fmt_out, &prev_filter->fmt_in);
         }
+
+        if (wrapper->filter.info.blend)
+            video_format_Copy(&wrapper->fmt_in, &wrapper->fmt_out);
 
         if (wrapper->filter.output_change != NULL)
         {
@@ -1277,12 +1280,13 @@ void vout_display_opengl_OutputChange(vout_display_opengl_t *vgl, int x, int y,
                 /* TODO: Do something else ? */
                 break ;
             }
-            if (wrapper->framebuffer != 0)
-                filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, false);
-
-            if (wrapper->framebuffer_resolved != 0)
-                filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, true);
         }
+        if (wrapper->framebuffer != 0)
+            filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, false);
+
+        if (wrapper->framebuffer_resolved != 0)
+            filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, true);
+
         if (video_format_IsSimilar(&wrapper->fmt_in, &fmt_in))
             break ;
 
@@ -1291,14 +1295,23 @@ void vout_display_opengl_OutputChange(vout_display_opengl_t *vgl, int x, int y,
 }
 
 void vout_display_opengl_InputChange(vout_display_opengl_t *vgl,
-                                  unsigned width, unsigned height)
+                                     unsigned width, unsigned height)
 {
     struct vout_display_opengl_filter   *wrapper;
     struct vout_display_opengl_filter   *prev_filter = NULL;
 
+    msg_Info(vgl->gl, "Resizing input to %ux%u", width, height);
+
     vlc_list_foreach(wrapper, &vgl->filters, node)
     {
         video_format_t fmt_out;
+        msg_Dbg(vgl->gl, "+ resizing filter \"%s\"", module_get_name(wrapper->module, false));
+        msg_Dbg(vgl->gl, "  - initial fmt_in size: width = %u, height = %u",
+                wrapper->fmt_in.i_visible_width,
+                wrapper->fmt_in.i_visible_height);
+        msg_Dbg(vgl->gl, "  - initial fmt_out size: width = %u, height = %u",
+                wrapper->fmt_out.i_visible_width,
+                wrapper->fmt_out.i_visible_height);
 
         video_format_Copy(&fmt_out, &wrapper->fmt_out);
         if (prev_filter == NULL)
@@ -1310,8 +1323,11 @@ void vout_display_opengl_InputChange(vout_display_opengl_t *vgl,
         }
         else
         {
-            video_format_Copy(&prev_filter->fmt_out, &wrapper->fmt_in);
+            video_format_Copy(&wrapper->fmt_in, &prev_filter->fmt_in);
         }
+
+        /* Force propagation of input format by default. */
+        video_format_Copy(&wrapper->fmt_out, &wrapper->fmt_in);
 
         if (wrapper->filter.input_change != NULL)
         {
@@ -1327,8 +1343,18 @@ void vout_display_opengl_InputChange(vout_display_opengl_t *vgl,
         if (wrapper->framebuffer_resolved != 0)
             filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, true);
 
+        msg_Dbg(vgl->gl, "  - final fmt_in size: width = %u, height = %u",
+                wrapper->fmt_in.i_visible_width,
+                wrapper->fmt_in.i_visible_height);
+        msg_Dbg(vgl->gl, "  - final fmt_out size: width = %u, height = %u",
+                wrapper->fmt_out.i_visible_width,
+                wrapper->fmt_out.i_visible_height);
+
         if (video_format_IsSimilar(&fmt_out, &wrapper->fmt_out))
-            break ;
+        {
+            msg_Dbg(vgl->gl, "+ fmt_out unchanged");
+            break;
+        }
 
         prev_filter = wrapper;
     }
@@ -1877,9 +1903,6 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     if (vgl->viewport.width == 0 || vgl->viewport.height == 0)
         return VLC_SUCCESS;
 
-    vgl->vt.Viewport(vgl->viewport.x, vgl->viewport.y,
-                     vgl->viewport.width, vgl->viewport.height);
-
     /* Why drawing here and not in Render()? Because this way, the
        OpenGL providers can call vout_display_opengl_Display to force redraw.
        Currently, the OS X provider uses it to get a smooth window resizing */
@@ -1926,6 +1949,10 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         if (ret != VLC_SUCCESS)
             return ret;
 
+        vout_display_opengl_InputChange(vgl,
+                                        source->i_visible_width,
+                                        source->i_visible_height);
+
         vgl->last_source.i_x_offset = source->i_x_offset;
         vgl->last_source.i_y_offset = source->i_y_offset;
         vgl->last_source.i_visible_width = source->i_visible_width;
@@ -1949,13 +1976,34 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     {
         struct vlc_gl_filter *object = &wrapper->filter;
 
-        if (wrapper->framebuffer == 0)
+        msg_Warn(&wrapper->filter, "[%s]: fmt_in: width = %u, height = %u",
+                module_get_name(wrapper->module, false),
+                wrapper->fmt_in.i_visible_width,
+                wrapper->fmt_in.i_visible_height);
+
+        msg_Warn(&wrapper->filter, "[%s]: fmt_out: width = %u, height = %u",
+                module_get_name(wrapper->module, false),
+                wrapper->fmt_out.i_visible_width,
+                wrapper->fmt_out.i_visible_height);
+
+        if (wrapper == vlc_list_last_entry_or_null(
+                &vgl->filters, struct vout_display_opengl_filter, node))
+        {
             vgl->vt.Viewport(vgl->viewport.x, vgl->viewport.y,
                              vgl->viewport.width, vgl->viewport.height);
+        }
         else
+        {
+            if (wrapper->fmt_out.i_visible_width == 0 ||
+                wrapper->fmt_out.i_visible_height == 0)
+            {
+                /* We can't draw empty images. */
+                //return VLC_SUCCESS;;
+            }
             vgl->vt.Viewport(0, 0,
                              wrapper->fmt_out.i_visible_width,
                              wrapper->fmt_out.i_visible_height);
+        }
 
         /* If the previous filter was not a blending filter and the current
          * filter (wrapper) is not blending either, we must update
@@ -1993,7 +2041,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         }
 
         /* Initialize rendering state according to filter type. */
-        if (!object->info.blend)
+        if (!wrapper->filter.info.blend)
         {
             vgl->vt.BindFramebuffer(GL_READ_FRAMEBUFFER, last_framebuffer);
             vgl->vt.BindFramebuffer(GL_DRAW_FRAMEBUFFER, wrapper->framebuffer);
@@ -2047,9 +2095,6 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
                    prev_filter->texture_count * sizeof(GLuint));
             wrapper->texture_count = prev_filter->texture_count;
         }
-
-        if (wrapper->framebuffer != 0)
-            filter_UpdateFramebuffer(vgl, wrapper, wrapper->msaa_level, false);
 
         prev_filter = wrapper;
 
