@@ -79,6 +79,26 @@
 # define GL_ASSERT_NOERROR()
 #endif
 
+#define CHECK_RET(obj, ret, error, message) \
+    if ((ret) != VLC_SUCCESS) {\
+        msg_Err(obj, "%s:%d: %s, %s", \
+                __FILE__, __LINE__, \
+                (ret) == VLC_EGENERIC ? "VLC_EGENERIC" : \
+                (ret) == VLC_ENOMEM ? "VLC_ENOMEM" : \
+                "ERROR", message); \
+        goto error; \
+    }
+
+#define CHECK_RETF(obj, ret, error, message, ...) \
+    if ((ret) != VLC_SUCCESS) {\
+        msg_Err(obj, "%s:%d: %s, " message, \
+                __FILE__, __LINE__, \
+                (ret) == VLC_EGENERIC ? "VLC_EGENERIC" : \
+                (ret) == VLC_ENOMEM ? "VLC_ENOMEM" : \
+                "ERROR", __VA_ARGS__); \
+        goto error; \
+    }
+
 typedef struct {
     GLuint   texture;
     GLsizei  width;
@@ -2183,14 +2203,12 @@ InjectChromaConverterAndPrepare(vout_display_opengl_t *vgl,
      */
     video_format_Clean(&wrapper->fmt_in);
     int ret = video_format_Copy(&wrapper->fmt_in, fmt_in);
-    if (ret != VLC_SUCCESS)
-        goto error;
+    CHECK_RET(vgl->gl, ret, error, "cannot copy format");
 
     if (wrapper->filter.prepare)
     {
         ret = wrapper->filter.prepare(&wrapper->filter, &wrapper->sampler);
-        if (ret != VLC_SUCCESS)
-            goto error;
+        CHECK_RET(&wrapper->filter, ret, error, "cannot prepare filter");
     }
 
     return VLC_SUCCESS;
@@ -2337,16 +2355,18 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
         /* The first filter gets the sampler to convert the format. */
         ret = InjectChromaConverterAndPrepare(vgl, identity_filter, fmt_in);
-        if (ret != VLC_SUCCESS)
-            goto error;
+        CHECK_RETF(&wrapper->filter, ret, error,
+                   "cannot inject chroma converter for identity filter when "
+                   "appending filter %s", name);
+
 
         /* Change the input format of the the filter being created. */
         fmt_in = &identity_filter->fmt_out;
     }
 
     ret = InjectChromaConverterAndPrepare(vgl, wrapper, fmt_in);
-    if (ret != VLC_SUCCESS)
-        goto error;
+    CHECK_RETF(&wrapper->filter, ret, error,
+               "cannot inject chroma converter for filter %s", name);
 
     if (prev_filter && !wrapper->filter.info.blend)
     {
@@ -2379,8 +2399,8 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
             ret = filter_UpdateFramebuffer(vgl, pointer_current,
                                            pointer_current->msaa_level,
                                            false);
-            if (ret != VLC_SUCCESS)
-                goto error;
+            CHECK_RETF(&pointer_current->filter, ret, error,
+                       "cannot update framebuffer for filter %s", name);
 
             if (pointer_current->msaa_level > 0)
             {
@@ -2388,8 +2408,9 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
                 ret = filter_UpdateFramebuffer(vgl, pointer_current,
                                                pointer_current->msaa_level,
                                                true);
-                if (ret != VLC_SUCCESS)
-                    goto error;
+                CHECK_RETF(&pointer_current->filter, ret, error,
+                           "cannot update MSAA resolving framebuffer for filter %s",
+                           name);
             }
         }
     }
