@@ -2310,57 +2310,49 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
     int ret = VLC_SUCCESS;
     struct vout_display_opengl_filter *identity_filter = NULL;
 
-    if (wrapper->filter.info.blend)
+    /* We always need a filter to render the picture to blend with. */
+    bool insert_identity_filter = !prev_filter && wrapper->filter.info.blend;
+
+    /* If previous filter has not the correct format, insert a filter to
+     * execute the copy and conversion anyway. */
+    if (!insert_identity_filter && wrapper->filter.info.blend)
     {
-        /* we always need a filter to render the picture to blend with */
-        bool insert_identity_filter = !prev_filter;
-
-        if (!insert_identity_filter)
-        {
-            bool same_chroma = wrapper->fmt_in.i_chroma ==
-                               wrapper->fmt_out.i_chroma;
-            /* if the chroma is not the same, we need to convert chroma first */
-            insert_identity_filter = !same_chroma;
-        }
-
-        if (insert_identity_filter)
-        {
-            /* insert a filter which does nothing in itself, but its sampler
-             * will render the input picture with chroma converted */
-            identity_filter = CreateFilter(vgl, "identity", NULL,
-                                           &wrapper->fmt_in);
-            if (!identity_filter)
-            {
-                msg_Err(vgl->gl, "Cannot insert identity filter for blending");
-                goto error;
-            }
-        }
+        bool same_chroma = wrapper->fmt_in.i_chroma ==
+            wrapper->fmt_out.i_chroma;
+        /* if the chroma is not the same, we need to convert chroma first */
+        insert_identity_filter = !same_chroma;
     }
 
-    if (identity_filter)
+    if (insert_identity_filter)
     {
+        /* insert a filter which does nothing in itself, but its sampler
+         * will render the input picture with chroma converted */
+        identity_filter = CreateFilter(vgl, "identity", NULL,
+                                       &wrapper->fmt_in);
+        if (!identity_filter)
+        {
+            msg_Err(vgl->gl, "Cannot insert identity filter for blending");
+            goto error;
+        }
+
+        /* The first filter gets the sampler to convert the format. */
         ret = InjectChromaConverterAndPrepare(vgl, identity_filter, fmt_in);
         if (ret != VLC_SUCCESS)
             goto error;
 
-        ret = InjectChromaConverterAndPrepare(vgl, wrapper,
-                                              &identity_filter->fmt_out);
-        if (ret != VLC_SUCCESS)
-            goto error;
+        /* Change the input format of the the filter being created. */
+        fmt_in = &identity_filter->fmt_out;
     }
-    else
-    {
-        ret = InjectChromaConverterAndPrepare(vgl, wrapper, fmt_in);
-        if (ret != VLC_SUCCESS)
-            goto error;
-    }
+
+    ret = InjectChromaConverterAndPrepare(vgl, wrapper, fmt_in);
+    if (ret != VLC_SUCCESS)
+        goto error;
 
     if (prev_filter && !wrapper->filter.info.blend)
     {
         /* Filters won't blend on previous framebuffer, so generate a
-         * framebuffer for the previous filter output. If the previous
-         * filter is actually a converter, there is no need to generate
-         * the target currently. */
+         * framebuffer for the first previous filter which generate outputs,
+         * meaning that it's not a blend filter too. */
 
         struct vlc_list *pointer = &prev_filter->node;
         struct vout_display_opengl_filter *pointer_current = prev_filter;
@@ -2370,15 +2362,18 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         {
             pointer = pointer->prev;
 
-            /* We reached the beginning of the list. */
-            if (pointer == &vgl->filters)
-                break;
+            /* We reached the beginning of the list but found nothing.
+             * This should never happen as we should at least add a copying
+             * filter at the beginning of the pipeline. */
+            assert(pointer != &vgl->filters);
 
             pointer_current = container_of(
                     pointer, struct vout_display_opengl_filter, node);
         }
 
-        /* We have an actual previous filter needing a framebuffer. */
+
+        /* We found the previous filter for which we'll create a framebuffer.
+         * Maybe it will need a second framebuffer for resolving MSAA too. */
         if (pointer != &vgl->filters && pointer_current->framebuffer == 0)
         {
             ret = filter_UpdateFramebuffer(vgl, pointer_current,
@@ -2389,14 +2384,13 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
 
             if (pointer_current->msaa_level > 0)
             {
-                /* Generate resolve texture for filter */
+                /* Generate a framebuffer for resolving MSAA. */
                 ret = filter_UpdateFramebuffer(vgl, pointer_current,
                                                pointer_current->msaa_level,
                                                true);
+                if (ret != VLC_SUCCESS)
+                    goto error;
             }
-
-            if (ret != VLC_SUCCESS)
-                goto error;
         }
     }
 
