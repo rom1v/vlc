@@ -605,6 +605,16 @@ static picture_t *ModuleThread_NewVideoBuffer( decoder_t *p_dec )
     return vout_GetPicture( p_priv->p_vout );
 }
 
+static void DecoderThread_AbortPictures( decoder_t *p_dec, bool b_abort )
+{
+    struct decoder_priv *p_priv = dec_get_priv( p_dec );
+
+    vlc_mutex_lock( &p_priv->lock ); // called in DecoderThread
+    if( p_priv->p_vout != NULL )
+        vout_Cancel( p_priv->p_vout, b_abort );
+    vlc_mutex_unlock( &p_priv->lock );
+}
+
 static subpicture_t *ModuleThread_NewSpuBuffer( decoder_t *p_dec,
                                      const subpicture_updater_t *p_updater )
 {
@@ -765,16 +775,6 @@ static void RequestReload( struct decoder_priv *p_priv )
     /* Don't override reload if it's RELOAD_DECODER_AOUT */
     int expected = RELOAD_NO_REQUEST;
     atomic_compare_exchange_strong( &p_priv->reload, &expected, RELOAD_DECODER );
-}
-
-void decoder_AbortPictures( decoder_t *p_dec, bool b_abort )
-{
-    struct decoder_priv *p_priv = dec_get_priv( p_dec );
-
-    vlc_mutex_lock( &p_priv->lock ); // called in DecoderThread
-    if( p_priv->p_vout != NULL )
-        vout_Cancel( p_priv->p_vout, b_abort );
-    vlc_mutex_unlock( &p_priv->lock );
 }
 
 static void DecoderWaitUnblock( struct decoder_priv *p_priv )
@@ -1703,6 +1703,7 @@ static const struct decoder_owner_ops dec_video_ops =
     .video = {
         .format_update = ModuleThread_UpdateVideoFormat,
         .buffer_new = ModuleThread_NewVideoBuffer,
+        .abort_pictures = DecoderThread_AbortPictures,
         .queue = ModuleThread_QueueVideo,
         .queue_cc = ModuleThread_QueueCc,
         .get_display_date = ModuleThread_GetDisplayDate,
