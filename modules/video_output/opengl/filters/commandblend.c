@@ -188,6 +188,12 @@ static void ParseCommands(struct vlc_gl_filter *filter,
                 break;
             }
 
+            /* Ignore comments and line feed. */
+            case '\r':
+            case '\n':
+            case '#':
+                break;
+
             default: {
                 msg_Err(filter, "Error when parsing line, unknown command: `%s`", line);
                 free(cmd);
