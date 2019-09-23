@@ -208,7 +208,7 @@ const StreamID & AbstractStream::getID() const
     return id;
 }
 
-struct decoder_owner
+struct decoder_priv
 {
     decoder_t dec;
     AbstractDecodedStream *id;
@@ -250,10 +250,10 @@ void AbstractDecodedStream::deinit()
         threadEnd = true;
         vlc_mutex_unlock(&inputLock);
         vlc_join(thread, NULL);
-        struct decoder_owner *p_owner;
-        p_owner = container_of(p_decoder, struct decoder_owner, dec);
-        es_format_Clean(&p_owner->decoder_out);
-        es_format_Clean(&p_owner->last_fmt_update);
+        struct decoder_priv *p_priv;
+        p_priv = container_of(p_decoder, struct decoder_priv, dec);
+        es_format_Clean(&p_priv->decoder_out);
+        es_format_Clean(&p_priv->last_fmt_update);
         decoder_Destroy(p_decoder);
         p_decoder = NULL;
     }
@@ -270,18 +270,18 @@ bool AbstractDecodedStream::init(const es_format_t *p_fmt)
         return false;
 
     /* Create decoder object */
-    struct decoder_owner * p_owner =
-            reinterpret_cast<struct decoder_owner *>(
-                vlc_object_create(p_stream, sizeof(*p_owner)));
-    if(!p_owner)
+    struct decoder_priv * p_priv =
+            reinterpret_cast<struct decoder_priv *>(
+                vlc_object_create(p_stream, sizeof(*p_priv)));
+    if(!p_priv)
         return false;
 
-    es_format_Init(&p_owner->decoder_out, p_fmt->i_cat, 0);
-    es_format_Init(&p_owner->last_fmt_update, p_fmt->i_cat, 0);
-    p_owner->b_error = false;
-    p_owner->id = this;
+    es_format_Init(&p_priv->decoder_out, p_fmt->i_cat, 0);
+    es_format_Init(&p_priv->last_fmt_update, p_fmt->i_cat, 0);
+    p_priv->b_error = false;
+    p_priv->id = this;
 
-    p_decoder = &p_owner->dec;
+    p_decoder = &p_priv->dec;
     decoder_Init( p_decoder, p_fmt );
 
     setCallbacks();
@@ -290,8 +290,8 @@ bool AbstractDecodedStream::init(const es_format_t *p_fmt)
     if(!p_decoder->p_module)
     {
         msg_Err(p_stream, "cannot find %s for %4.4s", category, (char *)&p_fmt->i_codec);
-        es_format_Clean(&p_owner->decoder_out);
-        es_format_Clean(&p_owner->last_fmt_update);
+        es_format_Clean(&p_priv->decoder_out);
+        es_format_Clean(&p_priv->last_fmt_update);
         decoder_Destroy( p_decoder );
         p_decoder = NULL;
         return false;
@@ -299,8 +299,8 @@ bool AbstractDecodedStream::init(const es_format_t *p_fmt)
 
     if(vlc_clone(&thread, decoderThreadCallback, this, VLC_THREAD_PRIORITY_VIDEO))
     {
-        es_format_Clean(&p_owner->decoder_out);
-        es_format_Clean(&p_owner->last_fmt_update);
+        es_format_Clean(&p_priv->decoder_out);
+        es_format_Clean(&p_priv->last_fmt_update);
         decoder_Destroy( p_decoder );
         p_decoder = NULL;
         return false;
@@ -317,8 +317,8 @@ void * AbstractDecodedStream::decoderThreadCallback(void *me)
 
 void AbstractDecodedStream::decoderThread()
 {
-    struct decoder_owner *p_owner =
-            container_of(p_decoder, struct decoder_owner, dec);
+    struct decoder_priv *p_priv =
+            container_of(p_decoder, struct decoder_priv, dec);
 
     vlc_savecancel();
     vlc_mutex_lock(&inputLock);
@@ -338,7 +338,7 @@ void AbstractDecodedStream::decoderThread()
         bool b_draincall = (status == DRAINING) && (p_block == NULL);
         vlc_mutex_unlock(&inputLock);
 
-        if(!p_owner->b_error)
+        if(!p_priv->b_error)
         {
             int ret = p_decoder->pf_decode(p_decoder, p_block);
             switch(ret)
@@ -346,10 +346,10 @@ void AbstractDecodedStream::decoderThread()
                 case VLCDEC_SUCCESS:
                     break;
                 case VLCDEC_ECRITICAL:
-                    p_owner->b_error = true;
+                    p_priv->b_error = true;
                     break;
                 case VLCDEC_RELOAD:
-                    p_owner->b_error = true;
+                    p_priv->b_error = true;
                     if(p_block)
                         block_Release(p_block);
                     break;
@@ -359,7 +359,7 @@ void AbstractDecodedStream::decoderThread()
         }
 
         vlc_mutex_lock(&inputLock);
-        if(p_owner->b_error)
+        if(p_priv->b_error)
         {
             status = FAILED;
             outputbuffer->Drain();
@@ -467,29 +467,29 @@ void VideoDecodedStream::setCaptionsOutputBuffer(AbstractStreamOutputBuffer *buf
 
 void VideoDecodedStream::VideoDecCallback_queue(decoder_t *p_dec, picture_t *p_pic)
 {
-    struct decoder_owner *p_owner;
-    p_owner = container_of(p_dec, struct decoder_owner, dec);
-    static_cast<VideoDecodedStream *>(p_owner->id)->Output(p_pic);
+    struct decoder_priv *p_priv;
+    p_priv = container_of(p_dec, struct decoder_priv, dec);
+    static_cast<VideoDecodedStream *>(p_priv->id)->Output(p_pic);
 }
 
 void VideoDecodedStream::VideoDecCallback_queue_cc(decoder_t *p_dec, block_t *p_block,
                                                    const decoder_cc_desc_t *)
 {
-    struct decoder_owner *p_owner;
-    p_owner = container_of(p_dec, struct decoder_owner, dec);
-    static_cast<VideoDecodedStream *>(p_owner->id)->QueueCC(p_block);
+    struct decoder_priv *p_priv;
+    p_priv = container_of(p_dec, struct decoder_priv, dec);
+    static_cast<VideoDecodedStream *>(p_priv->id)->QueueCC(p_block);
 }
 
 int VideoDecodedStream::VideoDecCallback_update_format(decoder_t *p_dec)
 {
-    struct decoder_owner *p_owner;
-    p_owner = container_of(p_dec, struct decoder_owner, dec);
+    struct decoder_priv *p_priv;
+    p_priv = container_of(p_dec, struct decoder_priv, dec);
 
     /* fixup */
     p_dec->fmt_out.video.i_chroma = p_dec->fmt_out.i_codec;
 
-    es_format_Clean(&p_owner->last_fmt_update);
-    es_format_Copy(&p_owner->last_fmt_update, &p_dec->fmt_out);
+    es_format_Clean(&p_priv->last_fmt_update);
+    es_format_Copy(&p_priv->last_fmt_update, &p_dec->fmt_out);
 
     return VLC_SUCCESS;
 }
@@ -538,26 +538,26 @@ filter_chain_t * VideoDecodedStream::VideoFilterCreate(const es_format_t *p_srcf
 
 void VideoDecodedStream::Output(picture_t *p_pic)
 {
-    struct decoder_owner *p_owner;
-    p_owner = container_of(p_decoder, struct decoder_owner, dec);
+    struct decoder_priv *p_priv;
+    p_priv = container_of(p_decoder, struct decoder_priv, dec);
 
-    if(!es_format_IsSimilar(&p_owner->last_fmt_update, &p_owner->decoder_out))
+    if(!es_format_IsSimilar(&p_priv->last_fmt_update, &p_priv->decoder_out))
     {
 
         msg_Dbg(p_stream, "decoder output format now %4.4s",
-                (char*)&p_owner->last_fmt_update.i_codec);
+                (char*)&p_priv->last_fmt_update.i_codec);
 
         if(p_filters_chain)
             filter_chain_Delete(p_filters_chain);
-        p_filters_chain = VideoFilterCreate(&p_owner->last_fmt_update);
+        p_filters_chain = VideoFilterCreate(&p_priv->last_fmt_update);
         if(!p_filters_chain)
         {
             picture_Release(p_pic);
             return;
         }
 
-        es_format_Clean(&p_owner->decoder_out);
-        es_format_Copy(&p_owner->decoder_out, &p_owner->last_fmt_update);
+        es_format_Clean(&p_priv->decoder_out);
+        es_format_Copy(&p_priv->decoder_out, &p_priv->last_fmt_update);
     }
 
     if(p_filters_chain)
@@ -588,25 +588,25 @@ AudioDecodedStream::~AudioDecodedStream()
 
 void AudioDecodedStream::AudioDecCallback_queue(decoder_t *p_dec, block_t *p_block)
 {
-    struct decoder_owner *p_owner;
-    p_owner = container_of(p_dec, struct decoder_owner, dec);
-    static_cast<AudioDecodedStream *>(p_owner->id)->Output(p_block);
+    struct decoder_priv *p_priv;
+    p_priv = container_of(p_dec, struct decoder_priv, dec);
+    static_cast<AudioDecodedStream *>(p_priv->id)->Output(p_block);
 }
 
 void AudioDecodedStream::Output(block_t *p_block)
 {
-    struct decoder_owner *p_owner;
-    p_owner = container_of(p_decoder, struct decoder_owner, dec);
+    struct decoder_priv *p_priv;
+    p_priv = container_of(p_decoder, struct decoder_priv, dec);
 
-    if(!es_format_IsSimilar(&p_owner->last_fmt_update, &p_owner->decoder_out))
+    if(!es_format_IsSimilar(&p_priv->last_fmt_update, &p_priv->decoder_out))
     {
         msg_Dbg(p_stream, "decoder output format now %4.4s %u channels",
-                (char*)&p_owner->last_fmt_update.i_codec,
-                p_owner->last_fmt_update.audio.i_channels);
+                (char*)&p_priv->last_fmt_update.i_codec,
+                p_priv->last_fmt_update.audio.i_channels);
 
         if(p_filters)
             aout_FiltersDelete(p_stream, p_filters);
-        p_filters = AudioFiltersCreate(&p_owner->last_fmt_update);
+        p_filters = AudioFiltersCreate(&p_priv->last_fmt_update);
         if(!p_filters)
         {
             msg_Err(p_stream, "filter creation failed");
@@ -614,8 +614,8 @@ void AudioDecodedStream::Output(block_t *p_block)
             return;
         }
 
-        es_format_Clean(&p_owner->decoder_out);
-        es_format_Copy(&p_owner->decoder_out, &p_owner->last_fmt_update);
+        es_format_Clean(&p_priv->decoder_out);
+        es_format_Copy(&p_priv->decoder_out, &p_priv->last_fmt_update);
     }
 
     /* Run filter chain */
@@ -623,10 +623,10 @@ void AudioDecodedStream::Output(block_t *p_block)
         p_block = aout_FiltersPlay(p_filters, p_block, 1.f);
 
     if(p_block && !p_block->i_nb_samples &&
-       p_owner->last_fmt_update.audio.i_bytes_per_frame )
+       p_priv->last_fmt_update.audio.i_bytes_per_frame )
     {
         p_block->i_nb_samples = p_block->i_buffer /
-                p_owner->last_fmt_update.audio.i_bytes_per_frame;
+                p_priv->last_fmt_update.audio.i_bytes_per_frame;
     }
 
     if(p_block)
@@ -640,8 +640,8 @@ aout_filters_t * AudioDecodedStream::AudioFiltersCreate(const es_format_t *afmt)
 
 int AudioDecodedStream::AudioDecCallback_update_format(decoder_t *p_dec)
 {
-    struct decoder_owner *p_owner;
-    p_owner = container_of(p_dec, struct decoder_owner, dec);
+    struct decoder_priv *p_priv;
+    p_priv = container_of(p_dec, struct decoder_priv, dec);
 
     if( !AOUT_FMT_LINEAR(&p_dec->fmt_out.audio) )
         return VLC_EGENERIC;
@@ -650,17 +650,17 @@ int AudioDecodedStream::AudioDecCallback_update_format(decoder_t *p_dec)
     p_dec->fmt_out.audio.i_format = p_dec->fmt_out.i_codec;
     aout_FormatPrepare(&p_dec->fmt_out.audio);
 
-    es_format_Clean(&p_owner->last_fmt_update);
-    es_format_Copy(&p_owner->last_fmt_update, &p_dec->fmt_out);
+    es_format_Clean(&p_priv->last_fmt_update);
+    es_format_Copy(&p_priv->last_fmt_update, &p_dec->fmt_out);
 
-    p_owner->last_fmt_update.audio.i_format = p_owner->last_fmt_update.i_codec;
+    p_priv->last_fmt_update.audio.i_format = p_priv->last_fmt_update.i_codec;
 
     return VLC_SUCCESS;
 }
 
 void AudioDecodedStream::setCallbacks()
 {
-    static struct decoder_owner_callbacks dec_ops;
+    static struct decoder_priv dec_ops;
     memset(&dec_ops, 0, sizeof(dec_ops));
     dec_ops.audio.format_update = AudioDecCallback_update_format;
     dec_ops.audio.queue = AudioDecCallback_queue;

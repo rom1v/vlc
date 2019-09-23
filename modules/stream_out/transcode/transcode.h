@@ -148,16 +148,16 @@ struct sout_stream_id_sys_t
     vlc_tick_t      i_drift; /** how much buffer is ahead of calculated PTS */
 };
 
-struct decoder_owner
+struct decoder_priv
 {
     decoder_t dec;
     vlc_object_t *p_obj;
     sout_stream_id_sys_t *id;
 };
 
-static inline struct decoder_owner *dec_get_owner( decoder_t *p_dec )
+static inline struct decoder_priv *dec_get_priv( decoder_t *p_dec )
 {
-    return container_of( p_dec, struct decoder_owner, dec );
+    return container_of( p_dec, struct decoder_priv, dec );
 }
 
 static inline void es_format_SetMeta( es_format_t *p_dst, const es_format_t *p_src )

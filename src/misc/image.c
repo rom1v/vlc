@@ -48,15 +48,15 @@
 #include <libvlc.h>
 #include <vlc_modules.h>
 
-struct decoder_owner
+struct decoder_priv
 {
     decoder_t dec;
     image_handler_t *p_image;
 };
 
-static inline struct decoder_owner *dec_get_owner( decoder_t *p_dec )
+static inline struct decoder_priv *dec_get_priv( decoder_t *p_dec )
 {
-    return container_of( p_dec, struct decoder_owner, dec );
+    return container_of( p_dec, struct decoder_priv, dec );
 }
 
 static picture_t *ImageRead( image_handler_t *, block_t *,
@@ -133,8 +133,8 @@ void image_HandlerDelete( image_handler_t *p_image )
 
 static void ImageQueueVideo( decoder_t *p_dec, picture_t *p_pic )
 {
-    struct decoder_owner *p_owner = dec_get_owner( p_dec );
-    picture_fifo_Push( p_owner->p_image->outfifo, p_pic );
+    struct decoder_priv *p_priv = dec_get_priv( p_dec );
+    picture_fifo_Push( p_priv->p_image->outfifo, p_pic );
 }
 
 static picture_t *ImageRead( image_handler_t *p_image, block_t *p_block,
@@ -665,13 +665,13 @@ static int video_update_format( decoder_t *p_dec )
 static decoder_t *CreateDecoder( image_handler_t *p_image, const es_format_t *fmt )
 {
     decoder_t *p_dec;
-    struct decoder_owner *p_owner;
+    struct decoder_priv *p_priv;
 
-    p_owner = vlc_custom_create( p_image->p_parent, sizeof( *p_owner ), "image decoder" );
-    if( p_owner == NULL )
+    p_priv = vlc_custom_create( p_image->p_parent, sizeof( *p_priv ), "image decoder" );
+    if( p_priv == NULL )
         return NULL;
-    p_dec = &p_owner->dec;
-    p_owner->p_image = p_image;
+    p_dec = &p_priv->dec;
+    p_priv->p_image = p_image;
 
     decoder_Init( p_dec, fmt );
 

@@ -72,9 +72,9 @@ static void debug_format( sout_stream_t *p_stream, const es_format_t *fmt )
 
 static int video_update_format_decoder( decoder_t *p_dec )
 {
-    struct decoder_owner *p_owner = dec_get_owner( p_dec );
-    sout_stream_id_sys_t *id = p_owner->id;
-    vlc_object_t        *p_obj = p_owner->p_obj;
+    struct decoder_priv *p_priv = dec_get_priv( p_dec );
+    sout_stream_id_sys_t *id = p_priv->id;
+    vlc_object_t        *p_obj = p_priv->p_obj;
     filter_chain_t       *test_chain;
 
     /* will need proper chroma for get_buffer */
@@ -127,8 +127,8 @@ static picture_t *transcode_video_filter_buffer_new( filter_t *p_filter )
 
 static void decoder_queue_video( decoder_t *p_dec, picture_t *p_pic )
 {
-    struct decoder_owner *p_owner = dec_get_owner( p_dec );
-    sout_stream_id_sys_t *id = p_owner->id;
+    struct decoder_priv *p_priv = dec_get_priv( p_dec );
+    sout_stream_id_sys_t *id = p_priv->id;
 
     vlc_mutex_lock(&id->fifo.lock);
     *id->fifo.pic.last = p_pic;
@@ -161,7 +161,7 @@ int transcode_video_init( sout_stream_t *p_stream, const es_format_t *p_fmt,
 
     /* Open decoder
      */
-    dec_get_owner( id->p_decoder )->id = id;
+    dec_get_priv( id->p_decoder )->id = id;
 
     static const struct decoder_owner_ops dec_ops =
     {

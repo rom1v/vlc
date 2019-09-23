@@ -39,15 +39,15 @@
 #include "common.h"
 #include "decoder.h"
 
-struct decoder_owner
+struct decoder_priv
 {
     decoder_t dec;
     decoder_t *packetizer;
 };
 
-static inline struct decoder_owner *dec_get_owner(decoder_t *dec)
+static inline struct decoder_priv *dec_get_priv(decoder_t *dec)
 {
-    return container_of(dec, struct decoder_owner, dec);
+    return container_of(dec, struct decoder_priv, dec);
 }
 
 static subpicture_t *spu_new_buffer_decoder(decoder_t *dec,
@@ -109,9 +109,9 @@ static int decoder_load(decoder_t *decoder, bool is_packetizer,
 
 void test_decoder_destroy(decoder_t *decoder)
 {
-    struct decoder_owner *owner = dec_get_owner(decoder);
+    struct decoder_priv *priv = dec_get_priv(decoder);
 
-    decoder_Destroy(owner->packetizer);
+    decoder_Destroy(priv->packetizer);
     decoder_Destroy(decoder);
 }
 
@@ -122,31 +122,31 @@ decoder_t *test_decoder_create(vlc_object_t *parent, const es_format_t *fmt)
     decoder_t *decoder = NULL;
 
     packetizer = vlc_object_create(parent, sizeof(*packetizer));
-    struct decoder_owner *owner = vlc_object_create(parent, sizeof(*owner));
+    struct decoder_priv *priv = vlc_object_create(parent, sizeof(*priv));
 
-    if (packetizer == NULL || owner == NULL)
+    if (packetizer == NULL || priv == NULL)
     {
         if (packetizer)
             vlc_object_delete(packetizer);
         return NULL;
     }
-    decoder = &owner->dec;
-    owner->packetizer = packetizer;
+    decoder = &priv->dec;
+    priv->packetizer = packetizer;
 
-    static const struct decoder_owner_callbacks dec_video_cbs =
+    static const struct decoder_owner_ops dec_video_ops =
     {
         .video = {
             .queue = queue_video,
             .queue_cc = queue_cc,
         },
     };
-    static const struct decoder_owner_callbacks dec_audio_cbs =
+    static const struct decoder_owner_ops dec_audio_ops =
     {
         .audio = {
             .queue = queue_audio,
         },
     };
-    static const struct decoder_owner_callbacks dec_spu_cbs =
+    static const struct decoder_owner_ops dec_spu_ops =
     {
         .spu = {
             .buffer_new = spu_new_buffer_decoder,
@@ -157,13 +157,13 @@ decoder_t *test_decoder_create(vlc_object_t *parent, const es_format_t *fmt)
     switch (fmt->i_cat)
     {
         case VIDEO_ES:
-            decoder->cbs = &dec_video_cbs;
+            decoder->owner_ops = &dec_video_ops;
             break;
         case AUDIO_ES:
-            decoder->cbs = &dec_audio_cbs;
+            decoder->owner_ops = &dec_audio_ops;
             break;
         case SPU_ES:
-            decoder->cbs = &dec_spu_cbs;
+            decoder->owner_ops = &dec_spu_ops;
             break;
         default:
             vlc_object_delete(packetizer);
@@ -190,8 +190,8 @@ decoder_t *test_decoder_create(vlc_object_t *parent, const es_format_t *fmt)
 
 int test_decoder_process(decoder_t *decoder, block_t *p_block)
 {
-    struct decoder_owner *owner = dec_get_owner(decoder);
-    decoder_t *packetizer = owner->packetizer;
+    struct decoder_priv *priv = dec_get_priv(decoder);
+    decoder_t *packetizer = priv->packetizer;
 
     /* This case can happen if a decoder reload failed */
     if (decoder->p_module == NULL)

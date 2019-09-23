@@ -61,7 +61,7 @@ typedef struct
     filter_chain_t *p_vf2;
 } sout_stream_sys_t;
 
-struct decoder_owner
+struct decoder_priv
 {
     decoder_t dec;
     /* Current format in use by the output */
@@ -69,9 +69,9 @@ struct decoder_owner
     sout_stream_t *p_stream;
 };
 
-static inline struct decoder_owner *dec_get_owner( decoder_t *p_dec )
+static inline struct decoder_priv *dec_get_priv( decoder_t *p_dec )
 {
-    return container_of( p_dec, struct decoder_owner, dec );
+    return container_of( p_dec, struct decoder_priv, dec );
 }
 
 /*****************************************************************************
@@ -286,10 +286,10 @@ static void *Add( sout_stream_t *p_stream, const es_format_t *p_fmt )
         return NULL;
 
     /* Create decoder object */
-    struct decoder_owner *p_owner = vlc_object_create( p_stream, sizeof( *p_owner ) );
-    if( !p_owner )
+    struct decoder_priv *p_priv = vlc_object_create( p_stream, sizeof( *p_priv ) );
+    if( !p_priv )
         return NULL;
-    p_sys->p_decoder = &p_owner->dec;
+    p_sys->p_decoder = &p_priv->dec;
     decoder_Init( p_sys->p_decoder, p_fmt );
 
     p_sys->p_decoder->b_frame_drop_allowed = true;
@@ -307,8 +307,8 @@ static void *Add( sout_stream_t *p_stream, const es_format_t *p_fmt )
     };
     p_sys->p_decoder->owner_ops = &dec_ops;
 
-    p_owner->video = p_fmt->video;
-    p_owner->p_stream = p_stream;
+    p_priv->video = p_fmt->video;
+    p_priv->p_stream = p_stream;
     //p_sys->p_decoder->p_cfg = p_sys->p_video_cfg;
 
     p_sys->p_decoder->p_module =
@@ -391,7 +391,7 @@ static void *Add( sout_stream_t *p_stream, const es_format_t *p_fmt )
     {
         filter_owner_t owner = {
             .video = &cbs,
-            .sys = p_owner,
+            .sys = p_priv,
         };
 
         p_sys->p_vf2 = filter_chain_NewVideo( p_stream, false, &owner );
@@ -479,8 +479,8 @@ static void Del( sout_stream_t *p_stream, void *id )
 
 static void decoder_queue_video( decoder_t *p_dec, picture_t *p_pic )
 {
-    struct decoder_owner *p_owner = dec_get_owner( p_dec );
-    sout_stream_t *p_stream = p_owner->p_stream;
+    struct decoder_priv *p_priv = dec_get_priv( p_dec );
+    sout_stream_t *p_stream = p_priv->p_stream;
     sout_stream_sys_t *p_sys = p_stream->p_sys;
     picture_t *p_new_pic;
     const video_format_t *p_fmt_in = &p_sys->p_decoder->fmt_out.video;
@@ -574,19 +574,19 @@ static int Send( sout_stream_t *p_stream, void *id, block_t *p_buffer )
 
 inline static int video_update_format_decoder( decoder_t *p_dec )
 {
-    struct decoder_owner *p_owner = dec_get_owner( p_dec );
-    video_update_format( &p_owner->video, &p_dec->fmt_out );
-    sout_stream_sys_t *p_sys = p_owner->p_stream->p_sys;
+    struct decoder_priv *p_priv = dec_get_priv( p_dec );
+    video_update_format( &p_priv->video, &p_dec->fmt_out );
+    sout_stream_sys_t *p_sys = p_priv->p_stream->p_sys;
     if ( p_sys->p_vf2 )
     {
         // update the filter after the format changed/is known
-        char *psz_chain = var_GetNonEmptyString( p_owner->p_stream, CFG_PREFIX "vfilter" );
-        msg_Dbg( p_owner->p_stream, "update filter: '%s'",
+        char *psz_chain = var_GetNonEmptyString( p_priv->p_stream, CFG_PREFIX "vfilter" );
+        msg_Dbg( p_priv->p_stream, "update filter: '%s'",
                  psz_chain ?  psz_chain : "" );
         if( psz_chain )
         {
             es_format_t fmt;
-            es_format_InitFromVideo( &fmt, &p_owner->video );
+            es_format_InitFromVideo( &fmt, &p_priv->video );
             if( p_sys->i_chroma )
                 fmt.video.i_chroma = p_sys->i_chroma;
             filter_chain_Reset( p_sys->p_vf2, &fmt, &fmt );

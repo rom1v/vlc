@@ -600,12 +600,12 @@ static void *Add( sout_stream_t *p_stream, const es_format_t *p_fmt )
     id->pf_transcode_downstream_add = transcode_downstream_Add;
 
     /* Create decoder object */
-    struct decoder_owner * p_owner = vlc_object_create( p_stream, sizeof( *p_owner ) );
-    if( !p_owner )
+    struct decoder_priv * p_priv = vlc_object_create( p_stream, sizeof( *p_priv ) );
+    if( !p_priv )
         goto error;
-    p_owner->p_obj = VLC_OBJECT(p_stream);
+    p_priv->p_obj = VLC_OBJECT(p_stream);
 
-    id->p_decoder = &p_owner->dec;
+    id->p_decoder = &p_priv->dec;
     decoder_Init( id->p_decoder, p_fmt );
 
     es_format_SetMeta( &id->p_decoder->fmt_out, &id->p_decoder->fmt_in );

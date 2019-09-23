@@ -40,8 +40,8 @@
 
 static int audio_update_format( decoder_t *p_dec )
 {
-    struct decoder_owner *p_owner = dec_get_owner( p_dec );
-    sout_stream_id_sys_t *id = p_owner->id;
+    struct decoder_priv *p_priv = dec_get_priv( p_dec );
+    sout_stream_id_sys_t *id = p_priv->id;
 
     if( !AOUT_FMT_LINEAR(&p_dec->fmt_out.audio) )
         return VLC_EGENERIC;
@@ -77,8 +77,8 @@ static int transcode_audio_filters_init( sout_stream_t *p_stream,
 
 static void decoder_queue_audio( decoder_t *p_dec, block_t *p_audio )
 {
-    struct decoder_owner *p_owner = dec_get_owner( p_dec );
-    sout_stream_id_sys_t *id = p_owner->id;
+    struct decoder_priv *p_priv = dec_get_priv( p_dec );
+    sout_stream_id_sys_t *id = p_priv->id;
 
     vlc_mutex_lock(&id->fifo.lock);
     *id->fifo.audio.last = p_audio;
@@ -112,7 +112,7 @@ int transcode_audio_init( sout_stream_t *p_stream, const es_format_t *p_fmt,
     /*
      * Open decoder
      */
-    dec_get_owner( id->p_decoder )->id = id;
+    dec_get_priv( id->p_decoder )->id = id;
 
     static const struct decoder_owner_ops dec_ops =
     {
