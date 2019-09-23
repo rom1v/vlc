@@ -161,6 +161,12 @@ intermediate file.
 Example of command configuration file:
 
 ```
+# Commands:
+# r: draw a rectangle
+# c: change the color
+# s: start animation at given time
+# e: stop animation at given time
+
 r 0 0 1000 1000
 c 100 0 0
 r 1000 1000 2000 200
