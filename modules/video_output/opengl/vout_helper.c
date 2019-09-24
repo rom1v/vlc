@@ -2335,8 +2335,7 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
      * execute the copy and conversion anyway. */
     if (!insert_identity_filter && wrapper->filter.info.blend)
     {
-        bool same_chroma = wrapper->fmt_in.i_chroma ==
-            wrapper->fmt_out.i_chroma;
+        bool same_chroma = fmt_in->i_chroma == wrapper->fmt_in.i_chroma;
         /* if the chroma is not the same, we need to convert chroma first */
         insert_identity_filter = !same_chroma;
     }
