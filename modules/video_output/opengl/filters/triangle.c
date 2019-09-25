@@ -37,6 +37,7 @@ struct vlc_gl_filter_sys
     struct vlc_gl_shader_program *program;
 
     GLuint  buffer_objects[3];
+    GLuint  vao;
 
     struct {
         GLint VertexPosition;
@@ -89,33 +90,9 @@ static int FilterInput(struct vlc_gl_filter *filter,
     filter->vt->Enable(GL_BLEND);
     filter->vt->BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    /* TODO: enabled texture tracking ? */
-    const GLfloat vertexCoord[] = {
-         0,  1,
-        -1, -1,
-         1, -1,
-    };
-
-    const GLfloat colors[] = {
-        1.f, 0.f, 0.f,
-        0.f, 1.f, 0.f,
-        0.f, 0.f, 1.f,
-    };
-
-    /* TODO: attribute handling in shader ? */
-    filter->vt->EnableVertexAttribArray(sys->aloc.VertexPosition);
-    filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->buffer_objects[1]);
-    filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
-    filter->vt->VertexAttribPointer(sys->aloc.VertexPosition, 2, GL_FLOAT,
-                                    GL_FALSE, 0, 0);
-
-    filter->vt->EnableVertexAttribArray(sys->aloc.VertexColor);
-    filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->buffer_objects[2]);
-    filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
-    filter->vt->VertexAttribPointer(sys->aloc.VertexColor, 3, GL_FLOAT,
-                                    GL_FALSE, 0, 0);
-
+    filter->vt->BindVertexArray(sys->vao);
     filter->vt->DrawArrays(GL_TRIANGLES, 0, 3);
+    filter->vt->BindVertexArray(0);
 
     //filter->vt->DisableVertexAttribArray(sys->aloc.VertexColor);
     //filter->vt->DisableVertexAttribArray(sys->aloc.VertexPosition);
@@ -129,6 +106,7 @@ static void FilterClose(struct vlc_gl_filter *filter)
 {
     struct vlc_gl_filter_sys *sys = filter->sys;
     vlc_gl_shader_program_Release(sys->program);
+    filter->vt->DeleteVertexArrays(1, &sys->vao);
     filter->vt->DeleteBuffers(3, sys->buffer_objects);
 
     free(sys);
@@ -192,6 +170,35 @@ static int Open(struct vlc_gl_filter *filter,
         filter->vt->GetAttribLocation(program, "VertexPosition");
     sys->aloc.VertexColor =
         filter->vt->GetAttribLocation(program, "VertexColor");
+
+    filter->vt->GenVertexArrays(1, &sys->vao);
+    filter->vt->BindVertexArray(sys->vao);
+    /* TODO: enabled texture tracking ? */
+    const GLfloat vertexCoord[] = {
+         0,  1,
+        -1, -1,
+         1, -1,
+    };
+
+    const GLfloat colors[] = {
+        1.f, 0.f, 0.f,
+        0.f, 1.f, 0.f,
+        0.f, 0.f, 1.f,
+    };
+
+    /* TODO: attribute handling in shader ? */
+    filter->vt->EnableVertexAttribArray(sys->aloc.VertexPosition);
+    filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->buffer_objects[1]);
+    filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
+    filter->vt->VertexAttribPointer(sys->aloc.VertexPosition, 2, GL_FLOAT,
+                                    GL_FALSE, 0, 0);
+
+    filter->vt->EnableVertexAttribArray(sys->aloc.VertexColor);
+    filter->vt->BindBuffer(GL_ARRAY_BUFFER, sys->buffer_objects[2]);
+    filter->vt->BufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
+    filter->vt->VertexAttribPointer(sys->aloc.VertexColor, 3, GL_FLOAT,
+                                    GL_FALSE, 0, 0);
+    filter->vt->BindVertexArray(0);
 
     filter->prepare = NULL;
     filter->filter = FilterInput;
