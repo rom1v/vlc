@@ -71,7 +71,7 @@ struct vlc_gl_shader_program
     GLuint id;
     const struct vlc_gl_shader_sampler *sampler;
     struct opengl_tex_converter_t *tc;
-    struct opengl_vtable_t *vt;
+    const opengl_vtable_t *vt;
 };
 
 struct vlc_gl_shader_sampler
