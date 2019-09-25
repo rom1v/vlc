@@ -112,6 +112,11 @@ typedef void (APIENTRY *PFNGLTEXIMAGE2DMULTISAMPLE) (GLenum target, GLsizei samp
                                                      GLenum internalformat, GLsizei width, \
                                                      GLsizei height, GLboolean fixedsamplelocations);
 
+/* VAO support */
+typedef void (APIENTRY *PFNGLBINDVERTEXARRAY) (GLuint array);
+typedef void (APIENTRY *PFNGLGENVERTEXARRAYS) (GLsizei n, GLuint *arrays);
+typedef void (APIENTRY *PFNGLDELETEVERTEXARRAYS) (GLsizei n, const GLuint *arrays);
+
 /* The following are defined in glext.h but not for GLES2 or on Apple systems */
 #if defined(USE_OPENGL_ES2) || defined(__APPLE__)
 #   define PFNGLGETPROGRAMIVPROC             typeof(glGetProgramiv)*
@@ -242,6 +247,11 @@ typedef struct opengl_vtable_t {
 
     /* Texture commands */
     PFNGLACTIVETEXTUREPROC ActiveTexture;
+
+    /* Vertex array objects commands */
+    PFNGLBINDVERTEXARRAY    BindVertexArray;
+    PFNGLGENVERTEXARRAYS    GenVertexArrays;
+    PFNGLDELETEVERTEXARRAYS DeleteVertexArrays;
 
     /* Buffers commands */
     PFNGLGENBUFFERSPROC    GenBuffers;

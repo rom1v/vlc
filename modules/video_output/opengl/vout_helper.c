@@ -987,6 +987,10 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
 
     GET_PROC_ADDR(ActiveTexture);
 
+    GET_PROC_ADDR_OPTIONAL(BindVertexArray);
+    GET_PROC_ADDR_OPTIONAL(GenVertexArrays);
+    GET_PROC_ADDR_OPTIONAL(DeleteVertexArrays);
+
     GET_PROC_ADDR(GenBuffers);
     GET_PROC_ADDR(BindBuffer);
     GET_PROC_ADDR(BufferData);
