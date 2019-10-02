@@ -42,7 +42,7 @@ static const char *const MATRIX_BT709_TO_RGB =
 static const char *const MATRIX_BT601_TO_RGB =
     "const mat3 conversion_matrix = mat3(\n"
     "    1.0,           1.0,          1.0,\n"
-    "    1.0,          -0.39465,      2.03211,\n"
+    "    0.0,          -0.39465,      2.03211,\n"
     "    1.13983,      -0.5806,       0.0\n"
     ");\n";
 
