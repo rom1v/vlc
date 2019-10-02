@@ -2219,6 +2219,7 @@ InjectChromaConverterAndPrepare(vout_display_opengl_t *vgl,
 
 error:
     DeleteChromaConverter(wrapper->converter_priv);
+    wrapper->converter_priv = NULL;
 
     return VLC_EGENERIC;
 }
