@@ -32,33 +32,64 @@
 #include "../chroma_converter.h"
 #include "../converter.h"
 
-static const char *const MATRIX_BT709_TO_RGB =
-    "const mat3 conversion_matrix = mat3(\n"
-    "    1.0,           1.0,          1.0,\n"
-    "    0.0,          -0.21482,      2.12798,\n"
-    "    1.28033,      -0.38059,      0.0\n"
-    ");\n";
+static const float MATRIX_COLOR_RANGE_LIMITED_TO_FULL[] = {
+    255.f/219,         0,         0, -255.f/219 *  16.f/255,
+            0, 255.f/224,         0, -255.f/224 * 128.f/255,
+            0,         0, 255.f/224, -255.f/224 * 128.f/255,
+};
 
-static const char *const MATRIX_BT601_TO_RGB =
-    "const mat3 conversion_matrix = mat3(\n"
-    "    1.0,           1.0,          1.0,\n"
-    "    0.0,          -0.39465,      2.03211,\n"
-    "    1.13983,      -0.5806,       0.0\n"
-    ");\n";
+/*
+ * Construct the transformation matrix from the luma weight of the red and blue
+ * component (the green component is deduced).
+ */
+#define MATRIX_YUV_TO_RGB(KR, KB) \
+    MATRIX_YUV_TO_RGB_(KR, (1-(KR)-(KB)), KB)
+
+/*
+ * Construct the transformation matrix from the luma weight of the RGB
+ * components.
+ *
+ * KR: luma weight of the red component
+ * KG: luma weight of the green component
+ * KB: luma weight of the blue component
+ *
+ * By definition, KR + KG + KB == 1.
+ *
+ * Ref: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion>
+ * Ref: libplacebo: src/colorspace.c:luma_coeffs()
+ * */
+#define MATRIX_YUV_TO_RGB_(KR, KG, KB) { \
+    1,                         0,              2*(1.f-(KR)), \
+    1, -2*(1.f-(KB))*((KB)/(KG)), -2*(1.f-(KR))*((KR)/(KG)), \
+    1,              2*(1.f-(KB)),                         0, \
+}
+
+static const float MATRIX_BT601[] = MATRIX_YUV_TO_RGB(0.299f, 0.114f);
+static const float MATRIX_BT709[] = MATRIX_YUV_TO_RGB(0.2126f, 0.0722f);
 
 static const char *const FRAGMENT_CODE_TEMPLATE =
-    "uniform sampler2D planes[3];\n"
+    "uniform mat4x3 vlc_conv_matrix;\n"
+    "uniform sampler2D vlc_planes[3];\n"
     "vec4 vlc_texture(vec2 coords) {\n"
-    "  vec3 v = conversion_matrix * vec3(\n"
-    "              texture2D(planes[%d], coords).%c,\n"
-    "              texture2D(planes[%d], coords).%c - 0.5,\n"
-    "              texture2D(planes[%d], coords).%c - 0.5);\n"
-    "  return vec4(v, 1.0);\n"
+    "  vec4 pix_in = vec4(\n"
+    "                    texture2D(vlc_planes[%d], coords).%c,\n"
+    "                    texture2D(vlc_planes[%d], coords).%c,\n"
+    "                    texture2D(vlc_planes[%d], coords).%c,\n"
+    "                    1.0\n"
+    "                  );\n"
+    /* mat4x3 * vec4 -> vec3 */
+    "  vec3 pix_out = vlc_conv_matrix * pix_in;\n"
+    /* add alpha component */
+    "  return vec4(pix_out, 1.0);\n"
     "}\n";
 
 struct i420_sys {
     unsigned plane_count;
-    GLint planes[3];
+    float matrix[4 * 3];
+    struct {
+        GLint planes[3];
+        GLint matrix;
+    } loc;
 };
 
 static int
@@ -68,10 +99,14 @@ Prepare(const struct vlc_gl_shader_program *program, void *userdata)
     struct i420_sys *sys = converter->sys;
     const struct opengl_vtable_t *vt = converter->vt;
 
-    sys->planes[0] = vt->GetUniformLocation(program->id, "planes[0]");
-    sys->planes[1] = vt->GetUniformLocation(program->id, "planes[1]");
+    sys->loc.matrix =
+        vt->GetUniformLocation(program->id, "vlc_conv_matrix");
+
+    sys->loc.planes[0] = vt->GetUniformLocation(program->id, "vlc_planes[0]");
+    sys->loc.planes[1] = vt->GetUniformLocation(program->id, "vlc_planes[1]");
     if (sys->plane_count > 2)
-        sys->planes[2] = vt->GetUniformLocation(program->id, "planes[2]");
+        sys->loc.planes[2] =
+            vt->GetUniformLocation(program->id, "vlc_planes[2]");
 
     return VLC_SUCCESS;
 }
@@ -87,18 +122,20 @@ Load(const struct vlc_gl_picture *pic, void *userdata)
 
     vt->ActiveTexture(GL_TEXTURE0);
     vt->BindTexture(GL_TEXTURE_2D, pic->textures[0]);
-    vt->Uniform1i(sys->planes[0], 0);
+    vt->Uniform1i(sys->loc.planes[0], 0);
 
     vt->ActiveTexture(GL_TEXTURE1);
     vt->BindTexture(GL_TEXTURE_2D, pic->textures[1]);
-    vt->Uniform1i(sys->planes[1], 1);
+    vt->Uniform1i(sys->loc.planes[1], 1);
 
     if (sys->plane_count > 2)
     {
         vt->ActiveTexture(GL_TEXTURE2);
         vt->BindTexture(GL_TEXTURE_2D, pic->textures[2]);
-        vt->Uniform1i(sys->planes[2], 2);
+        vt->Uniform1i(sys->loc.planes[2], 2);
     }
+
+    vt->UniformMatrix4x3fv(sys->loc.matrix, 1, true, sys->matrix);
 
     return VLC_SUCCESS;
 }
@@ -143,6 +180,39 @@ gen_fragment_code(int p0, char c0, int p1, char c1, int p2, char c2)
     return str;
 }
 
+static void
+init_conv_matrix(video_color_space_t color_space,
+                 video_color_range_t color_range,
+                 float conv_matrix_out[])
+{
+    const float *space_matrix;
+    if (color_space == COLOR_SPACE_BT601)
+        space_matrix = MATRIX_BT601;
+    else
+        space_matrix = MATRIX_BT709;
+
+    if (color_range == COLOR_RANGE_FULL) {
+        memcpy(conv_matrix_out, space_matrix, 3 * sizeof(float));
+        conv_matrix_out[3] = 0;
+        memcpy(conv_matrix_out + 4, space_matrix + 3, 3 * sizeof(float));
+        conv_matrix_out[7] = 0;
+        memcpy(conv_matrix_out + 8, space_matrix + 6, 3 * sizeof(float));
+        conv_matrix_out[11] = 0;
+    } else {
+        // multiply the matrices on CPU once for all
+        for (int x = 0; x < 4; ++x) {
+            for (int y = 0; y < 3; ++y) {
+                float sum = 0;
+                for (int k = 0; k < 3; ++k) {
+                    sum += space_matrix[y * 3 + k]
+                         * MATRIX_COLOR_RANGE_LIMITED_TO_FULL[k * 4 + x];
+                }
+                conv_matrix_out[y * 4 + x] = sum;
+            }
+        }
+    }
+}
+
 static const struct vlc_gl_chroma_converter_ops ops = {
     .close = Close,
 };
@@ -165,35 +235,15 @@ Open(struct vlc_gl_chroma_converter *converter,
     if (fmt_out->i_chroma != VLC_CODEC_RGBA)
         return VLC_EGENERIC;
 
-    const char *matrix;
-    switch (fmt_in->primaries)
-    {
-        case COLOR_PRIMARIES_BT601_525:
-        case COLOR_PRIMARIES_BT601_625:
-            matrix = MATRIX_BT601_TO_RGB;
-            break;
-        case COLOR_PRIMARIES_BT709:
-            matrix = MATRIX_BT709_TO_RGB;
-            break;
-        default:
-            return VLC_EGENERIC;
-    }
-
     struct i420_sys *sys = converter->sys = malloc(sizeof(*sys));
     if (!converter->sys)
         return VLC_ENOMEM;
 
-    char **fragment_codes = vlc_alloc(2, sizeof(*fragment_codes));
+    init_conv_matrix(fmt_in->space, fmt_in->color_range, sys->matrix);
+
+    char **fragment_codes = malloc(sizeof(*fragment_codes));
     if (!fragment_codes)
     {
-        free(converter->sys);
-        return VLC_ENOMEM;
-    }
-
-    fragment_codes[0] = strdup(matrix);
-    if (!fragment_codes[0])
-    {
-        free(fragment_codes);
         free(converter->sys);
         return VLC_ENOMEM;
     }
@@ -205,22 +255,21 @@ Open(struct vlc_gl_chroma_converter *converter,
             /* plane 0: Y
              * plane 1: U
              * plane 2: V */
-            fragment_codes[1] = gen_fragment_code(0, 'x', 1, 'x', 2, 'x');
+            fragment_codes[0] = gen_fragment_code(0, 'x', 1, 'x', 2, 'x');
             input_plane_count = 3;
             break;
         case VLC_CODEC_NV12:
             /* plane 0: Y
              * plane 1: UV */
-            fragment_codes[1] = gen_fragment_code(0, 'x', 1, 'x', 1, 'y');
+            fragment_codes[0] = gen_fragment_code(0, 'x', 1, 'x', 1, 'y');
             input_plane_count = 2;
             break;
         default:
             vlc_assert_unreachable();
     }
 
-    if (!fragment_codes[1])
+    if (!fragment_codes[0])
     {
-        free(fragment_codes[0]);
         free(fragment_codes);
         free(converter->sys);
         return VLC_ENOMEM;
@@ -229,7 +278,7 @@ Open(struct vlc_gl_chroma_converter *converter,
     sys->plane_count = input_plane_count;
 
     sampler_out->fragment_codes = fragment_codes;
-    sampler_out->fragment_code_count = 2;
+    sampler_out->fragment_code_count = 1;
     sampler_out->input_texture_count = input_plane_count;
     sampler_out->prepare = Prepare;
     sampler_out->load = Load;
