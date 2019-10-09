@@ -43,6 +43,8 @@ struct vlc_gl_importer {
     const opengl_vtable_t *vt;
     GLenum tex_target;
 
+    video_format_t fmt;
+
     /* Initialized by the importer */
     struct vlc_gl_tex_cfg {
         /*
