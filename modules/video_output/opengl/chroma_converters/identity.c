@@ -125,6 +125,12 @@ Open(struct vlc_gl_chroma_converter *converter,
         return VLC_ENOMEM;
     }
     fragment_codes[0] = strdup(FRAGMENT_CODE);
+    if (!fragment_codes[0])
+    {
+        free(fragment_codes);
+        free(converter->sys);
+        return VLC_ENOMEM;
+    }
     sampler_out->fragment_codes = fragment_codes;
     sampler_out->fragment_code_count = 1;
     sampler_out->input_texture_count = 1;
