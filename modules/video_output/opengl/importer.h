@@ -37,6 +37,7 @@ struct vlc_gl_importer_ops {
     void (*close)(struct vlc_gl_importer *importer);
 };
 
+// TODO move some fields into a "private" struct?
 struct vlc_gl_importer {
     struct vlc_object_t obj;
 

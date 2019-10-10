@@ -90,14 +90,18 @@ static const struct vlc_gl_importer_ops ops = {
 };
 
 static int
-Open(struct vlc_gl_importer *importer, vlc_fourcc_t fourcc,
-     video_color_space_t color_space)
+Open(struct vlc_gl_importer *importer)
 {
     struct sw_sys *sys = importer->sys = malloc(sizeof(*sys));
     if (!importer->sys)
         return VLC_ENOMEM;
 
     importer->ops = &ops;
+
+    if (vlc_fourcc_IsYUV(importer->fmt.i_chroma))
+    {
+
+    }
 
     return VLC_SUCCESS;
 }
