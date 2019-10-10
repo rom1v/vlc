@@ -25,6 +25,16 @@
 
 struct vlc_gl_chroma_converter;
 
+static const char *const FRAGMENT_COORDS_NORMAL =
+    "vec2 vlc_picture_coords(vec2 coords) {\n"
+    "  return vec2(coords.x, coords.y);\n"
+    "}\n";
+
+static const char *const FRAGMENT_COORDS_VFLIPPED =
+    "vec2 vlc_picture_coords(vec2 coords) {\n"
+    "  return vec2(coords.x, 1.0 - coords.y);\n"
+    "}\n";
+
 struct vlc_gl_chroma_converter_ops {
     void (*close)(struct vlc_gl_chroma_converter *converter);
 };

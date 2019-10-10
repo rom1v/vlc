@@ -70,7 +70,8 @@ static const float MATRIX_BT709[] = MATRIX_YUV_TO_RGB(0.2126f, 0.0722f);
 static const char *const FRAGMENT_CODE_TEMPLATE =
     "uniform mat4x3 vlc_conv_matrix;\n"
     "uniform sampler2D vlc_planes[3];\n"
-    "vec4 vlc_texture(vec2 coords) {\n"
+    "vec4 vlc_texture(vec2 c) {\n"
+    "  vec2 coords = vlc_picture_coords(c);\n"
     "  vec4 pix_in = vec4(\n"
     "                    texture2D(vlc_planes[%d], coords).%c,\n"
     "                    texture2D(vlc_planes[%d], coords).%c,\n"
@@ -221,6 +222,7 @@ static int
 Open(struct vlc_gl_chroma_converter *converter,
      const video_format_t *fmt_in,
      const video_format_t *fmt_out,
+     bool vflip,
      struct vlc_gl_shader_sampler *sampler_out)
 {
     switch (fmt_in->i_chroma)
@@ -241,9 +243,19 @@ Open(struct vlc_gl_chroma_converter *converter,
 
     init_conv_matrix(fmt_in->space, fmt_in->color_range, sys->matrix);
 
-    char **fragment_codes = malloc(sizeof(*fragment_codes));
+    char **fragment_codes = vlc_alloc(2, sizeof(*fragment_codes));
     if (!fragment_codes)
     {
+        free(converter->sys);
+        return VLC_ENOMEM;
+    }
+
+    const char *coords = vflip ? FRAGMENT_COORDS_VFLIPPED
+                               : FRAGMENT_COORDS_NORMAL;
+    fragment_codes[0] = strdup(coords);
+    if (!fragment_codes[0])
+    {
+        free(fragment_codes);
         free(converter->sys);
         return VLC_ENOMEM;
     }
@@ -255,21 +267,22 @@ Open(struct vlc_gl_chroma_converter *converter,
             /* plane 0: Y
              * plane 1: U
              * plane 2: V */
-            fragment_codes[0] = gen_fragment_code(0, 'x', 1, 'x', 2, 'x');
+            fragment_codes[1] = gen_fragment_code(0, 'x', 1, 'x', 2, 'x');
             input_plane_count = 3;
             break;
         case VLC_CODEC_NV12:
             /* plane 0: Y
              * plane 1: UV */
-            fragment_codes[0] = gen_fragment_code(0, 'x', 1, 'x', 1, 'y');
+            fragment_codes[1] = gen_fragment_code(0, 'x', 1, 'x', 1, 'y');
             input_plane_count = 2;
             break;
         default:
             vlc_assert_unreachable();
     }
 
-    if (!fragment_codes[0])
+    if (!fragment_codes[1])
     {
+        free(fragment_codes[0]);
         free(fragment_codes);
         free(converter->sys);
         return VLC_ENOMEM;
@@ -278,7 +291,7 @@ Open(struct vlc_gl_chroma_converter *converter,
     sys->plane_count = input_plane_count;
 
     sampler_out->fragment_codes = fragment_codes;
-    sampler_out->fragment_code_count = 1;
+    sampler_out->fragment_code_count = 2;
     sampler_out->input_texture_count = input_plane_count;
     sampler_out->prepare = Prepare;
     sampler_out->load = Load;

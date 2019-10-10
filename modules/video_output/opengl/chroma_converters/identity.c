@@ -34,7 +34,8 @@
 
 static const char *const FRAGMENT_CODE =
     "uniform sampler2D tex;\n"
-    "vec4 vlc_texture(vec2 coords) {\n"
+    "vec4 vlc_texture(vec2 c) {\n"
+    "  vec2 coords = vlc_picture_coords(c);\n"
     "  return texture2D(tex, coords);\n"
     "}\n";
 
@@ -98,6 +99,7 @@ static int
 Open(struct vlc_gl_chroma_converter *converter,
      const video_format_t *fmt_in,
      const video_format_t *fmt_out,
+     int vflip,
      struct vlc_gl_shader_sampler *sampler_out)
 {
     if (fmt_in->i_chroma != fmt_out->i_chroma)
@@ -118,15 +120,25 @@ Open(struct vlc_gl_chroma_converter *converter,
 
     sys->plane_count = desc->plane_count;
 
-    char **fragment_codes = malloc(sizeof(*fragment_codes));
+    char **fragment_codes = vlc_alloc(2, sizeof(*fragment_codes));
     if (!fragment_codes)
     {
         free(converter->sys);
         return VLC_ENOMEM;
     }
-    fragment_codes[0] = strdup(FRAGMENT_CODE);
+    const char *coords = vflip ? FRAGMENT_COORDS_VFLIPPED
+                               : FRAGMENT_COORDS_NORMAL;
+    fragment_codes[0] = strdup(coords);
     if (!fragment_codes[0])
     {
+        free(fragment_codes);
+        free(converter->sys);
+        return VLC_ENOMEM;
+    }
+    fragment_codes[1] = strdup(FRAGMENT_CODE);
+    if (!fragment_codes[1])
+    {
+        free(fragment_codes[0]);
         free(fragment_codes);
         free(converter->sys);
         return VLC_ENOMEM;

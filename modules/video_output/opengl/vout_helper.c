@@ -245,6 +245,7 @@ typedef int
 (*vlc_gl_chroma_converter_open)(struct vlc_gl_filter *,
                                 const video_format_t *fmt_in,
                                 const video_format_t *fmt_out,
+                                bool vflip,
                                 struct vlc_gl_shader_sampler *sampler);
 
 static int EnableOpenglChromaConverter(void *func, bool forced, va_list args)
@@ -253,11 +254,12 @@ static int EnableOpenglChromaConverter(void *func, bool forced, va_list args)
     struct vlc_gl_filter *filter = va_arg(args, struct vlc_gl_filter *);
     const video_format_t *fmt_in  = va_arg(args, video_format_t*);
     const video_format_t *fmt_out = va_arg(args, video_format_t*);
+    bool vflip = !!va_arg(args, int); /* bool is promoted to int via varargs */
     struct vlc_gl_shader_sampler *sampler =
         va_arg(args, struct vlc_gl_shader_sampler *);
 
     VLC_UNUSED(forced);
-    return activate(filter, fmt_in, fmt_out, sampler);
+    return activate(filter, fmt_in, fmt_out, vflip, sampler);
 }
 
 typedef int (*vlc_gl_filter_open)(struct vlc_gl_filter *,
@@ -2160,6 +2162,7 @@ static struct vlc_gl_chroma_converter_priv *
 LoadChromaConverterSampler(vout_display_opengl_t *vgl,
                            const video_format_t *fmt_in,
                            const video_format_t *fmt_out,
+                           bool vflip,
                            struct vlc_gl_shader_sampler *sampler)
 {
     struct vlc_gl_chroma_converter_priv *priv =
@@ -2172,7 +2175,7 @@ LoadChromaConverterSampler(vout_display_opengl_t *vgl,
     priv->module =
         vlc_module_load(vgl->gl, "opengl chroma converter", NULL, false,
                         EnableOpenglChromaConverter, &priv->converter,
-                        fmt_in, fmt_out, sampler);
+                        fmt_in, fmt_out, vflip, sampler);
     if (!priv->module)
     {
         vlc_object_delete(VLC_OBJECT(&priv->converter));
@@ -2193,10 +2196,11 @@ DeleteChromaConverter(struct vlc_gl_chroma_converter_priv *priv)
 static int
 InjectChromaConverterAndPrepare(vout_display_opengl_t *vgl,
                                 struct vout_display_opengl_filter *wrapper,
-                                const video_format_t *fmt_in)
+                                const video_format_t *fmt_in,
+                                bool vflip)
 {
     wrapper->converter_priv =
-        LoadChromaConverterSampler(vgl, fmt_in, &wrapper->fmt_in,
+        LoadChromaConverterSampler(vgl, fmt_in, &wrapper->fmt_in, vflip,
                                    &wrapper->sampler);
     if (!wrapper->converter_priv)
         return VLC_EGENERIC;
@@ -2346,6 +2350,10 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         insert_identity_filter = !same_chroma;
     }
 
+    /* The very first filter must flip the picture, because the upload to
+     * OpenGL texture is upside-down. */
+    bool vflip = !prev_filter;
+
     if (insert_identity_filter)
     {
         /* insert a filter which does nothing in itself, but its sampler
@@ -2359,17 +2367,19 @@ int vout_display_opengl_AppendFilter(vout_display_opengl_t *vgl,
         }
 
         /* The first filter gets the sampler to convert the format. */
-        ret = InjectChromaConverterAndPrepare(vgl, identity_filter, fmt_in);
+        ret = InjectChromaConverterAndPrepare(vgl, identity_filter, fmt_in, vflip);
         CHECK_RETF(&wrapper->filter, ret, error,
                    "cannot inject chroma converter for identity filter when "
                    "appending filter %s", name);
 
+        /* Avoid to flip twice */
+        vflip = false;
 
         /* Change the input format of the the filter being created. */
         fmt_in = &identity_filter->fmt_out;
     }
 
-    ret = InjectChromaConverterAndPrepare(vgl, wrapper, fmt_in);
+    ret = InjectChromaConverterAndPrepare(vgl, wrapper, fmt_in, vflip);
     CHECK_RETF(&wrapper->filter, ret, error,
                "cannot inject chroma converter for filter %s", name);
 
