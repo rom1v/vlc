@@ -128,6 +128,7 @@ typedef void (APIENTRY *PFNGLDELETEVERTEXARRAYS) (GLsizei n, const GLuint *array
 #   define PFNGLVERTEXATTRIBPOINTERPROC      typeof(glVertexAttribPointer)*
 #   define PFNGLENABLEVERTEXATTRIBARRAYPROC  typeof(glEnableVertexAttribArray)*
 #   define PFNGLUNIFORMMATRIX4FVPROC         typeof(glUniformMatrix4fv)*
+#   define PFNGLUNIFORMMATRIX4X3FVPROC       typeof(glUniformMatrix4x3fv)*
 #   define PFNGLUNIFORMMATRIX3FVPROC         typeof(glUniformMatrix3fv)*
 #   define PFNGLUNIFORMMATRIX2FVPROC         typeof(glUniformMatrix2fv)*
 #   define PFNGLUNIFORM4FVPROC               typeof(glUniform4fv)*
@@ -230,6 +231,7 @@ typedef struct opengl_vtable_t {
     PFNGLVERTEXATTRIBPOINTERPROC     VertexAttribPointer;
     PFNGLENABLEVERTEXATTRIBARRAYPROC EnableVertexAttribArray;
     PFNGLUNIFORMMATRIX4FVPROC        UniformMatrix4fv;
+    PFNGLUNIFORMMATRIX4X3FVPROC      UniformMatrix4x3fv;
     PFNGLUNIFORMMATRIX3FVPROC        UniformMatrix3fv;
     PFNGLUNIFORMMATRIX2FVPROC        UniformMatrix2fv;
     PFNGLUNIFORM4FVPROC              Uniform4fv;
