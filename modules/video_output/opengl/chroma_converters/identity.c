@@ -145,6 +145,7 @@ Open(struct vlc_gl_chroma_converter *converter,
     }
     sampler_out->fragment_codes = fragment_codes;
     sampler_out->fragment_code_count = 1;
+    sampler_out->input_texture_first_index = 0;
     sampler_out->input_texture_count = 1;
     sampler_out->prepare = Prepare;
     sampler_out->load = Load;

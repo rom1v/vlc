@@ -92,10 +92,14 @@ struct vlc_gl_shader_sampler
     size_t fragment_code_count;
 
     /**
-     * Number of textures (or planes) in the input pictures.
+     * Index for the first texture used.
      *
-     * The chroma will always use the firsts GL_TEXTUREx, so the filter may
-     * use textures from GL_TEXTURE{input_texture_count}.
+     * The first texture id is (GL_TEXTURE0 + input_texture_first_index).
+     */
+    unsigned input_texture_first_index;
+
+    /**
+     * Number of textures (or planes) in the input pictures.
      */
     unsigned input_texture_count;
 
