@@ -42,6 +42,7 @@ static const char *const FRAGMENT_CODE =
 #define MAX_PLANE_COUNT 4
 
 struct nv12_sys {
+    unsigned input_texture_first_index;
     unsigned plane_count;
     GLint planes[MAX_PLANE_COUNT];
 };
@@ -67,9 +68,10 @@ Load(const struct vlc_gl_picture *pic, void *userdata)
 
     for (unsigned i = 0; i < sys->plane_count; ++i)
     {
-        vt->ActiveTexture(GL_TEXTURE0 + i);
+        unsigned gltex_index = sys->input_texture_first_index + i;
+        vt->ActiveTexture(GL_TEXTURE0 + gltex_index);
         vt->BindTexture(GL_TEXTURE_2D, pic->textures[i]);
-        vt->Uniform1i(sys->planes[i], i);
+        vt->Uniform1i(sys->planes[i], gltex_index);
     }
 
     return VLC_SUCCESS;
@@ -86,7 +88,8 @@ Unload(const struct vlc_gl_picture *pic, void *userdata)
 
     for (unsigned i = 0; i < sys->plane_count; ++i)
     {
-        vt->ActiveTexture(GL_TEXTURE0 + i);
+        unsigned gltex_index = sys->input_texture_first_index + i;
+        vt->ActiveTexture(GL_TEXTURE0 + gltex_index);
         vt->BindTexture(GL_TEXTURE_2D, 0);
     }
 }
@@ -124,8 +127,6 @@ Open(struct vlc_gl_chroma_converter *converter,
     if (!converter->sys)
         return VLC_ENOMEM;
 
-    sys->plane_count = desc->plane_count;
-
     char **fragment_codes = vlc_alloc(2, sizeof(*fragment_codes));
     if (!fragment_codes)
     {
@@ -149,6 +150,10 @@ Open(struct vlc_gl_chroma_converter *converter,
         free(converter->sys);
         return VLC_ENOMEM;
     }
+
+    sys->input_texture_first_index = 0;
+    sys->plane_count = desc->plane_count;
+
     sampler_out->fragment_codes = fragment_codes;
     sampler_out->fragment_code_count = 1;
     sampler_out->input_texture_first_index = 0;

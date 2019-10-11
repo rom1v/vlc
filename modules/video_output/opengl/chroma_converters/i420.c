@@ -87,6 +87,7 @@ static const char *const FRAGMENT_CODE_TEMPLATE =
 struct i420_sys {
     unsigned plane_count;
     float matrix[4 * 3];
+    unsigned input_texture_first_index;
     struct {
         GLint planes[3];
         GLint matrix;
@@ -123,9 +124,10 @@ Load(const struct vlc_gl_picture *pic, void *userdata)
 
     for (unsigned i = 0; i < sys->plane_count; ++i)
     {
-        vt->ActiveTexture(GL_TEXTURE0 + i);
+        unsigned gltex_index = sys->input_texture_first_index + i;
+        vt->ActiveTexture(GL_TEXTURE0 + gltex_index);
         vt->BindTexture(GL_TEXTURE_2D, pic->textures[i]);
-        vt->Uniform1i(sys->loc.planes[i], i);
+        vt->Uniform1i(sys->loc.planes[i], gltex_index);
     }
 
     vt->UniformMatrix4x3fv(sys->loc.matrix, 1, true, sys->matrix);
@@ -146,7 +148,8 @@ Unload(const struct vlc_gl_picture *pic, void *userdata)
 
     for (unsigned i = 0; i < sys->plane_count; ++i)
     {
-        vt->ActiveTexture(GL_TEXTURE0 + i);
+        unsigned gltex_index = sys->input_texture_first_index + i;
+        vt->ActiveTexture(GL_TEXTURE0 + gltex_index);
         vt->BindTexture(GL_TEXTURE_2D, 0);
     }
 }
@@ -274,6 +277,7 @@ Open(struct vlc_gl_chroma_converter *converter,
         return VLC_ENOMEM;
     }
 
+    sys->input_texture_first_index = 0;
     sys->plane_count = input_plane_count;
 
     sampler_out->fragment_codes = fragment_codes;
