@@ -277,12 +277,20 @@ Open(struct vlc_gl_chroma_converter *converter,
         return VLC_ENOMEM;
     }
 
-    sys->input_texture_first_index = 0;
+    const struct opengl_vtable_t *gl = converter->vt;
+    GLint value;
+    gl->GetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &value);
+    assert(value >= 0);
+
+    unsigned max_textures = value;
+    assert(max_textures >= input_plane_count);
+
+    sys->input_texture_first_index = max_textures - input_plane_count;
     sys->plane_count = input_plane_count;
 
     sampler_out->fragment_codes = fragment_codes;
     sampler_out->fragment_code_count = 2;
-    sampler_out->input_texture_first_index = 0;
+    sampler_out->input_texture_first_index = max_textures - input_plane_count;
     sampler_out->input_texture_count = input_plane_count;
     sampler_out->prepare = Prepare;
     sampler_out->load = Load;
