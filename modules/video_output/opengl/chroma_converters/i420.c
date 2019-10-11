@@ -121,19 +121,11 @@ Load(const struct vlc_gl_picture *pic, void *userdata)
 
     assert(pic->texture_count >= 2);
 
-    vt->ActiveTexture(GL_TEXTURE0);
-    vt->BindTexture(GL_TEXTURE_2D, pic->textures[0]);
-    vt->Uniform1i(sys->loc.planes[0], 0);
-
-    vt->ActiveTexture(GL_TEXTURE1);
-    vt->BindTexture(GL_TEXTURE_2D, pic->textures[1]);
-    vt->Uniform1i(sys->loc.planes[1], 1);
-
-    if (sys->plane_count > 2)
+    for (unsigned i = 0; i < sys->plane_count; ++i)
     {
-        vt->ActiveTexture(GL_TEXTURE2);
-        vt->BindTexture(GL_TEXTURE_2D, pic->textures[2]);
-        vt->Uniform1i(sys->loc.planes[2], 2);
+        vt->ActiveTexture(GL_TEXTURE0 + i);
+        vt->BindTexture(GL_TEXTURE_2D, pic->textures[i]);
+        vt->Uniform1i(sys->loc.planes[i], i);
     }
 
     vt->UniformMatrix4x3fv(sys->loc.matrix, 1, true, sys->matrix);
@@ -152,15 +144,9 @@ Unload(const struct vlc_gl_picture *pic, void *userdata)
 
     assert(sys->plane_count >= 2);
 
-    vt->ActiveTexture(GL_TEXTURE0);
-    vt->BindTexture(GL_TEXTURE_2D, 0);
-
-    vt->ActiveTexture(GL_TEXTURE1);
-    vt->BindTexture(GL_TEXTURE_2D, 0);
-
-    if (sys->plane_count > 2)
+    for (unsigned i = 0; i < sys->plane_count; ++i)
     {
-        vt->ActiveTexture(GL_TEXTURE2);
+        vt->ActiveTexture(GL_TEXTURE0 + i);
         vt->BindTexture(GL_TEXTURE_2D, 0);
     }
 }

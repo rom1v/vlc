@@ -65,10 +65,12 @@ Load(const struct vlc_gl_picture *pic, void *userdata)
     struct nv12_sys *sys = converter->sys;
     const struct opengl_vtable_t *vt = converter->vt;
 
-    vt->ActiveTexture(GL_TEXTURE0);
-    vt->BindTexture(GL_TEXTURE_2D, pic->textures[0]);
-
-    vt->Uniform1i(sys->planes[0], 0);
+    for (unsigned i = 0; i < sys->plane_count; ++i)
+    {
+        vt->ActiveTexture(GL_TEXTURE0 + i);
+        vt->BindTexture(GL_TEXTURE_2D, pic->textures[i]);
+        vt->Uniform1i(sys->planes[i], i);
+    }
 
     return VLC_SUCCESS;
 }
@@ -79,10 +81,14 @@ Unload(const struct vlc_gl_picture *pic, void *userdata)
     (void) pic;
 
     struct vlc_gl_chroma_converter *converter = userdata;
+    struct nv12_sys *sys = converter->sys;
     const struct opengl_vtable_t *vt = converter->vt;
 
-    vt->ActiveTexture(GL_TEXTURE0);
-    vt->BindTexture(GL_TEXTURE_2D, 0);
+    for (unsigned i = 0; i < sys->plane_count; ++i)
+    {
+        vt->ActiveTexture(GL_TEXTURE0 + i);
+        vt->BindTexture(GL_TEXTURE_2D, 0);
+    }
 }
 
 static void
