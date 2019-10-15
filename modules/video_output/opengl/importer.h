@@ -24,18 +24,19 @@
 #include <GL/gl.h>
 
 #include <vlc_common.h>
-#include "converter.h" /* for opengl_vtable_t */
+
+typedef struct opengl_vtable_t opengl_vtable_t;
 
 struct vlc_gl_importer;
 
 typedef int (*vlc_gl_importer_open_fn)(struct vlc_gl_importer *);
 
 struct vlc_gl_importer_ops {
-    int (*alloc_textures)(struct vlc_gl_importer *importer, GLuint textures[],
-                          const GLsizei tex_width[],
+    int (*alloc_textures)(const struct vlc_gl_importer *importer,
+                          GLuint textures[], const GLsizei tex_width[],
                           const GLsizei tex_height[]);
 
-    int (*import)(struct vlc_gl_importer *importer, GLuint textures[],
+    int (*import)(const struct vlc_gl_importer *importer, GLuint textures[],
                   const GLsizei tex_width[], const GLsizei text_height[],
                   picture_t *pic, const size_t plane_offsets[]);
 

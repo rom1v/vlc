@@ -76,11 +76,11 @@ get_tex_format_size(struct vlc_gl_importer *importer, int target,
 }
 
 static int
-upload_plane(struct vlc_gl_importer *importer, unsigned idx, GLsizei width,
+upload_plane(const struct vlc_gl_importer *importer, unsigned idx, GLsizei width,
              GLsizei height, unsigned pitch, unsigned visible_pitch,
              const void *pixels)
 {
-    struct vlc_gl_tex_cfg *cfg = &importer->cfg[idx];
+    const struct vlc_gl_tex_cfg *cfg = &importer->cfg[idx];
     const opengl_vtable_t *gl = importer->gl;
 
     /* This unpack alignment is the default, but setting it just in case. */
@@ -96,7 +96,7 @@ upload_plane(struct vlc_gl_importer *importer, unsigned idx, GLsizei width,
 }
 
 static int
-AllocTextures(struct vlc_gl_importer *importer, GLuint textures[],
+AllocTextures(const struct vlc_gl_importer *importer, GLuint textures[],
               const GLsizei tex_width[], const GLsizei tex_height[])
 {
     for (unsigned i = 0; i < importer->tex_count; ++i)
@@ -111,7 +111,7 @@ AllocTextures(struct vlc_gl_importer *importer, GLuint textures[],
 }
 
 static int
-Import(struct vlc_gl_importer *importer, GLuint textures[],
+Import(const struct vlc_gl_importer *importer, GLuint textures[],
        const GLsizei tex_width[], const GLsizei tex_height[],
        picture_t *pic, const size_t plane_offsets[])
 {
