@@ -27,6 +27,7 @@
 #include <vlc_modules.h>
 #include <vlc_opengl.h>
 
+#include "../converter.h"
 #include "../importer.h"
 
 struct sw_sys {

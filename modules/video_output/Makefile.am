@@ -50,7 +50,7 @@ libglconv_cvpx_plugin_la_SOURCES += codec/vt_utils.c codec/vt_utils.h
 libglconv_cvpx_plugin_la_LDFLAGS += -Wl,-framework,IOSurface \
 	-Wl,-framework,Foundation,-framework,CoreVideo,-framework,OpenGL
 vout_LTLIBRARIES += libvout_macosx_plugin.la libcaopengllayer_plugin.la \
-	libglconv_cvpx_plugin.la
+	#libglconv_cvpx_plugin.la
 endif
 if HAVE_IOS
 libglconv_cvpx_plugin_la_CFLAGS = $(AM_CFLAGS) -DUSE_OPENGL_ES2
@@ -62,10 +62,10 @@ libvout_ios_plugin_la_LIBADD = $(OPENGL_COMMONLIBS)
 libvout_ios_plugin_la_LDFLAGS = $(AM_LDFLAGS) -rpath '$(voutdir)' \
 	-Wl,-framework,OpenGLES,-framework,QuartzCore,-framework,UIKit
 if HAVE_IOS
-vout_LTLIBRARIES += libvout_ios_plugin.la libglconv_cvpx_plugin.la
+vout_LTLIBRARIES += libvout_ios_plugin.la #libglconv_cvpx_plugin.la
 endif
 if HAVE_TVOS
-vout_LTLIBRARIES += libvout_ios_plugin.la libglconv_cvpx_plugin.la
+vout_LTLIBRARIES += libvout_ios_plugin.la #libglconv_cvpx_plugin.la
 endif
 
 ### OpenGL ###
@@ -109,12 +109,12 @@ vout_LTLIBRARIES += \
 
 if HAVE_EGL
 if HAVE_VAAPI
-vout_LTLIBRARIES += libglconv_vaapi_plugin.la
+#vout_LTLIBRARIES += libglconv_vaapi_plugin.la
 endif
 endif # HAVE_EGL
 
 if HAVE_VDPAU
-vout_LTLIBRARIES += libglconv_vdpau_plugin.la
+#vout_LTLIBRARIES += libglconv_vdpau_plugin.la
 endif
 endif # HAVE_GL
 
@@ -442,7 +442,7 @@ libglconv_android_plugin_la_CFLAGS = $(AM_CFLAGS) -DUSE_OPENGL_ES2
 if HAVE_ANDROID
 vout_LTLIBRARIES += libandroid_window_plugin.la libandroid_display_plugin.la
 if HAVE_EGL
-vout_LTLIBRARIES += libegl_android_plugin.la libglconv_android_plugin.la
+vout_LTLIBRARIES += libegl_android_plugin.la #libglconv_android_plugin.la
 endif
 endif
 

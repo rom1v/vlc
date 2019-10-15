@@ -24,6 +24,7 @@
 #include <GL/gl.h>
 
 #include <vlc_common.h>
+#include <vlc_picture.h>
 
 typedef struct opengl_vtable_t opengl_vtable_t;
 
