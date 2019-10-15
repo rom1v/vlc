@@ -135,51 +135,51 @@ tc_yuv_base_init(opengl_tex_converter_t *tc, GLenum tex_target,
 
     if (desc->plane_count == 3)
     {
-        GLint internal = 0;
-        GLenum type = 0;
+        //GLint internal = 0;
+        //GLenum type = 0;
 
-        if (desc->pixel_size == 1)
-        {
-            internal = oneplane_texfmt;
-            type = GL_UNSIGNED_BYTE;
-        }
-        else if (desc->pixel_size == 2)
-        {
-            internal = oneplane16_texfmt;
-            type = GL_UNSIGNED_SHORT;
-        }
-        else
-            return VLC_EGENERIC;
+        //if (desc->pixel_size == 1)
+        //{
+        //    internal = oneplane_texfmt;
+        //    type = GL_UNSIGNED_BYTE;
+        //}
+        //else if (desc->pixel_size == 2)
+        //{
+        //    internal = oneplane16_texfmt;
+        //    type = GL_UNSIGNED_SHORT;
+        //}
+        //else
+        //    return VLC_EGENERIC;
 
-        assert(internal != 0 && type != 0);
+        //assert(internal != 0 && type != 0);
 
-        tc->tex_count = 3;
-        for (unsigned i = 0; i < tc->tex_count; ++i )
-        {
-            tc->texs[i] = (struct opengl_tex_cfg) {
-                { desc->p[i].w.num, desc->p[i].w.den },
-                { desc->p[i].h.num, desc->p[i].h.den },
-                internal, oneplane_texfmt, type
-            };
-        }
+        //tc->tex_count = 3;
+        //for (unsigned i = 0; i < tc->tex_count; ++i )
+        //{
+        //    tc->texs[i] = (struct opengl_tex_cfg) {
+        //        { desc->p[i].w.num, desc->p[i].w.den },
+        //        { desc->p[i].h.num, desc->p[i].h.den },
+        //        internal, oneplane_texfmt, type
+        //    };
+        //}
 
         if (oneplane_texfmt == GL_RED)
             swizzle_per_tex[0] = swizzle_per_tex[1] = swizzle_per_tex[2] = "r";
     }
     else if (desc->plane_count == 2)
     {
-        tc->tex_count = 2;
+        //tc->tex_count = 2;
 
         if (desc->pixel_size == 1)
         {
-            tc->texs[0] = (struct opengl_tex_cfg) {
-                { 1, 1 }, { 1, 1 }, oneplane_texfmt, oneplane_texfmt,
-                GL_UNSIGNED_BYTE
-            };
-            tc->texs[1] = (struct opengl_tex_cfg) {
-                { 1, 2 }, { 1, 2 }, twoplanes_texfmt, twoplanes_texfmt,
-                GL_UNSIGNED_BYTE
-            };
+            //tc->texs[0] = (struct opengl_tex_cfg) {
+            //    { 1, 1 }, { 1, 1 }, oneplane_texfmt, oneplane_texfmt,
+            //    GL_UNSIGNED_BYTE
+            //};
+            //tc->texs[1] = (struct opengl_tex_cfg) {
+            //    { 1, 2 }, { 1, 2 }, twoplanes_texfmt, twoplanes_texfmt,
+            //    GL_UNSIGNED_BYTE
+            //};
         }
         else if (desc->pixel_size == 2)
         {
@@ -187,14 +187,14 @@ tc_yuv_base_init(opengl_tex_converter_t *tc, GLenum tex_target,
              || GetTexFormatSize(tc, tex_target, twoplanes_texfmt,
                                  twoplanes16_texfmt, GL_UNSIGNED_SHORT) != 16)
                 return VLC_EGENERIC;
-            tc->texs[0] = (struct opengl_tex_cfg) {
-                { 1, 1 }, { 1, 1 }, oneplane16_texfmt, oneplane_texfmt,
-                GL_UNSIGNED_SHORT
-            };
-            tc->texs[1] = (struct opengl_tex_cfg) {
-                { 1, 2 }, { 1, 2 }, twoplanes16_texfmt, twoplanes_texfmt,
-                GL_UNSIGNED_SHORT
-            };
+            //tc->texs[0] = (struct opengl_tex_cfg) {
+            //    { 1, 1 }, { 1, 1 }, oneplane16_texfmt, oneplane_texfmt,
+            //    GL_UNSIGNED_SHORT
+            //};
+            //tc->texs[1] = (struct opengl_tex_cfg) {
+            //    { 1, 2 }, { 1, 2 }, twoplanes16_texfmt, twoplanes_texfmt,
+            //    GL_UNSIGNED_SHORT
+            //};
         }
         else
             return VLC_EGENERIC;
@@ -213,10 +213,10 @@ tc_yuv_base_init(opengl_tex_converter_t *tc, GLenum tex_target,
     else if (desc->plane_count == 1)
     {
         /* Y1 U Y2 V fits in R G B A */
-        tc->tex_count = 1;
-        tc->texs[0] = (struct opengl_tex_cfg) {
-            { 1, 2 }, { 1, 1 }, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE
-        };
+        //tc->tex_count = 1;
+        //tc->texs[0] = (struct opengl_tex_cfg) {
+        //    { 1, 2 }, { 1, 1 }, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE
+        //};
 
         /*
          * Set swizzling in Y1 U V order
@@ -303,27 +303,27 @@ tc_rgb_base_init(opengl_tex_converter_t *tc, GLenum tex_target,
 {
     (void) tex_target;
 
-    switch (chroma)
-    {
-        case VLC_CODEC_RGB32:
-        case VLC_CODEC_RGBA:
-            tc->texs[0] = (struct opengl_tex_cfg) {
-                { 1, 1 }, { 1, 1 }, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE
-            };
-            break;
-        case VLC_CODEC_BGRA: {
-            if (GetTexFormatSize(tc, tex_target, GL_BGRA, GL_RGBA,
-                                 GL_UNSIGNED_BYTE) != 32)
-                return VLC_EGENERIC;
-            tc->texs[0] = (struct opengl_tex_cfg) {
-                { 1, 1 }, { 1, 1 }, GL_RGBA, GL_BGRA, GL_UNSIGNED_BYTE
-            };
-            break;
-        }
-        default:
-            return VLC_EGENERIC;
-    }
-    tc->tex_count = 1;
+    //switch (chroma)
+    //{
+    //    case VLC_CODEC_RGB32:
+    //    case VLC_CODEC_RGBA:
+    //        tc->texs[0] = (struct opengl_tex_cfg) {
+    //            { 1, 1 }, { 1, 1 }, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE
+    //        };
+    //        break;
+    //    case VLC_CODEC_BGRA: {
+    //        if (GetTexFormatSize(tc, tex_target, GL_BGRA, GL_RGBA,
+    //                             GL_UNSIGNED_BYTE) != 32)
+    //            return VLC_EGENERIC;
+    //        tc->texs[0] = (struct opengl_tex_cfg) {
+    //            { 1, 1 }, { 1, 1 }, GL_RGBA, GL_BGRA, GL_UNSIGNED_BYTE
+    //        };
+    //        break;
+    //    }
+    //    default:
+    //        return VLC_EGENERIC;
+    //}
+    //tc->tex_count = 1;
     return VLC_SUCCESS;
 }
 
@@ -338,14 +338,14 @@ tc_base_fetch_locations(opengl_tex_converter_t *tc, GLuint program)
             return VLC_EGENERIC;
     }
 
-    for (unsigned int i = 0; i < tc->tex_count; ++i)
+    for (unsigned int i = 0; i < tc->importer.tex_count; ++i)
     {
         char name[sizeof("TextureX")];
         snprintf(name, sizeof(name), "Texture%1u", i);
         tc->uloc.Texture[i] = tc->vt->GetUniformLocation(program, name);
         if (tc->uloc.Texture[i] == -1)
             return VLC_EGENERIC;
-        if (tc->tex_target == GL_TEXTURE_RECTANGLE)
+        if (tc->importer.tex_target == GL_TEXTURE_RECTANGLE)
         {
             snprintf(name, sizeof(name), "TexSize%1u", i);
             tc->uloc.TexSize[i] = tc->vt->GetUniformLocation(program, name);
@@ -379,14 +379,14 @@ tc_base_prepare_shader(const opengl_tex_converter_t *tc,
     if (tc->yuv_color)
         tc->vt->Uniform4fv(tc->uloc.Coefficients, 4, tc->yuv_coefficients);
 
-    for (unsigned i = 0; i < tc->tex_count; ++i)
+    for (unsigned i = 0; i < tc->importer.tex_count; ++i)
         tc->vt->Uniform1i(tc->uloc.Texture[i], i);
 
     tc->vt->Uniform4f(tc->uloc.FillColor, 1.0f, 1.0f, 1.0f, alpha);
 
-    if (tc->tex_target == GL_TEXTURE_RECTANGLE)
+    if (tc->importer.tex_target == GL_TEXTURE_RECTANGLE)
     {
-        for (unsigned i = 0; i < tc->tex_count; ++i)
+        for (unsigned i = 0; i < tc->importer.tex_count; ++i)
             tc->vt->Uniform2f(tc->uloc.TexSize[i], tex_width[i],
                                tex_height[i]);
     }
@@ -444,11 +444,11 @@ tc_xyz12_prepare_shader(const opengl_tex_converter_t *tc,
 static GLuint
 xyz12_shader_init(opengl_tex_converter_t *tc)
 {
-    tc->tex_count = 1;
-    tc->tex_target = GL_TEXTURE_2D;
-    tc->texs[0] = (struct opengl_tex_cfg) {
-        { 1, 1 }, { 1, 1 }, GL_RGB, GL_RGB, GL_UNSIGNED_SHORT
-    };
+    //tc->tex_count = 1;
+    //tc->tex_target = GL_TEXTURE_2D;
+    //tc->texs[0] = (struct opengl_tex_cfg) {
+    //    { 1, 1 }, { 1, 1 }, GL_RGB, GL_RGB, GL_UNSIGNED_SHORT
+    //};
 
     tc->pf_fetch_locations = tc_xyz12_fetch_locations;
     tc->pf_prepare_shader = tc_xyz12_prepare_shader;
@@ -547,7 +547,7 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
 
     ADDF("#version %u\n%s", tc->glsl_version, tc->glsl_precision_header);
 
-    for (unsigned i = 0; i < tc->tex_count; ++i)
+    for (unsigned i = 0; i < tc->importer.tex_count; ++i)
         ADDF("uniform %s Texture%u;\n"
              "varying vec2 TexCoord%u;\n", sampler, i, i);
 
@@ -633,7 +633,7 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
 
     if (tex_target == GL_TEXTURE_RECTANGLE)
     {
-        for (unsigned i = 0; i < tc->tex_count; ++i)
+        for (unsigned i = 0; i < tc->importer.tex_count; ++i)
             ADDF("uniform vec2 TexSize%u;\n", i);
     }
 
@@ -646,13 +646,13 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
 
     if (tex_target == GL_TEXTURE_RECTANGLE)
     {
-        for (unsigned i = 0; i < tc->tex_count; ++i)
+        for (unsigned i = 0; i < tc->importer.tex_count; ++i)
             ADDF(" vec2 TexCoordRect%u = vec2(TexCoord%u.x * TexSize%u.x, "
                  "TexCoord%u.y * TexSize%u.y);\n", i, i, i, i, i);
     }
 
     unsigned color_idx = 0;
-    for (unsigned i = 0; i < tc->tex_count; ++i)
+    for (unsigned i = 0; i < tc->importer.tex_count; ++i)
     {
         const char *swizzle = swizzle_per_tex[i];
         if (swizzle)
@@ -733,7 +733,7 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
                 (const char *)&chroma, yuv_space, ms.ptr);
     free(ms.ptr);
 
-    tc->tex_target = tex_target;
+    //tc->tex_target = tex_target;
 
     tc->pf_fetch_locations = tc_base_fetch_locations;
     tc->pf_prepare_shader = tc_base_prepare_shader;

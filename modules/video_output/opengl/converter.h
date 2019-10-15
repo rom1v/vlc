@@ -27,6 +27,8 @@
 #include <vlc_picture_pool.h>
 #include <vlc_plugin.h>
 
+#include "importer.h"
+
 /* if USE_OPENGL_ES2 is defined, OpenGL ES version 2 will be used, otherwise
  * normal OpenGL will be used */
 #ifdef __APPLE__
@@ -148,7 +150,7 @@ typedef GLenum (APIENTRY *PFNGLCLIENTWAITSYNCPROC) (GLsync sync, GLbitfield flag
 /**
  * Structure containing function pointers to shaders commands
  */
-typedef struct {
+typedef struct opengl_vtable_t {
     /*
      * GL / GLES core functions
      */
@@ -260,7 +262,7 @@ struct opengl_tex_converter_t
     vlc_gl_t *gl;
 
     /* Pointer to decoder video context, set by the caller (can be NULL) */
-    vlc_video_context *vctx;
+    //vlc_video_context *vctx;
 
     /* libplacebo context, created by the caller (optional) */
     struct pl_context *pl_ctx;
@@ -295,25 +297,25 @@ struct opengl_tex_converter_t
     GLuint fshader;
 
     /* Number of textures, cannot be 0 */
-    unsigned tex_count;
+    //unsigned tex_count;
 
     /* Texture mapping (usually: GL_TEXTURE_2D), cannot be 0 */
-    GLenum tex_target;
+    //GLenum tex_target;
 
     /* Set to true if textures are generated from pf_update() */
-    bool handle_texs_gen;
+    //bool handle_texs_gen;
 
-    struct opengl_tex_cfg {
-        /* Texture scale factor, cannot be 0 */
-        vlc_rational_t w;
-        vlc_rational_t h;
+    //struct opengl_tex_cfg {
+    //    /* Texture scale factor, cannot be 0 */
+    //    vlc_rational_t w;
+    //    vlc_rational_t h;
 
-        /* The following is used and filled by the opengl_fragment_shader_init
-         * function. */
-        GLint  internal;
-        GLenum format;
-        GLenum type;
-    } texs[PICTURE_PLANE_MAX];
+    //    /* The following is used and filled by the opengl_fragment_shader_init
+    //     * function. */
+    //    GLint  internal;
+    //    GLenum format;
+    //    GLenum type;
+    //} texs[PICTURE_PLANE_MAX];
 
     /* The following is used and filled by the opengl_fragment_shader_init
      * function. */
@@ -347,8 +349,8 @@ struct opengl_tex_converter_t
      * \param tex_height array of tex height (one per plane)
      * \return VLC_SUCCESS or a VLC error
      */
-    int (*pf_allocate_textures)(const opengl_tex_converter_t *tc, GLuint *textures,
-                                const GLsizei *tex_width, const GLsizei *tex_height);
+    //int (*pf_allocate_textures)(const opengl_tex_converter_t *tc, GLuint *textures,
+    //                            const GLsizei *tex_width, const GLsizei *tex_height);
 
     /**
      * Callback to allocate a picture pool
@@ -378,9 +380,9 @@ struct opengl_tex_converter_t
      * (one per plane, can be NULL)
      * \return VLC_SUCCESS or a VLC error
      */
-    int (*pf_update)(const opengl_tex_converter_t *tc, GLuint *textures,
-                     const GLsizei *tex_width, const GLsizei *tex_height,
-                     picture_t *pic, const size_t *plane_offset);
+    //int (*pf_update)(const opengl_tex_converter_t *tc, GLuint *textures,
+    //                 const GLsizei *tex_width, const GLsizei *tex_height,
+    //                 picture_t *pic, const size_t *plane_offset);
 
     /**
      * Callback to fetch locations of uniform or attributes variables
@@ -408,6 +410,8 @@ struct opengl_tex_converter_t
     void (*pf_prepare_shader)(const opengl_tex_converter_t *tc,
                               const GLsizei *tex_width, const GLsizei *tex_height,
                               float alpha);
+
+    struct vlc_gl_importer importer;
 };
 
 /**

@@ -72,6 +72,9 @@ struct vlc_gl_importer {
     } cfg[PICTURE_PLANE_MAX];
     unsigned tex_count;
 
+    /* Set to true if textures are generated from update() */
+    bool handle_texs_gen;
+
     void *sys;
     const struct vlc_gl_importer_ops *ops;
 };
