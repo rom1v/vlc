@@ -33,12 +33,11 @@ typedef int (*vlc_gl_importer_open_fn)(struct vlc_gl_importer *);
 struct vlc_gl_importer_ops {
     int (*alloc_textures)(struct vlc_gl_importer *importer, GLuint textures[],
                           const GLsizei tex_width[],
-                          const GLsizei tex_height[], unsigned tex_count);
+                          const GLsizei tex_height[]);
 
     int (*import)(struct vlc_gl_importer *importer, GLuint textures[],
                   const GLsizei tex_width[], const GLsizei text_height[],
-                  unsigned tex_count, picture_t *pic,
-                  const size_t plane_offsets[]);
+                  picture_t *pic, const size_t plane_offsets[]);
 
     void (*close)(struct vlc_gl_importer *importer);
 };

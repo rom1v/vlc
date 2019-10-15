@@ -97,10 +97,9 @@ upload_plane(struct vlc_gl_importer *importer, unsigned idx, GLsizei width,
 
 static int
 AllocTextures(struct vlc_gl_importer *importer, GLuint textures[],
-              const GLsizei tex_width[], const GLsizei tex_height[],
-              unsigned tex_count)
+              const GLsizei tex_width[], const GLsizei tex_height[])
 {
-    for (unsigned i = 0; i < tex_count; ++i)
+    for (unsigned i = 0; i < importer->tex_count; ++i)
     {
         const opengl_vtable_t *gl = importer->gl;
         gl->BindTexture(importer->tex_target, textures[i]);
@@ -114,11 +113,11 @@ AllocTextures(struct vlc_gl_importer *importer, GLuint textures[],
 static int
 Import(struct vlc_gl_importer *importer, GLuint textures[],
        const GLsizei tex_width[], const GLsizei tex_height[],
-       unsigned tex_count, picture_t *pic, const size_t plane_offsets[])
+       picture_t *pic, const size_t plane_offsets[])
 {
     const opengl_vtable_t *gl = importer->gl;
 
-    for (unsigned i = 0; i < tex_count; ++i)
+    for (unsigned i = 0; i < importer->tex_count; ++i)
     {
         assert(textures[i]);
         gl->ActiveTexture(GL_TEXTURE0 + i);
