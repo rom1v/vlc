@@ -21,10 +21,11 @@
 #ifndef VLC_OPENGL_FILTER_H
 #define VLC_OPENGL_FILTER_H
 
-#include <GL/gl.h>
-
 #include <vlc_common.h>
 #include <vlc_es.h>
+
+#include <GLES3/gl3.h>
+#include <GLES/gl.h>
 
 #ifdef __cplusplus
 extern "C" {

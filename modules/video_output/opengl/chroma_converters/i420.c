@@ -68,25 +68,25 @@ static const float MATRIX_BT601[] = MATRIX_YUV_TO_RGB(0.299f, 0.114f);
 static const float MATRIX_BT709[] = MATRIX_YUV_TO_RGB(0.2126f, 0.0722f);
 
 static const char *const FRAGMENT_CODE_TEMPLATE =
-    "uniform mat4x3 vlc_conv_matrix;\n"
+    "uniform mat4 vlc_conv_matrix;\n"
     "uniform sampler2D vlc_planes[3];\n"
     "vec4 vlc_texture(vec2 c) {\n"
     "  vec2 coords = vlc_picture_coords(c);\n"
     "  vec4 pix_in = vec4(\n"
-    "                    texture2D(vlc_planes[%d], coords).%c,\n"
-    "                    texture2D(vlc_planes[%d], coords).%c,\n"
-    "                    texture2D(vlc_planes[%d], coords).%c,\n"
+    "                    texture(vlc_planes[%d], coords).%c,\n"
+    "                    texture(vlc_planes[%d], coords).%c,\n"
+    "                    texture(vlc_planes[%d], coords).%c,\n"
     "                    1.0\n"
     "                  );\n"
     /* mat4x3 * vec4 -> vec3 */
-    "  vec3 pix_out = vlc_conv_matrix * pix_in;\n"
+    "  vec4 pix_out = vlc_conv_matrix * pix_in;\n"
     /* add alpha component */
-    "  return vec4(pix_out, 1.0);\n"
+    "  return pix_out;\n"
     "}\n";
 
 struct i420_sys {
     unsigned plane_count;
-    float matrix[4 * 3];
+    float matrix[4 * 4];
     unsigned input_texture_first_index;
     struct {
         GLint planes[3];
@@ -130,7 +130,7 @@ Load(const struct vlc_gl_picture *pic, void *userdata)
         vt->Uniform1i(sys->loc.planes[i], gltex_index);
     }
 
-    vt->UniformMatrix4x3fv(sys->loc.matrix, 1, true, sys->matrix);
+    vt->UniformMatrix4fv(sys->loc.matrix, 1, true, sys->matrix);
 
     return VLC_SUCCESS;
 }
@@ -200,6 +200,10 @@ init_conv_matrix(video_color_space_t color_space,
                 conv_matrix_out[y * 4 + x] = sum;
             }
         }
+        conv_matrix_out[12] = 0;
+        conv_matrix_out[13] = 0;
+        conv_matrix_out[14] = 0;
+        conv_matrix_out[15] = 1;
     }
 }
 
@@ -214,6 +218,9 @@ Open(struct vlc_gl_chroma_converter *converter,
      bool vflip,
      struct vlc_gl_shader_sampler *sampler_out)
 {
+    // HACK we don't have importer yet!
+    ((video_format_t *)fmt_in)->i_chroma = VLC_CODEC_I420;
+
     switch (fmt_in->i_chroma)
     {
         case VLC_CODEC_I420:
@@ -276,6 +283,8 @@ Open(struct vlc_gl_chroma_converter *converter,
         free(converter->sys);
         return VLC_ENOMEM;
     }
+
+    fprintf(stderr, "FRAGMENT i420: \n%s\n%s\n", fragment_codes[0], fragment_codes[1]);
 
     const struct opengl_vtable_t *gl = converter->vt;
     GLint value;

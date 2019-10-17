@@ -36,7 +36,7 @@ static const char *const FRAGMENT_CODE =
     "uniform sampler2D tex;\n"
     "vec4 vlc_texture(vec2 c) {\n"
     "  vec2 coords = vlc_picture_coords(c);\n"
-    "  return texture2D(tex, coords);\n"
+    "  return texture(tex, coords);\n"
     "}\n";
 
 #define MAX_PLANE_COUNT 4
@@ -111,6 +111,12 @@ Open(struct vlc_gl_chroma_converter *converter,
      int vflip,
      struct vlc_gl_shader_sampler *sampler_out)
 {
+    // HACK we don't have importer yet!
+    ((video_format_t *)fmt_in)->i_chroma = fmt_out->i_chroma;
+
+    fprintf(stderr, "identity cc: %4.4s %4.4s\n",
+                    (const char *)&fmt_in->i_chroma,
+                    (const char *)&fmt_out->i_chroma);
     if (fmt_in->i_chroma != fmt_out->i_chroma)
         return VLC_EGENERIC;
 
@@ -151,6 +157,8 @@ Open(struct vlc_gl_chroma_converter *converter,
         return VLC_ENOMEM;
     }
 
+    fprintf(stderr, "FRAGMENT identity: \n%s\n%s\n", fragment_codes[0], fragment_codes[1]);
+
     const struct opengl_vtable_t *gl = converter->vt;
     GLint value;
     gl->GetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &value);
@@ -163,7 +171,7 @@ Open(struct vlc_gl_chroma_converter *converter,
     sys->plane_count = desc->plane_count;
 
     sampler_out->fragment_codes = fragment_codes;
-    sampler_out->fragment_code_count = 1;
+    sampler_out->fragment_code_count = 2;
     sampler_out->input_texture_first_index = max_textures - 1;
     sampler_out->input_texture_count = 1;
     sampler_out->prepare = Prepare;

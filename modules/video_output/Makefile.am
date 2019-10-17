@@ -88,7 +88,7 @@ endif
 libgl_filter_triangle_plugin_la_SOURCES = video_output/opengl/filters/triangle.c \
 										  $(OPENGL_COMMONSOURCES) \
 									      video_output/opengl/shader_builder.c
-libgl_filter_triangle_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_filter_triangle_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS) -DUSE_OPENGL_ES2
 libgl_filter_triangle_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
 libgl_filter_triangle_rotate_plugin_la_SOURCES = video_output/opengl/filters/triangle_rotate.c \
@@ -100,7 +100,7 @@ libgl_filter_triangle_rotate_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 libgl_filter_triangle_mask_plugin_la_SOURCES = video_output/opengl/filters/triangle_mask.c \
                                                $(OPENGL_COMMONSOURCES) \
                                                video_output/opengl/shader_builder.c
-libgl_filter_triangle_mask_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_filter_triangle_mask_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS) -DUSE_OPENGL_ES2
 libgl_filter_triangle_mask_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
 libgl_filter_clock_plugin_la_SOURCES = video_output/opengl/filters/clock.c \
@@ -112,19 +112,19 @@ libgl_filter_clock_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 libgl_filter_identity_plugin_la_SOURCES = video_output/opengl/filters/identity.c \
                                           $(OPENGL_COMMONSOURCES) \
                                           video_output/opengl/shader_builder.c
-libgl_filter_identity_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_filter_identity_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS) -DUSE_OPENGL_ES2
 libgl_filter_identity_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
 libgl_chroma_converter_identity_plugin_la_SOURCES = video_output/opengl/chroma_converters/identity.c \
                                                     $(OPENGL_COMMONSOURCES) \
                                                     video_output/opengl/shader_builder.c
-libgl_chroma_converter_identity_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_chroma_converter_identity_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS) -DUSE_OPENGL_ES2
 libgl_chroma_converter_identity_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
 libgl_chroma_converter_i420_plugin_la_SOURCES = video_output/opengl/chroma_converters/i420.c \
                                                 $(OPENGL_COMMONSOURCES) \
                                                 video_output/opengl/shader_builder.c
-libgl_chroma_converter_i420_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_chroma_converter_i420_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS) -DUSE_OPENGL_ES2
 libgl_chroma_converter_i420_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
 libgl_filter_commandblend_plugin_la_SOURCES = video_output/opengl/filters/commandblend.c \
@@ -497,7 +497,12 @@ libglconv_android_plugin_la_CFLAGS = $(AM_CFLAGS) -DUSE_OPENGL_ES2
 if HAVE_ANDROID
 vout_LTLIBRARIES += libandroid_window_plugin.la libandroid_display_plugin.la
 if HAVE_EGL
-vout_LTLIBRARIES += libegl_android_plugin.la libglconv_android_plugin.la
+vout_LTLIBRARIES += libegl_android_plugin.la libglconv_android_plugin.la \
+	libgl_chroma_converter_i420_plugin.la \
+	libgl_chroma_converter_identity_plugin.la \
+	libgl_filter_identity_plugin.la \
+	libgl_filter_triangle_plugin.la \
+	libgl_filter_triangle_mask_plugin.la
 endif
 endif
 

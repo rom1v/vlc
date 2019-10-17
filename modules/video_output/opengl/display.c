@@ -52,6 +52,8 @@ vlc_module_begin ()
     set_callback_display(Open, 265)
     add_shortcut ("opengles2", "gles2")
     add_module("gles2", "opengl es2", NULL, GLES2_TEXT, PROVIDER_LONGTEXT)
+    add_module_list("gl-filters", "opengl filter", "none", "GL filters", "GL filters")
+    add_glopts ()
 
 #else
 

@@ -22,7 +22,9 @@
 #define VLC_OPENGL_SHADER_BUILDER_H
 
 #include <vlc_common.h>
-#include <GL/gl.h>
+
+#include <GLES3/gl3.h>
+#include <GLES/gl.h>
 
 struct opengl_tex_converter_t;
 struct opengl_vtable_t;

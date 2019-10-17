@@ -121,6 +121,12 @@ static int BuildFragmentShader(
     if (part_count)
         memcpy(p, parts, part_count * sizeof(char *));
 
+    for (size_t i = 0; i < count; ++i)
+    {
+        fprintf(stderr, "BUILDER fragment[%d]:\n", (int) i);
+        fprintf(stderr, "%s\n", sources[i]);
+    }
+
     vt->ShaderSource(shader, count, sources, NULL);
 
     free(sources);
