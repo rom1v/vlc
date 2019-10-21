@@ -38,6 +38,10 @@
 #  include <OpenGLES/ES2/glext.h>
 # endif
 #else /* !defined (__APPLE__) */
+# if defined(__ANDROID__) && !defined(USE_OPENGL_ES2)
+/* Force OpenGL ES 2 on Android */
+#  define USE_OPENGL_ES2
+# endif
 # if defined (USE_OPENGL_ES2)
 #  include <GLES2/gl2.h>
 #  include <GLES2/gl2ext.h>
