@@ -234,8 +234,39 @@ static const struct vlc_gl_importer_ops ops = {
     .close = Close,
 };
 
-static vlc_gl_importer_open_fn Open;
+static const char *const TEMPLATE_HEADER = "uniform sampler2D vlc_planes[%d];";
+static const char *const TEMPLATE_BODY =
+    "vec4 vlc_texture_raw(vec2 coords) {\n"
+    "  return vec4(\n"
+    "    texture(vlc_planes[%d], coords).%c,\n"
+    "    texture(vlc_planes[%d], coords).%c,\n"
+    "    texture(vlc_planes[%d], coords).%c,\n"
+    "    1.0\n"
+    "  );\n"
+    "}\n";
 
+/* pixel mapping to textures */
+struct pix_map {
+    int plane_count;
+    struct pix_comp {
+        int plane;
+        char field;
+    } comps[3];
+};
+
+static void
+get_pix_mapping(vlc_fourcc_t chroma, struct pix_map *map)
+{
+    const vlc_chroma_description_t *desc =
+        vlc_fourcc_GetChromaDescription(chroma);
+    map->plane_count = desc->plane_count;
+    // TODO make it depend on the actual chroma
+    map->comps[0] = (struct pix_comp) {0, 'x'}; /* Y */
+    map->comps[1] = (struct pix_comp) {1, 'x'}; /* Cr */
+    map->comps[2] = (struct pix_comp) {2, 'x'}; /* Cb */
+}
+
+static vlc_gl_importer_open_fn Open;
 static int
 Open(struct vlc_gl_importer *importer, struct vlc_gl_shader_code *code)
 {
@@ -248,6 +279,31 @@ Open(struct vlc_gl_importer *importer, struct vlc_gl_shader_code *code)
     int ret = fill_cfg(importer);
     if (ret != VLC_SUCCESS)
         return ret;
+
+    struct pix_map map;
+    get_pix_mapping(importer->fmt.i_chroma, &map);
+
+    ret = vlc_gl_shader_code_Append(code, VLC_SHADER_CODE_HEADER,
+                                    TEMPLATE_HEADER, map.plane_count);
+    if (ret != VLC_SUCCESS)
+    {
+        free(sys);
+        return ret;
+    }
+
+    ret = vlc_gl_shader_code_Append(code, VLC_SHADER_CODE_BODY,
+                                    TEMPLATE_BODY,
+                                    map.comps[0].plane,
+                                    map.comps[0].field,
+                                    map.comps[1].plane,
+                                    map.comps[1].field,
+                                    map.comps[2].plane,
+                                    map.comps[2].field);
+    if (ret != VLC_SUCCESS)
+    {
+        free(sys);
+        return ret;
+    }
 
     return VLC_SUCCESS;
 }
