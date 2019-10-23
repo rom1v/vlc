@@ -33,15 +33,25 @@ typedef int vlc_gl_importer_open_fn(struct vlc_gl_importer *importer,
                                     struct vlc_gl_shader_code *code);
 
 struct vlc_gl_importer_ops {
-    int (*alloc_textures)(const struct vlc_gl_importer *importer,
-                          GLuint textures[], const GLsizei tex_width[],
-                          const GLsizei tex_height[]);
+    int
+    (*alloc_textures)(struct vlc_gl_importer *importer, GLuint textures[],
+                      const GLsizei tex_width[], const GLsizei tex_height[]);
 
-    int (*import)(const struct vlc_gl_importer *importer, GLuint textures[],
-                  const GLsizei tex_width[], const GLsizei text_height[],
-                  picture_t *pic, const size_t plane_offsets[]);
+    int
+    (*fetch_locations)(struct vlc_gl_importer *importer, GLuint program);
 
-    void (*close)(struct vlc_gl_importer *importer);
+    // upload textures
+    int
+    (*update_textures)(struct vlc_gl_importer *importer, GLuint textures[],
+                       const GLsizei tex_width[], const GLsizei text_height[],
+                       picture_t *pic, const size_t plane_offsets[]);
+
+    // load uniforms
+    int
+    (*prepare_shader)(struct vlc_gl_importer *importer);
+
+    void
+    (*close)(struct vlc_gl_importer *importer);
 };
 
 // TODO move some fields into a "private" struct?
