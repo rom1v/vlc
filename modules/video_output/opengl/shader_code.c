@@ -67,8 +67,8 @@ vlc_gl_shader_code_AppendVa(struct vlc_gl_shader_code *code,
 }
 
 int
-vlc_gl_shader_code_Merge(struct vlc_gl_shader_code *code,
-                         struct vlc_gl_shader_code *other)
+vlc_gl_shader_code_MergeIn(struct vlc_gl_shader_code *code,
+                           struct vlc_gl_shader_code *other)
 {
     /* reserve space separately to keep the state consistent on error */
     for (int loc = 0; loc < VLC_SHADER_CODE_LOCATION_COUNT_; ++loc)
