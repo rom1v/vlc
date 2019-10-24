@@ -44,6 +44,7 @@ vlc_gl_shader_code_Destroy(struct vlc_gl_shader_code *code)
             free(vec->data[i]);
         vlc_vector_destroy(vec);
     }
+    vlc_vector_destroy(&code->cbs_reg);
 }
 
 int
@@ -67,6 +68,18 @@ vlc_gl_shader_code_AppendVa(struct vlc_gl_shader_code *code,
 }
 
 int
+vlc_gl_shader_code_RegisterCallbacks(struct vlc_gl_shader_code *code,
+                                     const struct vlc_gl_shader_cbs *cbs,
+                                     void *userdata)
+{
+    struct vlc_gl_shader_cbs_reg reg = { cbs, userdata };
+    bool ok = vlc_vector_push(&code->cbs_reg, reg);
+    if (!ok)
+        return VLC_ENOMEM;
+    return VLC_SUCCESS;
+}
+
+int
 vlc_gl_shader_code_MergeIn(struct vlc_gl_shader_code *code,
                            struct vlc_gl_shader_code *other)
 {
@@ -79,6 +92,13 @@ vlc_gl_shader_code_MergeIn(struct vlc_gl_shader_code *code,
             return VLC_ENOMEM;
     }
 
+    {
+        size_t count = code->cbs_reg.size + other->cbs_reg.size;
+        bool ok = vlc_vector_reserve(&code->cbs_reg, count);
+        if (!ok)
+            return VLC_ENOMEM;
+    }
+
     for (int loc = 0; loc < VLC_SHADER_CODE_LOCATION_COUNT_; ++loc)
     {
         bool ok = vlc_vector_push_all(&code->parts[loc], other->parts[loc].data,
@@ -86,6 +106,13 @@ vlc_gl_shader_code_MergeIn(struct vlc_gl_shader_code *code,
         assert(ok); /* we called vlc_vector_reserve() beforehand */
         /* the code have been moved out of the "other" structure */
         vlc_vector_clear(&other->parts[loc]);
+    }
+
+    {
+        bool ok = vlc_vector_push_all(&code->cbs_reg, other->cbs_reg.data,
+                                      other->cbs_reg.size);
+        assert(ok);
+        vlc_vector_clear(&other->cbs_reg);
     }
 
     vlc_gl_shader_code_Destroy(other);

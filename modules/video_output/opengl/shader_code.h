@@ -23,11 +23,32 @@
 
 #include <vlc_common.h>
 #include <vlc_vector.h>
+#include "gl_common.h"
 
 enum vlc_shader_code_location {
     VLC_SHADER_CODE_HEADER,
     VLC_SHADER_CODE_BODY,
     VLC_SHADER_CODE_LOCATION_COUNT_,
+};
+
+struct vlc_gl_shader_cbs {
+
+    /**
+     * This function will be called once, after the whole program is compiled
+     * and linked.
+     *
+     * Its purpose is typically to retrieve uniforms and attributes locations.
+     */
+    int
+    (*on_program_compiled)(GLuint program, void *userdata);
+
+    /**
+     * This function will be called before drawing.
+     *
+     * Its purpose is to load attributes and uniforms.
+     */
+    int
+    (*prepare_shader)(void *userdata);
 };
 
 struct vlc_gl_shader_code;
@@ -48,5 +69,10 @@ vlc_gl_shader_code_Append(struct vlc_gl_shader_code *code,
     va_end(va);
     return ret;
 }
+
+int
+vlc_gl_shader_code_RegisterCallbacks(struct vlc_gl_shader_code *code,
+                                     const struct vlc_gl_shader_cbs *cbs,
+                                     void *userdata);
 
 #endif
