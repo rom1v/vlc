@@ -25,10 +25,18 @@
 
 #include <vlc_vector.h>
 
+struct vlc_gl_shader_cbs_reg {
+    const struct vlc_gl_shader_cbs *cbs;
+    void *userdata;
+};
+
 typedef struct VLC_VECTOR(char *) vec_str;
+typedef struct VLC_VECTOR(struct vlc_gl_shader_cbs_reg)
+    vec_shader_cbs_reg;
 
 struct vlc_gl_shader_code {
     vec_str parts[VLC_SHADER_CODE_LOCATION_COUNT_];
+    vec_shader_cbs_reg cbs_reg;
 };
 
 void
