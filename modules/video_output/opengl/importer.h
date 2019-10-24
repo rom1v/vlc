@@ -25,7 +25,7 @@
 #include <vlc_picture.h>
 
 #include "gl_common.h"
-#include "shader_code.h"
+#include "program.h"
 
 struct vlc_gl_importer;
 

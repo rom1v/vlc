@@ -22,7 +22,7 @@
 # include <config.h>
 #endif
 
-#include "shader_code_priv.h"
+#include "program_priv.h"
 
 #include <assert.h>
 
