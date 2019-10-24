@@ -266,9 +266,9 @@ static const struct vlc_gl_importer_ops ops = {
     .close = Close,
 };
 
-static const struct vlc_gl_shader_cbs shader_cbs = {
+static const struct vlc_gl_program_cbs program_cbs = {
     .on_program_compiled = FetchLocations,
-    .prepare_shader = PrepareShader,
+    .prepare_shaders = PrepareShader,
 };
 
 static const char *const TEMPLATE_BODY =
@@ -305,7 +305,7 @@ get_pix_mapping(vlc_fourcc_t chroma, struct pix_map *map)
 
 static vlc_gl_importer_open_fn Open;
 static int
-Open(struct vlc_gl_importer *importer, struct vlc_gl_shader_code *code)
+Open(struct vlc_gl_importer *importer, struct vlc_gl_program *program)
 {
     struct sw_sys *sys = importer->sys = malloc(sizeof(*sys));
     if (!importer->sys)
@@ -320,22 +320,23 @@ Open(struct vlc_gl_importer *importer, struct vlc_gl_shader_code *code)
     struct pix_map map;
     get_pix_mapping(importer->fmt.i_chroma, &map);
 
-    ret = vlc_gl_shader_code_Append(code, VLC_SHADER_CODE_BODY,
-                                    TEMPLATE_BODY,
-                                    map.plane_count,
-                                    map.comps[0].plane,
-                                    map.comps[0].field,
-                                    map.comps[1].plane,
-                                    map.comps[1].field,
-                                    map.comps[2].plane,
-                                    map.comps[2].field);
+    ret = vlc_gl_program_AppendShaderCode(program, VLC_GL_SHADER_FRAGMENT,
+                                          VLC_GL_SHADER_CODE_BODY,
+                                          TEMPLATE_BODY,
+                                          map.plane_count,
+                                          map.comps[0].plane,
+                                          map.comps[0].field,
+                                          map.comps[1].plane,
+                                          map.comps[1].field,
+                                          map.comps[2].plane,
+                                          map.comps[2].field);
     if (ret != VLC_SUCCESS)
     {
         free(sys);
         return ret;
     }
 
-    ret = vlc_gl_shader_code_RegisterCallbacks(code, &shader_cbs, importer);
+    ret = vlc_gl_program_RegisterCallbacks(program, &program_cbs, importer);
     if (ret != VLC_SUCCESS)
     {
         free(sys);

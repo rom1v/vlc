@@ -18,41 +18,41 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 
-#ifndef VLC_GL_SHADER_CODE_PRIV_H
-#define VLC_GL_SHADER_CODE_PRIV_H
+#ifndef VLC_GL_PROGRAM_PRIV_H
+#define VLC_GL_PROGRAM_PRIV_H
 
 #include "shader_code.h"
 
 #include <vlc_vector.h>
 
-struct vlc_gl_shader_cbs_reg {
-    const struct vlc_gl_shader_cbs *cbs;
+struct vlc_gl_program_cbs_reg {
+    const struct vlc_gl_program_cbs *cbs;
     void *userdata;
 };
 
 typedef struct VLC_VECTOR(char *) vec_str;
-typedef struct VLC_VECTOR(struct vlc_gl_shader_cbs_reg)
-    vec_shader_cbs_reg;
+typedef struct VLC_VECTOR(struct vlc_gl_program_cbs_reg)
+    vec_program_cbs_reg;
 
-struct vlc_gl_shader_code {
-    vec_str parts[VLC_SHADER_CODE_LOCATION_COUNT_];
-    vec_shader_cbs_reg cbs_reg;
+struct vlc_gl_program {
+    vec_str code[VLC_GL_SHADER_TYPE_COUNT_][VLC_GL_SHADER_CODE_LOCATION_COUNT_];
+    vec_program_cbs_reg cbs_reg;
 };
 
 void
-vlc_gl_shader_code_Init(struct vlc_gl_shader_code *code);
+vlc_gl_program_Init(struct vlc_gl_program *program);
 
 void
-vlc_gl_shader_code_Destroy(struct vlc_gl_shader_code *code);
+vlc_gl_program_Destroy(struct vlc_gl_program *program);
 
 /**
  * Merge `other` into `code`.
  *
- * The `other` shader code is _moved_ (its content is left undefined) into
- * `code`.
+ * The `other` program code and callbacks are _moved_ into `program` (the
+ * content of `other` is left undefined).
  */
 int
-vlc_gl_shader_code_MergeIn(struct vlc_gl_shader_code *code,
-                           struct vlc_gl_shader_code *other);
+vlc_gl_program_MergeIn(struct vlc_gl_program *program,
+                       struct vlc_gl_program *other);
 
 #endif
