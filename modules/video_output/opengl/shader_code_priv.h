@@ -44,7 +44,7 @@ vlc_gl_shader_code_Destroy(struct vlc_gl_shader_code *code);
  * `code`.
  */
 int
-vlc_gl_shader_code_Merge(struct vlc_gl_shader_code *code,
-                         struct vlc_gl_shader_code *other);
+vlc_gl_shader_code_MergeIn(struct vlc_gl_shader_code *code,
+                           struct vlc_gl_shader_code *other);
 
 #endif
