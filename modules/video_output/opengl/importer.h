@@ -37,18 +37,11 @@ struct vlc_gl_importer_ops {
     (*alloc_textures)(struct vlc_gl_importer *importer, GLuint textures[],
                       const GLsizei tex_width[], const GLsizei tex_height[]);
 
-    int
-    (*fetch_locations)(struct vlc_gl_importer *importer, GLuint program);
-
     // upload textures
     int
     (*update_textures)(struct vlc_gl_importer *importer, GLuint textures[],
                        const GLsizei tex_width[], const GLsizei text_height[],
                        picture_t *pic, const size_t plane_offsets[]);
-
-    // load uniforms
-    int
-    (*prepare_shader)(struct vlc_gl_importer *importer);
 
     void
     (*close)(struct vlc_gl_importer *importer);

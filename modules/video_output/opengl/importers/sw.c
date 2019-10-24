@@ -113,28 +113,6 @@ AllocTextures(struct vlc_gl_importer *importer, GLuint textures[],
 }
 
 static int
-FetchLocations(struct vlc_gl_importer *importer, GLuint program)
-{
-    struct sw_sys *sys = importer->sys;
-    const opengl_vtable_t *gl = importer->gl;
-    //for (unsigned i = 0; i < importer->tex_count; ++i)
-    //{
-    //    char s[15];
-    //    snprintf(s, sizeof(s), "vlc_planes[%u]", i);
-    //    sys->loc.planes[i] = gl->GetUniformLocation(program, s);
-    //}
-    /* it is shorter and safer to write the code 3 times than to build the
-     * string dynamically properly in a loop */
-    if (importer->tex_count > 0)
-        sys->loc.planes[0] = gl->GetUniformLocation(program, "vlc_planes[0]");
-    if (importer->tex_count > 1)
-        sys->loc.planes[1] = gl->GetUniformLocation(program, "vlc_planes[1]");
-    if (importer->tex_count > 2)
-        sys->loc.planes[2] = gl->GetUniformLocation(program, "vlc_planes[2]");
-    return VLC_SUCCESS;
-}
-
-static int
 UpdateTextures(struct vlc_gl_importer *importer, GLuint textures[],
                const GLsizei tex_width[], const GLsizei tex_height[],
                picture_t *pic, const size_t plane_offsets[])
@@ -159,16 +137,40 @@ UpdateTextures(struct vlc_gl_importer *importer, GLuint textures[],
     return VLC_SUCCESS;
 }
 
-static int
-PrepareShader(struct vlc_gl_importer *importer)
-{
-
-}
-
 static void
 Close(struct vlc_gl_importer *importer)
 {
     free(importer->sys);
+}
+
+static int
+FetchLocations(GLuint program, void *userdata)
+{
+    struct vlc_gl_importer *importer = userdata;
+    struct sw_sys *sys = importer->sys;
+    const opengl_vtable_t *gl = importer->gl;
+    //for (unsigned i = 0; i < importer->tex_count; ++i)
+    //{
+    //    char s[15];
+    //    snprintf(s, sizeof(s), "vlc_planes[%u]", i);
+    //    sys->loc.planes[i] = gl->GetUniformLocation(program, s);
+    //}
+    /* it is shorter and safer to write the code 3 times than to build the
+     * string dynamically properly in a loop */
+    if (importer->tex_count > 0)
+        sys->loc.planes[0] = gl->GetUniformLocation(program, "vlc_planes[0]");
+    if (importer->tex_count > 1)
+        sys->loc.planes[1] = gl->GetUniformLocation(program, "vlc_planes[1]");
+    if (importer->tex_count > 2)
+        sys->loc.planes[2] = gl->GetUniformLocation(program, "vlc_planes[2]");
+    return VLC_SUCCESS;
+}
+
+
+static int
+PrepareShader(void *userdata)
+{
+    struct vlc_gl_importer *importer = userdata;
 }
 
 static int
@@ -260,10 +262,13 @@ fill_cfg(struct vlc_gl_importer *importer)
 
 static const struct vlc_gl_importer_ops ops = {
     .alloc_textures = AllocTextures,
-    .fetch_locations = FetchLocations,
     .update_textures = UpdateTextures,
-    .prepare_shader = PrepareShader,
     .close = Close,
+};
+
+static const struct vlc_gl_shader_cbs shader_cbs = {
+    .on_program_compiled = FetchLocations,
+    .prepare_shader = PrepareShader,
 };
 
 static const char *const TEMPLATE_HEADER = "uniform sampler2D vlc_planes[%d];";
@@ -331,6 +336,13 @@ Open(struct vlc_gl_importer *importer, struct vlc_gl_shader_code *code)
                                     map.comps[1].field,
                                     map.comps[2].plane,
                                     map.comps[2].field);
+    if (ret != VLC_SUCCESS)
+    {
+        free(sys);
+        return ret;
+    }
+
+    ret = vlc_gl_shader_code_RegisterCallbacks(code, &shader_cbs, importer);
     if (ret != VLC_SUCCESS)
     {
         free(sys);
