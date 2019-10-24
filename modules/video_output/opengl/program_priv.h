@@ -21,7 +21,7 @@
 #ifndef VLC_GL_PROGRAM_PRIV_H
 #define VLC_GL_PROGRAM_PRIV_H
 
-#include "shader_code.h"
+#include "program.h"
 
 #include <vlc_vector.h>
 
