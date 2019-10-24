@@ -271,8 +271,8 @@ static const struct vlc_gl_shader_cbs shader_cbs = {
     .prepare_shader = PrepareShader,
 };
 
-static const char *const TEMPLATE_HEADER = "uniform sampler2D vlc_planes[%d];";
 static const char *const TEMPLATE_BODY =
+    "uniform sampler2D vlc_planes[%d];\n"
     "vec4 vlc_texture_raw(vec2 coords) {\n"
     "  return vec4(\n"
     "    texture(vlc_planes[%d], coords).%c,\n"
@@ -320,16 +320,9 @@ Open(struct vlc_gl_importer *importer, struct vlc_gl_shader_code *code)
     struct pix_map map;
     get_pix_mapping(importer->fmt.i_chroma, &map);
 
-    ret = vlc_gl_shader_code_Append(code, VLC_SHADER_CODE_HEADER,
-                                    TEMPLATE_HEADER, map.plane_count);
-    if (ret != VLC_SUCCESS)
-    {
-        free(sys);
-        return ret;
-    }
-
     ret = vlc_gl_shader_code_Append(code, VLC_SHADER_CODE_BODY,
                                     TEMPLATE_BODY,
+                                    map.plane_count,
                                     map.comps[0].plane,
                                     map.comps[0].field,
                                     map.comps[1].plane,
