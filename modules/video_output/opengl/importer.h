@@ -30,7 +30,7 @@
 struct vlc_gl_importer;
 
 typedef int vlc_gl_importer_open_fn(struct vlc_gl_importer *importer,
-                                    struct vlc_gl_shader_code *code);
+                                    struct vlc_gl_program *program);
 
 struct vlc_gl_importer_ops {
     int
