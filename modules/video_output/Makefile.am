@@ -92,6 +92,12 @@ libgl_importer_sw_plugin_la_SOURCES = video_output/opengl/importers/sw.c \
 libgl_importer_sw_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
 libgl_importer_sw_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
+libgl_renderer_default_plugin_la_SOURCES = video_output/opengl/renderers/default.c \
+                                           video_output/opengl/renderer.h \
+                                           $(OPENGL_COMMONSOURCES)
+libgl_renderer_default_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libgl_renderer_default_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
+
 libglconv_vaapi_plugin_la_SOURCES = video_output/opengl/converter_vaapi.c \
 	video_output/opengl/converter.h \
 	hw/vaapi/vlc_vaapi.c hw/vaapi/vlc_vaapi.h
@@ -106,7 +112,8 @@ libglconv_vdpau_plugin_la_LIBADD = $(LIBDL) libvlc_vdpau.la $(X_LIBS) $(X_PRE_LI
 if HAVE_GL
 vout_LTLIBRARIES += \
 	libgl_plugin.la \
-	libgl_importer_sw_plugin.la
+	libgl_importer_sw_plugin.la \
+	libgl_renderer_default_plugin.la
 
 if HAVE_EGL
 if HAVE_VAAPI
