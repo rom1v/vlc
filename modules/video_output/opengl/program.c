@@ -32,6 +32,7 @@ vlc_gl_program_Init(struct vlc_gl_program *program)
     for (int type = 0; type < VLC_GL_SHADER_TYPE_COUNT_; ++type)
         for (int loc = 0; loc < VLC_GL_SHADER_CODE_LOCATION_COUNT_; ++loc)
             vlc_vector_init(&program->code[type][loc]);
+    vlc_vector_init(&program->cbs_reg);
 }
 
 void
