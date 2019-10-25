@@ -83,4 +83,8 @@ vlc_gl_program_RegisterCallbacks(struct vlc_gl_program *program,
                                  const struct vlc_gl_program_cbs *cbs,
                                  void *userdata);
 
+GLuint
+vlc_gl_program_Compile(struct vlc_gl_program *program,
+                       const opengl_vtable_t *gl);
+
 #endif

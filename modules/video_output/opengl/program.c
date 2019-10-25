@@ -169,3 +169,112 @@ vlc_gl_program_MergeIn(struct vlc_gl_program *program,
 
     return VLC_SUCCESS;
 }
+
+static int
+MergeVecs(vec_str *out, vec_str vecs[], size_t count)
+{
+    vlc_vector_init(out);
+
+    for (size_t i = 0; i < count; ++i)
+        if (!vlc_vector_push_all(out, vecs[i].data, vecs[i].size))
+            goto error;
+
+    return VLC_SUCCESS;
+
+error:
+    vlc_vector_destroy(out);
+    return VLC_ENOMEM;
+}
+
+static GLuint
+LoadShader(const opengl_vtable_t *gl, GLenum type, vec_str *srcs)
+{
+    GLuint shader = gl->CreateShader(type);
+    if (!shader)
+        return 0;
+
+    gl->ShaderSource(shader, srcs->size, (const char **) srcs->data, NULL);
+    gl->CompileShader(shader);
+
+    GLint compiled;
+    gl->GetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+    if (!compiled)
+    {
+        // TODO log error message
+        fprintf(stderr, "shader not compiled\n");
+        gl->DeleteShader(shader);
+        return 0;
+    }
+
+    return shader;
+}
+
+GLuint
+vlc_gl_program_Compile(struct vlc_gl_program *program,
+                       const opengl_vtable_t *gl)
+{
+    int program_id = 0;
+
+    vec_str vertex_src;
+    int ret = MergeVecs(&vertex_src, program->code[VLC_GL_SHADER_VERTEX],
+                        VLC_GL_SHADER_CODE_LOCATION_COUNT_);
+    if (ret != VLC_SUCCESS)
+        return 0;
+
+    GLuint vertex_shader = LoadShader(gl, GL_VERTEX_SHADER, &vertex_src);
+    vlc_vector_destroy(&vertex_src);
+    if (!vertex_shader)
+        return 0;
+
+    vec_str fragment_src;
+    ret = MergeVecs(&fragment_src, program->code[VLC_GL_SHADER_FRAGMENT],
+                    VLC_GL_SHADER_CODE_LOCATION_COUNT_);
+    if (ret != VLC_SUCCESS)
+    {
+        gl->DeleteShader(vertex_shader);
+        return 0;
+    }
+
+    GLuint fragment_shader = LoadShader(gl, GL_FRAGMENT_SHADER, &fragment_src);
+    vlc_vector_destroy(&fragment_src);
+    if (!fragment_shader)
+    {
+        gl->DeleteShader(vertex_shader);
+        return 0;
+    }
+
+    program_id = gl->CreateProgram();
+    if (!program_id)
+    {
+        gl->DeleteShader(fragment_shader);
+        gl->DeleteShader(vertex_shader);
+        return 0;
+    }
+
+    gl->AttachShader(program_id, vertex_shader);
+    gl->DeleteShader(vertex_shader);
+
+    gl->AttachShader(program_id, fragment_shader);
+    gl->DeleteShader(fragment_shader);
+
+    gl->LinkProgram(program_id);
+
+    GLint linked;
+    gl->GetProgramiv(program_id, GL_LINK_STATUS, &linked);
+    if (!linked)
+    {
+        // TODO log error message
+        gl->DeleteProgram(program_id);
+        fprintf(stderr, "program not linked\n");
+        return 0;
+    }
+
+    // execute callbacks
+    for (size_t i = 0; i < program->cbs_reg.size; ++i)
+    {
+        struct vlc_gl_program_cbs_reg *reg = &program->cbs_reg.data[i];
+        reg->cbs->on_program_compiled(program_id, reg->userdata);
+    }
+
+    return program_id;
+}
