@@ -42,6 +42,11 @@ struct vlc_gl_program {
 void
 vlc_gl_program_Init(struct vlc_gl_program *program);
 
+// copy constructor
+int
+vlc_gl_program_InitFrom(struct vlc_gl_program *program,
+                        struct vlc_gl_program *other);
+
 void
 vlc_gl_program_Destroy(struct vlc_gl_program *program);
 

@@ -35,6 +35,42 @@ vlc_gl_program_Init(struct vlc_gl_program *program)
     vlc_vector_init(&program->cbs_reg);
 }
 
+int
+vlc_gl_program_InitFrom(struct vlc_gl_program *program,
+                        struct vlc_gl_program *other)
+{
+    vlc_gl_program_Init(program);
+
+    for (int type = 0; type < VLC_GL_SHADER_TYPE_COUNT_; ++type)
+    {
+        for (int loc = 0; loc < VLC_GL_SHADER_CODE_LOCATION_COUNT_; ++loc)
+        {
+            vec_str *vec = &program->code[type][loc];
+            vec_str *ovec = &other->code[type][loc];
+            if (!vlc_vector_reserve(vec, ovec->size))
+                goto error;
+            for (size_t i = 0; i < ovec->size; ++i)
+            {
+                char *str = strdup(ovec->data[i]);
+                if (!str)
+                    goto error;
+                bool ok = vlc_vector_push(vec, str);
+                assert(ok); /* we called vlc_vector_reserve() */
+            }
+        }
+    }
+
+    if (!vlc_vector_push_all(&program->cbs_reg, other->cbs_reg.data,
+                             other->cbs_reg.size))
+        goto error;
+
+    return VLC_SUCCESS;
+
+error:
+    vlc_gl_program_Destroy(program);
+    return VLC_ENOMEM;
+}
+
 void
 vlc_gl_program_Destroy(struct vlc_gl_program *program)
 {
