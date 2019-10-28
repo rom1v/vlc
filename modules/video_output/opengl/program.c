@@ -278,3 +278,17 @@ vlc_gl_program_Compile(struct vlc_gl_program *program,
 
     return program_id;
 }
+
+int
+vlc_gl_program_PrepareShaders(const struct vlc_gl_program *program)
+{
+    for (size_t i = 0; i < program->cbs_reg.size; ++i)
+    {
+        struct vlc_gl_program_cbs_reg *reg = &program->cbs_reg.data[i];
+        int ret = reg->cbs->prepare_shaders(reg->userdata);
+        if (ret != VLC_SUCCESS)
+            return ret;
+    }
+
+    return VLC_SUCCESS;
+}

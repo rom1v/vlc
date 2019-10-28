@@ -87,4 +87,7 @@ GLuint
 vlc_gl_program_Compile(struct vlc_gl_program *program,
                        const opengl_vtable_t *gl);
 
+int
+vlc_gl_program_PrepareShaders(const struct vlc_gl_program *program);
+
 #endif

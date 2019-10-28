@@ -27,7 +27,10 @@ typedef int vlc_gl_renderer_open_fn(struct vlc_gl_renderer *renderer,
 
 struct vlc_gl_renderer_ops {
     int
-    (*draw)(struct vlc_gl_renderer *renderer);
+    (*prepare)(struct vlc_gl_renderer *renderer);
+
+    int
+    (*render)(struct vlc_gl_renderer *renderer);
 
     void
     (*close)(struct vlc_gl_renderer *renderer);

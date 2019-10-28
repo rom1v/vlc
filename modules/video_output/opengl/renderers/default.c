@@ -28,14 +28,23 @@
 
 #include "../renderer.h"
 
+struct sys {
+    const struct vlc_gl_program *program;
+    GLuint program_id;
+    GLuint vbo;
+    struct {
+        GLint vertex_coords;
+    } loc;
+};
+
 static const char *const VERTEX_SHADER =
     "#version 300 es\n"
-    "in vec2 vectex_pos;\n"
-    "out vec2 tex_coord;\n"
+    "in vec2 vertex_coords;\n"
+    "out vec2 tex_coords;\n"
     "void main() {\n"
-    "  gl_Position = vec4(vector_pos, 0.0, 1.0);\n"
-    "  tex_coord = vec2((vertex_pos.x + 1.0) / 2.0,\n"
-    "                   (vectex_pos.y + 1.0) / 2.0);\n"
+    "  gl_Position = vec4(vertex_coords, 0.0, 1.0);\n"
+    "  tex_coords = vec2((vertex_coords.x + 1.0) / 2.0,\n"
+    "                    (vertex_coords.y + 1.0) / 2.0);\n"
     "}";
 
 static const char *const FRAGMENT_SHADER_HEADER =
@@ -43,56 +52,77 @@ static const char *const FRAGMENT_SHADER_HEADER =
     "precision mediump float;\n";
 
 static const char *const FRAGMENT_SHADER_BODY =
-    "in vec2 tex_coord;\n"
+    "in vec2 tex_coords;\n"
     "out vec4 frag_color;\n"
     "void main() {\n"
     "  frag_color = vlc_texture_raw(tex_coord);\n"
     "}";
 
 static int
-Draw(struct vlc_gl_renderer *renderer)
+Prepare(struct vlc_gl_renderer *renderer)
+{
+    struct sys *sys = renderer->sys;
+
+    int ret = vlc_gl_program_PrepareShaders(sys->program);
+    if (ret != VLC_SUCCESS)
+    {
+        msg_Err(renderer, "Could not prepare shaders");
+        return ret;
+    }
+
+    static GLfloat VERTEX_COORDS[] = {
+        -1, -1,
+        -1, 1,
+        1, -1,
+        1, 1,
+    };
+
+    const opengl_vtable_t *gl = renderer->gl;
+
+    gl->BindBuffer(GL_ARRAY_BUFFER, sys->vbo);
+    gl->BufferData(GL_ARRAY_BUFFER, sizeof(VERTEX_COORDS), VERTEX_COORDS,
+                   GL_STATIC_DRAW);
+    gl->EnableVertexAttribArray(sys->loc.vertex_coords);
+    gl->VertexAttribPointer(sys->loc.vertex_coords, 2, GL_FLOAT, GL_FALSE, 0,
+                            (const void *) 0);
+
+    return VLC_SUCCESS;
+}
+
+static int
+Render(struct vlc_gl_renderer *renderer)
 {
     const opengl_vtable_t *gl = renderer->gl;
 
-    //gl->BindBuffer(GL_ARRAY_BUFFER, sys->vbo);
-    //gl->BufferData(GL_ARRAY_BUFFER, sizeof(vertexCoord), vertexCoord, GL_STATIC_DRAW);
-    //gl->EnableVertexAttribArray(sys->loc.vertex_pos);
-    //gl->VertexAttribPointer(sys->loc.vertex_pos, 2, GL_FLOAT, GL_FALSE, 0, (const void *) 0);
+    gl->DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    return VLC_SUCCESS;
 }
 
 static void
 Close(struct vlc_gl_renderer *renderer)
 {
+    struct sys *sys = renderer->sys;
+    const opengl_vtable_t *gl = renderer->gl;
 
-}
+    gl->DeleteBuffers(1, &sys->vbo);
+    gl->DeleteProgram(sys->program_id);
 
-static int
-FetchLocations(GLuint program, void *userdata)
-{
-    struct vlc_gl_renderer *renderer = userdata;
-}
-
-static int
-PrepareShaders(void *userdata)
-{
-    struct vlc_gl_renderer *renderer = userdata;
-
+    free(sys);
 }
 
 static const struct vlc_gl_renderer_ops ops = {
-    .draw = Draw,
+    .prepare = Prepare,
+    .render = Render,
     .close = Close,
-};
-
-static const struct vlc_gl_program_cbs program_cbs = {
-    .on_program_compiled = FetchLocations,
-    .prepare_shaders = PrepareShaders,
 };
 
 static vlc_gl_renderer_open_fn Open;
 static int
 Open(struct vlc_gl_renderer *renderer, struct vlc_gl_program *program)
 {
+    const opengl_vtable_t *gl = renderer->gl;
+
     int ret = vlc_gl_program_AppendShaderCode(program, VLC_GL_SHADER_VERTEX,
                                               VLC_GL_SHADER_CODE_BODY,
                                               VERTEX_SHADER);
@@ -111,9 +141,21 @@ Open(struct vlc_gl_renderer *renderer, struct vlc_gl_program *program)
     if (ret != VLC_SUCCESS)
         return ret;
 
-    ret = vlc_gl_program_RegisterCallbacks(program, &program_cbs, renderer);
-    if (ret != VLC_SUCCESS)
+    GLuint program_id = vlc_gl_program_Compile(program, gl);
+    if (!program_id)
         return ret;
+
+    struct sys *sys = renderer->sys = malloc(sizeof(*sys));
+    if (!sys)
+    {
+        gl->DeleteProgram(program_id);
+        return ret;
+    }
+
+    sys->program = program;
+    sys->program_id = program_id;
+    gl->GenBuffers(1, &sys->vbo);
+    sys->loc.vertex_coords = gl->GetAttribLocation(program_id, "vertex_pos");
 
     renderer->ops = &ops;
 
