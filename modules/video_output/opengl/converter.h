@@ -73,9 +73,6 @@ struct opengl_tex_converter_t
      * has no default precision qualifier for floating point types. */
     const char *glsl_precision_header;
 
-    /* Can only be changed from the module open function */
-    video_format_t fmt;
-
     /* Fragment shader, must be set from the module open function. It will be
      * deleted by the caller. */
     GLuint fshader;

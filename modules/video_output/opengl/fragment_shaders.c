@@ -573,7 +573,7 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
         dst_space.transfer = var_InheritInteger(tc->gl, "target-trc");
 
         pl_shader_color_map(sh, &color_params,
-                vlc_placebo_ColorSpace(&tc->fmt),
+                vlc_placebo_ColorSpace(&tc->importer.fmt),
                 dst_space, NULL, false);
 
         struct pl_shader_obj *dither_state = NULL;
