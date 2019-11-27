@@ -80,7 +80,7 @@ pbo_picture_create(const opengl_tex_converter_t *tc)
         .p_sys = picsys,
         .pf_destroy = pbo_picture_destroy,
     };
-    picture_t *pic = picture_NewFromResource(&tc->fmt, &rsc);
+    picture_t *pic = picture_NewFromResource(&tc->importer.fmt, &rsc);
     if (pic == NULL)
     {
         free(picsys);
@@ -91,14 +91,14 @@ pbo_picture_create(const opengl_tex_converter_t *tc)
     picsys->DeleteBuffers = tc->vt->DeleteBuffers;
 
     /* XXX: needed since picture_NewFromResource override pic planes */
-    if (picture_Setup(pic, &tc->fmt))
+    if (picture_Setup(pic, &tc->importer.fmt))
     {
         picture_Release(pic);
         return NULL;
     }
 
     assert(pic->i_planes > 0
-        && (unsigned) pic->i_planes == tc->tex_count);
+        && (unsigned) pic->i_planes == tc->importer.tex_count);
 
     for (int i = 0; i < pic->i_planes; ++i)
     {
@@ -141,7 +141,7 @@ pbo_data_alloc(const opengl_tex_converter_t *tc, picture_t *pic)
 static int
 pbo_pics_alloc(const opengl_tex_converter_t *tc)
 {
-    struct priv *priv = tc->priv;
+    struct priv *priv = tc->importer.priv;
     for (size_t i = 0; i < PBO_DISPLAY_COUNT; ++i)
     {
         picture_t *pic = priv->pbo.display_pics[i] = pbo_picture_create(tc);
@@ -163,12 +163,12 @@ error:
 }
 
 static int
-tc_pbo_update(const opengl_tex_converter_t *tc, GLuint *textures,
+tc_pbo_update(const struct vlc_gl_importer *imp, GLuint *textures,
               const GLsizei *tex_width, const GLsizei *tex_height,
               picture_t *pic, const size_t *plane_offset)
 {
     (void) plane_offset; assert(plane_offset == NULL);
-    struct priv *priv = tc->priv;
+    struct priv *priv = imp->priv;
 
     picture_t *display_pic = priv->pbo.display_pics[priv->pbo.display_idx];
     picture_sys_t *p_sys = display_pic->p_sys;
@@ -178,53 +178,52 @@ tc_pbo_update(const opengl_tex_converter_t *tc, GLuint *textures,
     {
         GLsizeiptr size = pic->p[i].i_lines * pic->p[i].i_pitch;
         const GLvoid *data = pic->p[i].p_pixels;
-        tc->vt->BindBuffer(GL_PIXEL_UNPACK_BUFFER,
+        imp->vt->BindBuffer(GL_PIXEL_UNPACK_BUFFER,
                            p_sys->buffers[i]);
-        tc->vt->BufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, size, data);
+        imp->vt->BufferSubData(GL_PIXEL_UNPACK_BUFFER, 0, size, data);
 
-        tc->vt->ActiveTexture(GL_TEXTURE0 + i);
-        tc->vt->BindTexture(tc->tex_target, textures[i]);
+        imp->vt->ActiveTexture(GL_TEXTURE0 + i);
+        imp->vt->BindTexture(imp->tex_target, textures[i]);
 
-        tc->vt->PixelStorei(GL_UNPACK_ROW_LENGTH, pic->p[i].i_pitch
+        imp->vt->PixelStorei(GL_UNPACK_ROW_LENGTH, pic->p[i].i_pitch
             * tex_width[i] / (pic->p[i].i_visible_pitch ? pic->p[i].i_visible_pitch : 1));
 
-        tc->vt->TexSubImage2D(tc->tex_target, 0, 0, 0, tex_width[i], tex_height[i],
-                              tc->texs[i].format, tc->texs[i].type, NULL);
-
-        tc->vt->PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        imp->vt->TexSubImage2D(imp->tex_target, 0, 0, 0, tex_width[i], tex_height[i],
+                               imp->texs[i].format, imp->texs[i].type, NULL);
+        imp->vt->PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     }
 
     /* turn off pbo */
-    tc->vt->BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    imp->vt->BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     return VLC_SUCCESS;
 }
 
 static int
-tc_common_allocate_textures(const opengl_tex_converter_t *tc, GLuint *textures,
+tc_common_allocate_textures(const struct vlc_gl_importer *imp, GLuint *textures,
                             const GLsizei *tex_width, const GLsizei *tex_height)
 {
-    for (unsigned i = 0; i < tc->tex_count; i++)
+    for (unsigned i = 0; i < imp->tex_count; i++)
     {
-        tc->vt->BindTexture(tc->tex_target, textures[i]);
-        tc->vt->TexImage2D(tc->tex_target, 0, tc->texs[i].internal,
-                           tex_width[i], tex_height[i], 0, tc->texs[i].format,
-                           tc->texs[i].type, NULL);
+        imp->vt->BindTexture(imp->tex_target, textures[i]);
+        imp->vt->TexImage2D(imp->tex_target, 0, imp->texs[i].internal,
+                           tex_width[i], tex_height[i], 0, imp->texs[i].format,
+                           imp->texs[i].type, NULL);
     }
     return VLC_SUCCESS;
 }
 
 static int
-upload_plane(const opengl_tex_converter_t *tc, unsigned tex_idx,
+upload_plane(const struct vlc_gl_importer *imp, unsigned tex_idx,
              GLsizei width, GLsizei height,
              unsigned pitch, unsigned visible_pitch, const void *pixels)
 {
-    struct priv *priv = tc->priv;
-    GLenum tex_format = tc->texs[tex_idx].format;
-    GLenum tex_type = tc->texs[tex_idx].type;
+    struct priv *priv = imp->priv;
+    GLenum tex_format = imp->texs[tex_idx].format;
+    GLenum tex_type = imp->texs[tex_idx].type;
 
     /* This unpack alignment is the default, but setting it just in case. */
-    tc->vt->PixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    imp->vt->PixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
     if (!priv->has_unpack_subimage)
     {
@@ -255,41 +254,41 @@ upload_plane(const opengl_tex_converter_t *tc, unsigned tex_idx,
                 source += pitch;
                 destination += visible_pitch;
             }
-            tc->vt->TexSubImage2D(tc->tex_target, 0, 0, 0, width, height,
-                                  tex_format, tex_type, priv->texture_temp_buf);
+            imp->vt->TexSubImage2D(imp->tex_target, 0, 0, 0, width, height,
+                                   tex_format, tex_type, priv->texture_temp_buf);
         }
         else
         {
-            tc->vt->TexSubImage2D(tc->tex_target, 0, 0, 0, width, height,
-                                  tex_format, tex_type, pixels);
+            imp->vt->TexSubImage2D(imp->tex_target, 0, 0, 0, width, height,
+                                   tex_format, tex_type, pixels);
         }
     }
     else
     {
-        tc->vt->PixelStorei(GL_UNPACK_ROW_LENGTH, pitch * width / (visible_pitch ? visible_pitch : 1));
-        tc->vt->TexSubImage2D(tc->tex_target, 0, 0, 0, width, height,
+        imp->vt->PixelStorei(GL_UNPACK_ROW_LENGTH, pitch * width / (visible_pitch ? visible_pitch : 1));
+        imp->vt->TexSubImage2D(imp->tex_target, 0, 0, 0, width, height,
                               tex_format, tex_type, pixels);
-        tc->vt->PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        imp->vt->PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     }
     return VLC_SUCCESS;
 }
 
 static int
-tc_common_update(const opengl_tex_converter_t *tc, GLuint *textures,
+tc_common_update(const struct vlc_gl_importer *imp, GLuint *textures,
                  const GLsizei *tex_width, const GLsizei *tex_height,
                  picture_t *pic, const size_t *plane_offset)
 {
     int ret = VLC_SUCCESS;
-    for (unsigned i = 0; i < tc->tex_count && ret == VLC_SUCCESS; i++)
+    for (unsigned i = 0; i < imp->tex_count && ret == VLC_SUCCESS; i++)
     {
         assert(textures[i] != 0);
-        tc->vt->ActiveTexture(GL_TEXTURE0 + i);
-        tc->vt->BindTexture(tc->tex_target, textures[i]);
+        imp->vt->ActiveTexture(GL_TEXTURE0 + i);
+        imp->vt->BindTexture(imp->tex_target, textures[i]);
         const void *pixels = plane_offset != NULL ?
                              &pic->p[i].p_pixels[plane_offset[i]] :
                              pic->p[i].p_pixels;
 
-        ret = upload_plane(tc, i, tex_width[i], tex_height[i],
+        ret = upload_plane(imp, i, tex_width[i], tex_height[i],
                            pic->p[i].i_pitch, pic->p[i].i_visible_pitch, pixels);
     }
     return ret;
@@ -302,17 +301,17 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
     video_color_space_t space;
     const vlc_fourcc_t *list;
 
-    if (vlc_fourcc_IsYUV(tc->fmt.i_chroma))
+    if (vlc_fourcc_IsYUV(tc->importer.fmt.i_chroma))
     {
         GLint max_texture_units = 0;
         tc->vt->GetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &max_texture_units);
         if (max_texture_units < 3)
             return VLC_EGENERIC;
 
-        list = vlc_fourcc_GetYUVFallback(tc->fmt.i_chroma);
-        space = tc->fmt.space;
+        list = vlc_fourcc_GetYUVFallback(tc->importer.fmt.i_chroma);
+        space = tc->importer.fmt.space;
     }
-    else if (tc->fmt.i_chroma == VLC_CODEC_XYZ12)
+    else if (tc->importer.fmt.i_chroma == VLC_CODEC_XYZ12)
     {
         static const vlc_fourcc_t xyz12_list[] = { VLC_CODEC_XYZ12, 0 };
         list = xyz12_list;
@@ -320,7 +319,7 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
     }
     else
     {
-        list = vlc_fourcc_GetRGBFallback(tc->fmt.i_chroma);
+        list = vlc_fourcc_GetRGBFallback(tc->importer.fmt.i_chroma);
         space = COLOR_SPACE_UNDEF;
     }
 
@@ -330,20 +329,20 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
             opengl_fragment_shader_init(tc, GL_TEXTURE_2D, *list, space);
         if (fragment_shader != 0)
         {
-            tc->fmt.i_chroma = *list;
+            tc->importer.fmt.i_chroma = *list;
 
-            if (tc->fmt.i_chroma == VLC_CODEC_RGB32)
+            if (tc->importer.fmt.i_chroma == VLC_CODEC_RGB32)
             {
 #if defined(WORDS_BIGENDIAN)
-                tc->fmt.i_rmask  = 0xff000000;
-                tc->fmt.i_gmask  = 0x00ff0000;
-                tc->fmt.i_bmask  = 0x0000ff00;
+                tc->importer.fmt.i_rmask  = 0xff000000;
+                tc->importer.fmt.i_gmask  = 0x00ff0000;
+                tc->importer.fmt.i_bmask  = 0x0000ff00;
 #else
-                tc->fmt.i_rmask  = 0x000000ff;
-                tc->fmt.i_gmask  = 0x0000ff00;
-                tc->fmt.i_bmask  = 0x00ff0000;
+                tc->importer.fmt.i_rmask  = 0x000000ff;
+                tc->importer.fmt.i_gmask  = 0x0000ff00;
+                tc->importer.fmt.i_bmask  = 0x00ff0000;
 #endif
-                video_format_FixRgb(&tc->fmt);
+                video_format_FixRgb(&tc->importer.fmt);
             }
             break;
         }
@@ -352,15 +351,18 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
     if (fragment_shader == 0)
         return VLC_EGENERIC;
 
-    struct priv *priv = tc->priv = calloc(1, sizeof(struct priv));
+    struct priv *priv = tc->importer.priv = calloc(1, sizeof(struct priv));
     if (unlikely(priv == NULL))
     {
         tc->vt->DeleteShader(fragment_shader);
         return VLC_ENOMEM;
     }
 
-    tc->pf_update            = tc_common_update;
-    tc->pf_allocate_textures = tc_common_allocate_textures;
+    static const struct vlc_gl_importer_ops ops = {
+        .allocate_textures = tc_common_allocate_textures,
+        .update_textures = tc_common_update,
+    };
+    tc->importer.ops = &ops;
 
     /* OpenGL or OpenGL ES2 with GL_EXT_unpack_subimage ext */
     priv->has_unpack_subimage =
@@ -380,7 +382,11 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
             && tc->vt->BufferSubData;
         if (supports_pbo && pbo_pics_alloc(tc) == VLC_SUCCESS)
         {
-            tc->pf_update  = tc_pbo_update;
+            static const struct vlc_gl_importer_ops pbo_ops = {
+                .allocate_textures = tc_common_allocate_textures,
+                .update_textures = tc_pbo_update,
+            };
+            tc->importer.ops = &pbo_ops;
             msg_Dbg(tc->gl, "PBO support enabled");
         }
     }
@@ -393,9 +399,9 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
 void
 opengl_tex_converter_generic_deinit(opengl_tex_converter_t *tc)
 {
-    struct priv *priv = tc->priv;
+    struct priv *priv = tc->importer.priv;
     for (size_t i = 0; i < PBO_DISPLAY_COUNT && priv->pbo.display_pics[i]; ++i)
         picture_Release(priv->pbo.display_pics[i]);
     free(priv->texture_temp_buf);
-    free(tc->priv);
+    free(priv);
 }
