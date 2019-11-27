@@ -543,7 +543,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     tc->glsl_version = 120;
     tc->glsl_precision_header = "";
 #endif
-    tc->fmt = *fmt;
+    tc->importer.fmt = *fmt;
 
     tc->importer.gl = tc->gl;
     tc->importer.vt = tc->vt;

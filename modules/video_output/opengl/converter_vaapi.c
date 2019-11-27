@@ -236,7 +236,7 @@ tc_vaegl_get_pool(const struct vlc_gl_importer *imp, unsigned requested_count)
     vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(imp->vctx);
     picture_pool_t *pool =
         vlc_vaapi_PoolNew(o, dec_device, priv->vadpy,
-                          requested_count, &priv->va_surface_ids, &tc->fmt);
+                          requested_count, &priv->va_surface_ids, &imp->fmt);
     vlc_decoder_device_Release(dec_device);
     if (!pool)
         return NULL;
@@ -260,17 +260,17 @@ tc_vaegl_get_pool(const struct vlc_gl_importer *imp, unsigned requested_count)
 
     for (unsigned i = 0; i < va_image.num_planes; ++i)
     {
-        EGLint w = (va_image.width * tc->texs[i].w.num) / tc->texs[i].w.den;
-        EGLint h = (va_image.height * tc->texs[i].h.num) / tc->texs[i].h.den;
+        EGLint w = (va_image.width * imp->texs[i].w.num) / imp->texs[i].w.den;
+        EGLint h = (va_image.height * imp->texs[i].h.num) / imp->texs[i].h.den;
         EGLImageKHR egl_image =
-            vaegl_image_create(tc, w, h, priv->drm_fourccs[i], va_buffer_info.handle,
+            vaegl_image_create(imp, w, h, priv->drm_fourccs[i], va_buffer_info.handle,
                                va_image.offsets[i], va_image.pitches[i]);
         if (egl_image == NULL)
         {
             msg_Warn(o, "Can't create Image KHR: kernel too old ?");
             goto error;
         }
-        vaegl_image_destroy(tc, egl_image);
+        vaegl_image_destroy(imp, egl_image);
     }
 
     success = true;
@@ -336,15 +336,15 @@ tc_va_check_interop_blacklist(opengl_tex_converter_t *tc, VADisplay *vadpy)
 }
 
 static int
-tc_va_check_derive_image(opengl_tex_converter_t *tc,
+tc_va_check_derive_image(const struct vlc_gl_importer *imp,
                          vlc_decoder_device *dec_device)
 {
-    vlc_object_t *o = VLC_OBJECT(tc->gl);
-    struct priv *priv = tc->priv;
+    vlc_object_t *o = VLC_OBJECT(imp->gl);
+    struct priv *priv = imp->priv;
     VASurfaceID *va_surface_ids;
 
     picture_pool_t *pool = vlc_vaapi_PoolNew(o, dec_device, priv->vadpy, 1,
-                                             &va_surface_ids, &tc->fmt);
+                                             &va_surface_ids, &imp->fmt);
     if (!pool)
         return VLC_EGENERIC;
 
@@ -362,9 +362,9 @@ Open(vlc_object_t *obj)
 {
     opengl_tex_converter_t *tc = (void *) obj;
 
-    if (tc->vctx == NULL)
+    if (tc->importer.vctx == NULL)
         return VLC_EGENERIC;
-    vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(tc->vctx);
+    vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(tc->importer.vctx);
     if (dec_device->type != VLC_DECODER_DEVICE_VAAPI
      || !vlc_vaapi_IsChromaOpaque(tc->fmt.i_chroma)
      || tc->gl->ext != VLC_GL_EXT_EGL
@@ -388,8 +388,8 @@ Open(vlc_object_t *obj)
         return VLC_EGENERIC;
     }
 
-    struct priv *priv = tc->priv = calloc(1, sizeof(struct priv));
-    if (unlikely(tc->priv == NULL))
+    struct priv *priv = tc->importer.priv = calloc(1, sizeof(struct priv));
+    if (unlikely(priv == NULL))
         goto error;
     priv->fourcc = 0;
 
@@ -423,7 +423,7 @@ Open(vlc_object_t *obj)
     if (tc_va_check_interop_blacklist(tc, priv->vadpy))
         goto error;
 
-    if (tc_va_check_derive_image(tc, dec_device))
+    if (tc_va_check_derive_image(&tc->importer, dec_device))
         goto error;
 
     tc->fshader = opengl_fragment_shader_init(tc, GL_TEXTURE_2D, vlc_sw_chroma,
@@ -431,8 +431,11 @@ Open(vlc_object_t *obj)
     if (tc->fshader == 0)
         goto error;
 
-    tc->pf_update  = tc_vaegl_update;
-    tc->pf_get_pool = tc_vaegl_get_pool;
+    static const struct vlc_gl_importer_ops ops = {
+        .update_textures = tc_vaegl_update,
+        .get_pool = tc_vaegl_get_pool,
+    };
+    tc->importer.ops = &ops;
 
     vlc_decoder_device_Release(dec_device);
 
