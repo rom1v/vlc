@@ -27,6 +27,7 @@
 #include <vlc_picture_pool.h>
 #include <vlc_plugin.h>
 #include "gl_common.h"
+#include "importer.h"
 
 struct pl_context;
 struct pl_shader;
@@ -82,27 +83,6 @@ struct opengl_tex_converter_t
      * deleted by the caller. */
     GLuint fshader;
 
-    /* Number of textures, cannot be 0 */
-    unsigned tex_count;
-
-    /* Texture mapping (usually: GL_TEXTURE_2D), cannot be 0 */
-    GLenum tex_target;
-
-    /* Set to true if textures are generated from pf_update() */
-    bool handle_texs_gen;
-
-    struct opengl_tex_cfg {
-        /* Texture scale factor, cannot be 0 */
-        vlc_rational_t w;
-        vlc_rational_t h;
-
-        /* The following is used and filled by the opengl_fragment_shader_init
-         * function. */
-        GLint  internal;
-        GLenum format;
-        GLenum type;
-    } texs[PICTURE_PLANE_MAX];
-
     /* The following is used and filled by the opengl_fragment_shader_init
      * function. */
     struct {
@@ -118,57 +98,7 @@ struct opengl_tex_converter_t
     struct pl_shader *pl_sh;
     const struct pl_shader_res *pl_sh_res;
 
-    /* Private context */
-    void *priv;
-
-    /**
-     * Callback to allocate data for bound textures
-     *
-     * This function pointer can be NULL. Software converters should call
-     * glTexImage2D() to allocate textures data (it will be deallocated by the
-     * caller when calling glDeleteTextures()). Won't be called if
-     * handle_texs_gen is true.
-     *
-     * \param tc OpenGL tex converter
-     * \param textures array of textures to bind (one per plane)
-     * \param tex_width array of tex width (one per plane)
-     * \param tex_height array of tex height (one per plane)
-     * \return VLC_SUCCESS or a VLC error
-     */
-    int (*pf_allocate_textures)(const opengl_tex_converter_t *tc, GLuint *textures,
-                                const GLsizei *tex_width, const GLsizei *tex_height);
-
-    /**
-     * Callback to allocate a picture pool
-     *
-     * This function pointer *can* be NULL. If NULL, A generic pool with
-     * pictures allocated from the video_format_t will be used.
-     *
-     * \param tc OpenGL tex converter
-     * \param requested_count number of pictures to allocate
-     * \return the picture pool or NULL in case of error
-     */
-    picture_pool_t *(*pf_get_pool)(const opengl_tex_converter_t *tc,
-                                   unsigned requested_count);
-
-    /**
-     * Callback to update a picture
-     *
-     * This function pointer cannot be NULL. The implementation should upload
-     * every planes of the picture.
-     *
-     * \param tc OpenGL tex converter
-     * \param textures array of textures to bind (one per plane)
-     * \param tex_width array of tex width (one per plane)
-     * \param tex_height array of tex height (one per plane)
-     * \param pic picture to update
-     * \param plane_offset offsets of each picture planes to read data from
-     * (one per plane, can be NULL)
-     * \return VLC_SUCCESS or a VLC error
-     */
-    int (*pf_update)(const opengl_tex_converter_t *tc, GLuint *textures,
-                     const GLsizei *tex_width, const GLsizei *tex_height,
-                     picture_t *pic, const size_t *plane_offset);
+    struct vlc_gl_importer importer;
 
     /**
      * Callback to fetch locations of uniform or attributes variables
