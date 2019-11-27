@@ -545,6 +545,9 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
 #endif
     tc->fmt = *fmt;
 
+    tc->importer.gl = tc->gl;
+    tc->importer.vt = tc->vt;
+
 #ifdef HAVE_LIBPLACEBO
     // Create the main libplacebo context
     if (!subpics)
@@ -588,7 +591,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
         if (desc->plane_count == 0)
         {
             /* Opaque chroma: load a module to handle it */
-            tc->vctx = context;
+            tc->importer.vctx = context;
             tc->p_module = module_need_var(tc, "glconv", "glconv");
         }
 

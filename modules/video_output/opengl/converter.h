@@ -48,9 +48,6 @@ struct opengl_tex_converter_t
     /* Pointer to object gl, set by the caller */
     vlc_gl_t *gl;
 
-    /* Pointer to decoder video context, set by the caller (can be NULL) */
-    vlc_video_context *vctx;
-
     /* libplacebo context, created by the caller (optional) */
     struct pl_context *pl_ctx;
 

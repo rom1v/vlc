@@ -22,6 +22,7 @@
 #define VLC_GL_IMPORTER_H
 
 #include <vlc_common.h>
+#include <vlc_opengl.h>
 #include <vlc_picture.h>
 #include <vlc_picture_pool.h>
 
@@ -86,6 +87,7 @@ struct vlc_gl_importer_ops {
 };
 
 struct vlc_gl_importer {
+    vlc_gl_t *gl;
     const opengl_vtable_t *vt;
     GLenum tex_target;
 

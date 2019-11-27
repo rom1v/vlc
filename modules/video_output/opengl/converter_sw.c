@@ -381,6 +381,7 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
         if (supports_pbo && pbo_pics_alloc(tc) == VLC_SUCCESS)
         {
             static const struct vlc_gl_importer_ops pbo_ops = {
+                .allocate_textures = tc_common_allocate_textures,
                 .update_textures = tc_pbo_update,
             };
             tc->importer.ops = &pbo_ops;
