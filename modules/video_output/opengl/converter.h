@@ -62,9 +62,6 @@ struct opengl_tex_converter_t
     GLuint (*pf_fragment_shader_init)(opengl_tex_converter_t *, GLenum,
                                       vlc_fourcc_t, video_color_space_t);
 
-    /* Available gl extensions (from GL_EXTENSIONS) */
-    const char *glexts;
-
     /* True if the current API is OpenGL ES, set by the caller */
     bool is_gles;
     /* GLSL version, set by the caller. 100 for GLSL ES, 120 for desktop GLSL */

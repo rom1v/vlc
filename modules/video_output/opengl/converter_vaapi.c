@@ -370,7 +370,7 @@ Open(vlc_object_t *obj)
         return VLC_EGENERIC;
     }
 
-    if (!vlc_gl_StrHasToken(tc->glexts, "GL_OES_EGL_image"))
+    if (!vlc_gl_StrHasToken(tc->importer.glexts, "GL_OES_EGL_image"))
     {
         vlc_decoder_device_Release(dec_device);
         return VLC_EGENERIC;

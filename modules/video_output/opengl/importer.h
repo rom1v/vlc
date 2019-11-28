@@ -91,6 +91,9 @@ struct vlc_gl_importer {
     const opengl_vtable_t *vt;
     GLenum tex_target;
 
+    /* Available gl extensions (from GL_EXTENSIONS) */
+    const char *glexts;
+
     const video_format_t *fmt;
 
     /* Pointer to decoder video context, set by the caller (can be NULL) */
