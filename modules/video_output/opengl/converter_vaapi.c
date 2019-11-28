@@ -101,10 +101,8 @@ vaegl_release_last_pic(const struct vlc_gl_importer *imp, struct priv *priv)
 }
 
 static int
-vaegl_init_fourcc(const opengl_tex_converter_t *tc, struct priv *priv,
-                  unsigned va_fourcc)
+vaegl_init_fourcc(struct priv *priv, unsigned va_fourcc)
 {
-    (void) tc;
     switch (va_fourcc)
     {
         case VA_FOURCC_NV12:
@@ -305,7 +303,7 @@ static int strcasecmp_void(const void *a, const void *b)
 }
 
 static int
-tc_va_check_interop_blacklist(opengl_tex_converter_t *tc, VADisplay *vadpy)
+tc_va_check_interop_blacklist(const struct vlc_gl_importer *imp, VADisplay *vadpy)
 {
     const char *vendor = vaQueryVendorString(vadpy);
     if (vendor == NULL)
@@ -326,7 +324,7 @@ tc_va_check_interop_blacklist(opengl_tex_converter_t *tc, VADisplay *vadpy)
                                 BL_SIZE_MAX, strcasecmp_void);
     if (found != NULL)
     {
-        msg_Warn(tc->gl, "The '%s' driver is blacklisted: no interop", found);
+        msg_Warn(imp->gl, "The '%s' driver is blacklisted: no interop", found);
         return VLC_EGENERIC;
     }
 
@@ -406,7 +404,7 @@ Open(vlc_object_t *obj)
             vlc_assert_unreachable();
     }
 
-    if (vaegl_init_fourcc(tc, priv, va_fourcc))
+    if (vaegl_init_fourcc(priv, va_fourcc))
         goto error;
 
     priv->glEGLImageTargetTexture2DOES =
@@ -417,7 +415,7 @@ Open(vlc_object_t *obj)
     priv->vadpy = dec_device->opaque;
     assert(priv->vadpy != NULL);
 
-    if (tc_va_check_interop_blacklist(tc, priv->vadpy))
+    if (tc_va_check_interop_blacklist(&tc->importer, priv->vadpy))
         goto error;
 
     if (tc_va_check_derive_image(&tc->importer))

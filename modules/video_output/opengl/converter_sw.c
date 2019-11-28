@@ -70,7 +70,7 @@ pbo_picture_destroy(picture_t *pic)
 }
 
 static picture_t *
-pbo_picture_create(const opengl_tex_converter_t *tc)
+pbo_picture_create(const struct vlc_gl_importer *imp)
 {
     picture_sys_t *picsys = calloc(1, sizeof(*picsys));
     if (unlikely(picsys == NULL))
@@ -80,25 +80,25 @@ pbo_picture_create(const opengl_tex_converter_t *tc)
         .p_sys = picsys,
         .pf_destroy = pbo_picture_destroy,
     };
-    picture_t *pic = picture_NewFromResource(&tc->fmt, &rsc);
+    picture_t *pic = picture_NewFromResource(imp->fmt, &rsc);
     if (pic == NULL)
     {
         free(picsys);
         return NULL;
     }
 
-    tc->vt->GenBuffers(pic->i_planes, picsys->buffers);
-    picsys->DeleteBuffers = tc->vt->DeleteBuffers;
+    imp->vt->GenBuffers(pic->i_planes, picsys->buffers);
+    picsys->DeleteBuffers = imp->vt->DeleteBuffers;
 
     /* XXX: needed since picture_NewFromResource override pic planes */
-    if (picture_Setup(pic, &tc->fmt))
+    if (picture_Setup(pic, imp->fmt))
     {
         picture_Release(pic);
         return NULL;
     }
 
     assert(pic->i_planes > 0
-        && (unsigned) pic->i_planes == tc->importer.tex_count);
+        && (unsigned) pic->i_planes == imp->tex_count);
 
     for (int i = 0; i < pic->i_planes; ++i)
     {
@@ -116,22 +116,22 @@ pbo_picture_create(const opengl_tex_converter_t *tc)
 }
 
 static int
-pbo_data_alloc(const opengl_tex_converter_t *tc, picture_t *pic)
+pbo_data_alloc(const struct vlc_gl_importer *imp, picture_t *pic)
 {
     picture_sys_t *picsys = pic->p_sys;
 
-    tc->vt->GetError();
+    imp->vt->GetError();
 
     for (int i = 0; i < pic->i_planes; ++i)
     {
-        tc->vt->BindBuffer(GL_PIXEL_UNPACK_BUFFER, picsys->buffers[i]);
-        tc->vt->BufferData(GL_PIXEL_UNPACK_BUFFER, picsys->bytes[i], NULL,
+        imp->vt->BindBuffer(GL_PIXEL_UNPACK_BUFFER, picsys->buffers[i]);
+        imp->vt->BufferData(GL_PIXEL_UNPACK_BUFFER, picsys->bytes[i], NULL,
                             GL_DYNAMIC_DRAW);
 
-        if (tc->vt->GetError() != GL_NO_ERROR)
+        if (imp->vt->GetError() != GL_NO_ERROR)
         {
-            msg_Err(tc->gl, "could not alloc PBO buffers");
-            tc->vt->DeleteBuffers(i, picsys->buffers);
+            msg_Err(imp->gl, "could not alloc PBO buffers");
+            imp->vt->DeleteBuffers(i, picsys->buffers);
             return VLC_EGENERIC;
         }
     }
@@ -139,21 +139,21 @@ pbo_data_alloc(const opengl_tex_converter_t *tc, picture_t *pic)
 }
 
 static int
-pbo_pics_alloc(const opengl_tex_converter_t *tc)
+pbo_pics_alloc(const struct vlc_gl_importer *imp)
 {
-    struct priv *priv = tc->importer.priv;
+    struct priv *priv = imp->priv;
     for (size_t i = 0; i < PBO_DISPLAY_COUNT; ++i)
     {
-        picture_t *pic = priv->pbo.display_pics[i] = pbo_picture_create(tc);
+        picture_t *pic = priv->pbo.display_pics[i] = pbo_picture_create(imp);
         if (pic == NULL)
             goto error;
 
-        if (pbo_data_alloc(tc, pic) != VLC_SUCCESS)
+        if (pbo_data_alloc(imp, pic) != VLC_SUCCESS)
             goto error;
     }
 
     /* turn off pbo */
-    tc->vt->BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    imp->vt->BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     return VLC_SUCCESS;
 error:
@@ -378,7 +378,7 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
 
         const bool supports_pbo = has_pbo && tc->vt->BufferData
             && tc->vt->BufferSubData;
-        if (supports_pbo && pbo_pics_alloc(tc) == VLC_SUCCESS)
+        if (supports_pbo && pbo_pics_alloc(&tc->importer) == VLC_SUCCESS)
         {
             static const struct vlc_gl_importer_ops pbo_ops = {
                 .allocate_textures = tc_common_allocate_textures,
