@@ -364,7 +364,7 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
 
     /* OpenGL or OpenGL ES2 with GL_EXT_unpack_subimage ext */
     priv->has_unpack_subimage =
-        !tc->is_gles || vlc_gl_StrHasToken(tc->glexts, "GL_EXT_unpack_subimage");
+        !tc->is_gles || vlc_gl_StrHasToken(tc->importer.glexts, "GL_EXT_unpack_subimage");
 
     if (allow_dr && priv->has_unpack_subimage)
     {
@@ -373,8 +373,8 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
         const bool glver_ok = strverscmp((const char *)ogl_version, "3.0") >= 0;
 
         const bool has_pbo = glver_ok &&
-            (vlc_gl_StrHasToken(tc->glexts, "GL_ARB_pixel_buffer_object") ||
-             vlc_gl_StrHasToken(tc->glexts, "GL_EXT_pixel_buffer_object"));
+            (vlc_gl_StrHasToken(tc->importer.glexts, "GL_ARB_pixel_buffer_object") ||
+             vlc_gl_StrHasToken(tc->importer.glexts, "GL_EXT_pixel_buffer_object"));
 
         const bool supports_pbo = has_pbo && tc->vt->BufferData
             && tc->vt->BufferSubData;

@@ -91,6 +91,9 @@ struct vlc_gl_importer {
     const opengl_vtable_t *vt;
     GLenum tex_target;
 
+    /* Available gl extensions (from GL_EXTENSIONS) */
+    const char *glexts;
+
     /* Can only be changed from the module open function */
     video_format_t fmt;
 
