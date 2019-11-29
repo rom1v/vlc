@@ -544,6 +544,9 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     tc->glsl_precision_header = "";
 #endif
     tc->fmt = *fmt;
+    /* this is the only allocated field, and we don't need it */
+    tc->fmt.p_palette = NULL;
+
     tc->importer.fmt = &tc->fmt;
 
     tc->importer.gl = tc->gl;
