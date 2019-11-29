@@ -518,6 +518,11 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
     bool yuv_swap_uv = false;
     int ret;
 
+    assert(!tc->importer.fmt.p_palette);
+    tc->importer.sw_fmt = tc->importer.fmt;
+    tc->importer.sw_fmt.i_chroma = chroma;
+    tc->importer.sw_fmt.space = yuv_space;
+
     const vlc_chroma_description_t *desc = vlc_fourcc_GetChromaDescription(chroma);
     if (desc == NULL)
         return 0;
