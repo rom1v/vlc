@@ -454,15 +454,19 @@ tc_xyz12_prepare_shader(const opengl_tex_converter_t *tc,
     tc->vt->Uniform1i(tc->uloc.Texture[0], 0);
 }
 
+static void
+importer_xyz12_init(struct vlc_gl_importer *imp)
+{
+    imp->tex_count = 1;
+    imp->tex_target = GL_TEXTURE_2D;
+    imp->texs[0] = (struct vlc_gl_tex_cfg) {
+        { 1, 1 }, { 1, 1 }, GL_RGB, GL_RGB, GL_UNSIGNED_SHORT
+    };
+}
+
 static GLuint
 xyz12_shader_init(opengl_tex_converter_t *tc)
 {
-    tc->importer.tex_count = 1;
-    tc->importer.tex_target = GL_TEXTURE_2D;
-    tc->importer.texs[0] = (struct vlc_gl_tex_cfg) {
-        { 1, 1 }, { 1, 1 }, GL_RGB, GL_RGB, GL_UNSIGNED_SHORT
-    };
-
     tc->pf_fetch_locations = tc_xyz12_fetch_locations;
     tc->pf_prepare_shader = tc_xyz12_prepare_shader;
 
@@ -528,7 +532,10 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
         return 0;
 
     if (chroma == VLC_CODEC_XYZ12)
+    {
+        importer_xyz12_init(&tc->importer);
         return xyz12_shader_init(tc);
+    }
 
     if (is_yuv)
     {
