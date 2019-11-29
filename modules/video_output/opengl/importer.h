@@ -91,6 +91,9 @@ struct vlc_gl_importer {
     const opengl_vtable_t *vt;
     GLenum tex_target;
 
+    /* True if the current API is OpenGL ES, set by the caller */
+    bool is_gles;
+
     /* Available gl extensions (from GL_EXTENSIONS) */
     const char *glexts;
 
