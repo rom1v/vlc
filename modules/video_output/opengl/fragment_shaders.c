@@ -311,8 +311,8 @@ tc_yuv_base_init(opengl_tex_converter_t *tc, vlc_fourcc_t chroma,
 }
 
 static int
-tc_rgb_base_init(opengl_tex_converter_t *tc, GLenum tex_target,
-                 vlc_fourcc_t chroma)
+importer_rgb_base_init(struct vlc_gl_importer *imp, GLenum tex_target,
+                       vlc_fourcc_t chroma)
 {
     (void) tex_target;
 
@@ -320,15 +320,15 @@ tc_rgb_base_init(opengl_tex_converter_t *tc, GLenum tex_target,
     {
         case VLC_CODEC_RGB32:
         case VLC_CODEC_RGBA:
-            tc->importer.texs[0] = (struct vlc_gl_tex_cfg) {
+            imp->texs[0] = (struct vlc_gl_tex_cfg) {
                 { 1, 1 }, { 1, 1 }, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE
             };
             break;
         case VLC_CODEC_BGRA: {
-            if (GetTexFormatSize(tc->vt, tex_target, GL_BGRA, GL_RGBA,
+            if (GetTexFormatSize(imp->vt, tex_target, GL_BGRA, GL_RGBA,
                                  GL_UNSIGNED_BYTE) != 32)
                 return VLC_EGENERIC;
-            tc->importer.texs[0] = (struct vlc_gl_tex_cfg) {
+            imp->texs[0] = (struct vlc_gl_tex_cfg) {
                 { 1, 1 }, { 1, 1 }, GL_RGBA, GL_BGRA, GL_UNSIGNED_BYTE
             };
             break;
@@ -336,7 +336,7 @@ tc_rgb_base_init(opengl_tex_converter_t *tc, GLenum tex_target,
         default:
             return VLC_EGENERIC;
     }
-    tc->importer.tex_count = 1;
+    imp->tex_count = 1;
     return VLC_SUCCESS;
 }
 
@@ -533,7 +533,7 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
             ret = tc_yuv_base_init(tc, chroma, desc, yuv_space, &yuv_swap_uv);
     }
     else
-        ret = tc_rgb_base_init(tc, tex_target, chroma);
+        ret = importer_rgb_base_init(&tc->importer, tex_target, chroma);
 
     if (ret != VLC_SUCCESS)
         return 0;
