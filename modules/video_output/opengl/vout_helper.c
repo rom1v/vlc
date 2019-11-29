@@ -541,11 +541,11 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     tc->b_dump_shaders = b_dump_shaders;
     tc->pf_fragment_shader_init = opengl_fragment_shader_init_impl;
 #if defined(USE_OPENGL_ES2)
-    tc->is_gles = true;
+    imp->is_gles = true;
     tc->glsl_version = 100;
     tc->glsl_precision_header = "precision highp float;\n";
 #else
-    tc->is_gles = false;
+    imp->is_gles = false;
     tc->glsl_version = 120;
     tc->glsl_precision_header = "";
 #endif
