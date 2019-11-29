@@ -366,7 +366,7 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
 
     /* OpenGL or OpenGL ES2 with GL_EXT_unpack_subimage ext */
     priv->has_unpack_subimage =
-        !tc->is_gles || vlc_gl_StrHasToken(tc->importer.glexts, "GL_EXT_unpack_subimage");
+        !tc->importer.is_gles || vlc_gl_StrHasToken(tc->importer.glexts, "GL_EXT_unpack_subimage");
 
     if (allow_dr && priv->has_unpack_subimage)
     {
