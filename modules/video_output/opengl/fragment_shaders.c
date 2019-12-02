@@ -513,6 +513,32 @@ xyz12_shader_init(opengl_tex_converter_t *tc)
     return fragment_shader;
 }
 
+static int
+opengl_importer_init(struct vlc_gl_importer *imp, GLenum tex_target,
+                     vlc_fourcc_t chroma, bool is_yuv,
+                     const vlc_chroma_description_t *desc,
+                     video_color_space_t yuv_space,
+                     const char *swizzle_per_tex[])
+{
+    assert(!imp->fmt.p_palette);
+    imp->sw_fmt = imp->fmt;
+    imp->sw_fmt.i_chroma = chroma;
+    imp->sw_fmt.space = yuv_space;
+    imp->tex_target = tex_target;
+
+    if (chroma == VLC_CODEC_XYZ12)
+    {
+        importer_xyz12_init(imp);
+        return VLC_SUCCESS;
+    }
+
+    if (is_yuv)
+        return importer_yuv_base_init(imp, tex_target, chroma, desc,
+                                      swizzle_per_tex);
+
+    return importer_rgb_base_init(imp, tex_target, chroma);
+}
+
 GLuint
 opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
                                  vlc_fourcc_t chroma, video_color_space_t yuv_space)
@@ -522,33 +548,24 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
     bool yuv_swap_uv = false;
     int ret;
 
-    assert(!tc->importer.fmt.p_palette);
-    tc->importer.sw_fmt = tc->importer.fmt;
-    tc->importer.sw_fmt.i_chroma = chroma;
-    tc->importer.sw_fmt.space = yuv_space;
-
     const vlc_chroma_description_t *desc = vlc_fourcc_GetChromaDescription(chroma);
     if (desc == NULL)
         return 0;
 
+    ret = opengl_importer_init(&tc->importer, tex_target, chroma, is_yuv,
+                               desc, yuv_space, swizzle_per_tex);
+    if (ret != VLC_SUCCESS)
+        return 0;
+
     if (chroma == VLC_CODEC_XYZ12)
-    {
-        importer_xyz12_init(&tc->importer);
         return xyz12_shader_init(tc);
-    }
 
     if (is_yuv)
     {
-        ret = importer_yuv_base_init(&tc->importer, tex_target, chroma, desc,
-                                     swizzle_per_tex);
-        if (ret == VLC_SUCCESS)
-            ret = tc_yuv_base_init(tc, chroma, desc, yuv_space, &yuv_swap_uv);
+        ret = tc_yuv_base_init(tc, chroma, desc, yuv_space, &yuv_swap_uv);
+        if (ret != VLC_SUCCESS)
+            return 0;
     }
-    else
-        ret = importer_rgb_base_init(&tc->importer, tex_target, chroma);
-
-    if (ret != VLC_SUCCESS)
-        return 0;
 
     const char *sampler, *lookup, *coord_name;
     switch (tex_target)
@@ -761,8 +778,6 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
         msg_Dbg(tc->gl, "\n=== Fragment shader for fourcc: %4.4s, colorspace: %d ===\n%s\n",
                 (const char *)&chroma, yuv_space, ms.ptr);
     free(ms.ptr);
-
-    tc->importer.tex_target = tex_target;
 
     tc->pf_fetch_locations = tc_base_fetch_locations;
     tc->pf_prepare_shader = tc_base_prepare_shader;
