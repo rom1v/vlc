@@ -295,21 +295,23 @@ tc_common_update(const struct vlc_gl_importer *imp, GLuint *textures,
 int
 opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
 {
+    struct vlc_gl_importer *imp = &tc->importer;
+
     GLuint fragment_shader = 0;
     video_color_space_t space;
     const vlc_fourcc_t *list;
 
-    if (vlc_fourcc_IsYUV(tc->importer.fmt.i_chroma))
+    if (vlc_fourcc_IsYUV(imp->fmt.i_chroma))
     {
         GLint max_texture_units = 0;
-        tc->vt->GetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &max_texture_units);
+        imp->vt->GetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &max_texture_units);
         if (max_texture_units < 3)
             return VLC_EGENERIC;
 
-        list = vlc_fourcc_GetYUVFallback(tc->importer.fmt.i_chroma);
-        space = tc->importer.fmt.space;
+        list = vlc_fourcc_GetYUVFallback(imp->fmt.i_chroma);
+        space = imp->fmt.space;
     }
-    else if (tc->importer.fmt.i_chroma == VLC_CODEC_XYZ12)
+    else if (imp->fmt.i_chroma == VLC_CODEC_XYZ12)
     {
         static const vlc_fourcc_t xyz12_list[] = { VLC_CODEC_XYZ12, 0 };
         list = xyz12_list;
@@ -317,7 +319,7 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
     }
     else
     {
-        list = vlc_fourcc_GetRGBFallback(tc->importer.fmt.i_chroma);
+        list = vlc_fourcc_GetRGBFallback(imp->fmt.i_chroma);
         space = COLOR_SPACE_UNDEF;
     }
 
@@ -327,20 +329,20 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
             opengl_fragment_shader_init(tc, GL_TEXTURE_2D, *list, space);
         if (fragment_shader != 0)
         {
-            tc->importer.fmt.i_chroma = *list;
+            imp->fmt.i_chroma = *list;
 
-            if (tc->importer.fmt.i_chroma == VLC_CODEC_RGB32)
+            if (imp->fmt.i_chroma == VLC_CODEC_RGB32)
             {
 #if defined(WORDS_BIGENDIAN)
-                tc->importer.fmt.i_rmask  = 0xff000000;
-                tc->importer.fmt.i_gmask  = 0x00ff0000;
-                tc->importer.fmt.i_bmask  = 0x0000ff00;
+                imp->fmt.i_rmask  = 0xff000000;
+                imp->fmt.i_gmask  = 0x00ff0000;
+                imp->fmt.i_bmask  = 0x0000ff00;
 #else
-                tc->importer.fmt.i_rmask  = 0x000000ff;
-                tc->importer.fmt.i_gmask  = 0x0000ff00;
-                tc->importer.fmt.i_bmask  = 0x00ff0000;
+                imp->fmt.i_rmask  = 0x000000ff;
+                imp->fmt.i_gmask  = 0x0000ff00;
+                imp->fmt.i_bmask  = 0x00ff0000;
 #endif
-                video_format_FixRgb(&tc->importer.fmt);
+                video_format_FixRgb(&imp->fmt);
             }
             break;
         }
@@ -349,10 +351,10 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
     if (fragment_shader == 0)
         return VLC_EGENERIC;
 
-    struct priv *priv = tc->importer.priv = calloc(1, sizeof(struct priv));
+    struct priv *priv = imp->priv = calloc(1, sizeof(struct priv));
     if (unlikely(priv == NULL))
     {
-        tc->vt->DeleteShader(fragment_shader);
+        imp->vt->DeleteShader(fragment_shader);
         return VLC_ENOMEM;
     }
 
@@ -360,31 +362,31 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
         .allocate_textures = tc_common_allocate_textures,
         .update_textures = tc_common_update,
     };
-    tc->importer.ops = &ops;
+    imp->ops = &ops;
 
     /* OpenGL or OpenGL ES2 with GL_EXT_unpack_subimage ext */
     priv->has_unpack_subimage =
-        !tc->importer.is_gles || vlc_gl_StrHasToken(tc->importer.glexts, "GL_EXT_unpack_subimage");
+        !imp->is_gles || vlc_gl_StrHasToken(imp->glexts, "GL_EXT_unpack_subimage");
 
     if (allow_dr && priv->has_unpack_subimage)
     {
         /* Ensure we do direct rendering / PBO with OpenGL 3.0 or higher. */
-        const unsigned char *ogl_version = tc->vt->GetString(GL_VERSION);
+        const unsigned char *ogl_version = imp->vt->GetString(GL_VERSION);
         const bool glver_ok = strverscmp((const char *)ogl_version, "3.0") >= 0;
 
         const bool has_pbo = glver_ok &&
-            (vlc_gl_StrHasToken(tc->importer.glexts, "GL_ARB_pixel_buffer_object") ||
-             vlc_gl_StrHasToken(tc->importer.glexts, "GL_EXT_pixel_buffer_object"));
+            (vlc_gl_StrHasToken(imp->glexts, "GL_ARB_pixel_buffer_object") ||
+             vlc_gl_StrHasToken(imp->glexts, "GL_EXT_pixel_buffer_object"));
 
-        const bool supports_pbo = has_pbo && tc->vt->BufferData
-            && tc->vt->BufferSubData;
-        if (supports_pbo && pbo_pics_alloc(&tc->importer) == VLC_SUCCESS)
+        const bool supports_pbo = has_pbo && imp->vt->BufferData
+            && imp->vt->BufferSubData;
+        if (supports_pbo && pbo_pics_alloc(imp) == VLC_SUCCESS)
         {
             static const struct vlc_gl_importer_ops pbo_ops = {
                 .allocate_textures = tc_common_allocate_textures,
                 .update_textures = tc_pbo_update,
             };
-            tc->importer.ops = &pbo_ops;
+            imp->ops = &pbo_ops;
             msg_Dbg(tc->gl, "PBO support enabled");
         }
     }
