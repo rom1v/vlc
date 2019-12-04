@@ -295,10 +295,8 @@ tc_common_update(const struct vlc_gl_importer *imp, GLuint *textures,
 }
 
 int
-opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
+opengl_importer_generic_init(struct vlc_gl_importer *imp, bool allow_dr)
 {
-    struct vlc_gl_importer *imp = &tc->importer;
-
     video_color_space_t space;
     const vlc_fourcc_t *list;
 
@@ -385,7 +383,7 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
                 .update_textures = tc_pbo_update,
             };
             imp->ops = &pbo_ops;
-            msg_Dbg(tc->gl, "PBO support enabled");
+            msg_Dbg(imp->gl, "PBO support enabled");
         }
     }
 
@@ -393,9 +391,9 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
 }
 
 void
-opengl_tex_converter_generic_deinit(opengl_tex_converter_t *tc)
+opengl_importer_generic_deinit(struct vlc_gl_importer *imp)
 {
-    struct priv *priv = tc->importer.priv;
+    struct priv *priv = imp->priv;
     for (size_t i = 0; i < PBO_DISPLAY_COUNT && priv->pbo.display_pics[i]; ++i)
         picture_Release(priv->pbo.display_pics[i]);
     free(priv->texture_temp_buf);

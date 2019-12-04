@@ -505,7 +505,7 @@ opengl_deinit_program(vout_display_opengl_t *vgl, struct prgm *prgm)
     if (tc->p_module != NULL)
         module_unneed(tc, tc->p_module);
     else if (tc->importer.priv != NULL)
-        opengl_tex_converter_generic_deinit(tc);
+        opengl_importer_generic_deinit(&tc->importer);
     if (prgm->id != 0)
         vgl->vt.DeleteProgram(prgm->id);
 
@@ -570,18 +570,20 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     }
 #endif
 
+    struct vlc_gl_importer *imp = &tc->importer;
+
     int ret;
     if (subpics)
     {
-        tc->fmt.i_chroma = VLC_CODEC_RGB32;
+        imp->fmt->i_chroma = VLC_CODEC_RGB32;
         /* Normal orientation and no projection for subtitles */
-        tc->fmt.orientation = ORIENT_NORMAL;
-        tc->fmt.projection_mode = PROJECTION_MODE_RECTANGULAR;
-        tc->fmt.primaries = COLOR_PRIMARIES_UNDEF;
-        tc->fmt.transfer = TRANSFER_FUNC_UNDEF;
-        tc->fmt.space = COLOR_SPACE_UNDEF;
+        imp->fmt->orientation = ORIENT_NORMAL;
+        imp->fmt->projection_mode = PROJECTION_MODE_RECTANGULAR;
+        imp->fmt->primaries = COLOR_PRIMARIES_UNDEF;
+        imp->fmt->transfer = TRANSFER_FUNC_UNDEF;
+        imp->fmt->space = COLOR_SPACE_UNDEF;
 
-        ret = opengl_tex_converter_generic_init(tc, false);
+        ret = opengl_importer_generic_init(imp, false);
     }
     else
     {
@@ -596,7 +598,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
         if (desc->plane_count == 0)
         {
             /* Opaque chroma: load a module to handle it */
-            tc->importer.vctx = context;
+            imp->vctx = context;
             tc->p_module = module_need_var(tc, "glconv", "glconv");
         }
 
@@ -606,7 +608,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
         {
             /* Software chroma or gl hw converter failed: use a generic
              * converter */
-            ret = opengl_tex_converter_generic_init(tc, true);
+            ret = opengl_importer_generic_init(imp, true);
         }
     }
 
@@ -616,7 +618,6 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
         return VLC_EGENERIC;
     }
 
-    const struct vlc_gl_importer *imp = &tc->importer;
     GLuint fragment_shader =
         opengl_fragment_shader_init_impl(tc, imp->tex_target,
                                          imp->sw_fmt.i_chroma, imp->fmt->space);
