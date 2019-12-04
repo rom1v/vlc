@@ -559,6 +559,19 @@ opengl_importer_init_internal(struct vlc_gl_importer *imp, GLenum tex_target,
     return importer_rgb_base_init(imp, tex_target, chroma);
 }
 
+int
+opengl_importer_init_impl(struct vlc_gl_importer *imp, GLenum tex_target,
+                          vlc_fourcc_t chroma, video_color_space_t yuv_space)
+{
+    const bool is_yuv = vlc_fourcc_IsYUV(chroma);
+    const vlc_chroma_description_t *desc =
+        vlc_fourcc_GetChromaDescription(chroma);
+    if (!desc)
+        return VLC_EGENERIC;
+    return opengl_importer_init_internal(imp, tex_target, chroma, yuv_space,
+        is_yuv, desc);
+}
+
 static GLuint
 opengl_fragment_shader_init_internal(opengl_tex_converter_t *tc,
                                      GLenum tex_target,
