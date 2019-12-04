@@ -533,6 +533,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     tc->vt = &vgl->vt;
     tc->b_dump_shaders = b_dump_shaders;
     tc->pf_fragment_shader_init = opengl_fragment_shader_init_impl;
+    tc->importer.init = opengl_importer_init_impl;
     tc->importer.glexts = glexts;
 #if defined(USE_OPENGL_ES2)
     tc->importer.is_gles = true;
