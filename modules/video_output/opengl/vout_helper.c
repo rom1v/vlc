@@ -510,7 +510,7 @@ opengl_deinit_program(vout_display_opengl_t *vgl, struct prgm *prgm)
     if (tc->p_module != NULL)
         module_unneed(tc, tc->p_module);
     else if (imp->priv != NULL)
-        opengl_tex_converter_generic_deinit(tc);
+        opengl_importer_generic_deinit(imp);
     if (prgm->id != 0)
         vgl->vt.DeleteProgram(prgm->id);
 
@@ -588,7 +588,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
         imp->fmt.transfer = TRANSFER_FUNC_UNDEF;
         imp->fmt.space = COLOR_SPACE_UNDEF;
 
-        ret = opengl_tex_converter_generic_init(tc, false);
+        ret = opengl_importer_generic_init(imp, false);
     }
     else
     {
@@ -613,7 +613,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
         {
             /* Software chroma or gl hw converter failed: use a generic
              * converter */
-            ret = opengl_tex_converter_generic_init(tc, true);
+            ret = opengl_importer_generic_init(imp, true);
         }
     }
 
