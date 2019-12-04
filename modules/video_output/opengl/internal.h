@@ -32,9 +32,9 @@ GLuint
 opengl_fragment_shader_init_impl(opengl_tex_converter_t *,
                                  GLenum, vlc_fourcc_t, video_color_space_t);
 int
-opengl_tex_converter_generic_init(opengl_tex_converter_t *, bool);
+opengl_importer_generic_init(struct vlc_gl_importer *imp, bool);
 
 void
-opengl_tex_converter_generic_deinit(opengl_tex_converter_t *tc);
+opengl_importer_generic_deinit(struct vlc_gl_importer *imp);
 
 #endif /* include-guard */
