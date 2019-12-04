@@ -235,7 +235,7 @@ tc_vaegl_get_pool(const struct vlc_gl_importer *imp, unsigned requested_count)
 
     picture_pool_t *pool =
         vlc_vaapi_PoolNew(o, imp->vctx, priv->vadpy,
-                          requested_count, &priv->va_surface_ids, &imp->fmt);
+                          requested_count, &priv->va_surface_ids, imp->fmt);
     if (!pool)
         return NULL;
 
@@ -341,7 +341,7 @@ tc_va_check_derive_image(const struct vlc_gl_importer *imp)
     VASurfaceID *va_surface_ids;
 
     picture_pool_t *pool = vlc_vaapi_PoolNew(o, imp->vctx, priv->vadpy, 1,
-                                             &va_surface_ids, &imp->fmt);
+                                             &va_surface_ids, imp->fmt);
     if (!pool)
         return VLC_EGENERIC;
 
@@ -363,7 +363,7 @@ Open(vlc_object_t *obj)
         return VLC_EGENERIC;
     vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(tc->importer.vctx);
     if (dec_device->type != VLC_DECODER_DEVICE_VAAPI
-     || !vlc_vaapi_IsChromaOpaque(tc->importer.fmt.i_chroma)
+     || !vlc_vaapi_IsChromaOpaque(tc->fmt.i_chroma)
      || tc->gl->ext != VLC_GL_EXT_EGL
      || tc->gl->egl.createImageKHR == NULL
      || tc->gl->egl.destroyImageKHR == NULL)
@@ -392,7 +392,7 @@ Open(vlc_object_t *obj)
 
     int va_fourcc;
     int vlc_sw_chroma;
-    switch (tc->importer.fmt.i_chroma)
+    switch (tc->fmt.i_chroma)
     {
         case VLC_CODEC_VAAPI_420:
             va_fourcc = VA_FOURCC_NV12;
@@ -424,7 +424,7 @@ Open(vlc_object_t *obj)
         goto error;
 
     tc->fshader = opengl_fragment_shader_init(tc, GL_TEXTURE_2D, vlc_sw_chroma,
-                                              tc->importer.fmt.space);
+                                              tc->fmt.space);
     if (tc->fshader == 0)
         goto error;
 

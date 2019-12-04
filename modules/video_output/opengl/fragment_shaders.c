@@ -573,7 +573,7 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
         dst_space.transfer = var_InheritInteger(tc->gl, "target-trc");
 
         pl_shader_color_map(sh, &color_params,
-                vlc_placebo_ColorSpace(&tc->importer.fmt),
+                vlc_placebo_ColorSpace(&tc->fmt),
                 dst_space, NULL, false);
 
         struct pl_shader_obj *dither_state = NULL;
@@ -623,8 +623,8 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
         ADD(res->glsl);
     }
 #else
-    if (tc->importer.fmt.transfer == TRANSFER_FUNC_SMPTE_ST2084 ||
-        tc->importer.fmt.primaries == COLOR_PRIMARIES_BT2020)
+    if (tc->fmt.transfer == TRANSFER_FUNC_SMPTE_ST2084 ||
+        tc->fmt.primaries == COLOR_PRIMARIES_BT2020)
     {
         // no warning for HLG because it's more or less backwards-compatible
         msg_Warn(tc->gl, "VLC needs to be built with support for libplacebo "

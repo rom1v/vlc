@@ -70,7 +70,7 @@ tc_vdpau_gl_get_pool(const struct vlc_gl_importer *imp,
     vlc_decoder_device *dec_device = sys->dec_device;
     return vlc_vdp_output_pool_create(GetVDPAUOpaqueDevice(dec_device),
                                       VDP_RGBA_FORMAT_B8G8R8A8,
-                                      &imp->fmt, requested_count);
+                                      imp->fmt, requested_count);
 }
 
 static int
@@ -131,9 +131,9 @@ Open(vlc_object_t *obj)
         return VLC_EGENERIC;
     vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(tc->importer.vctx);
     if (GetVDPAUOpaqueDevice(dec_device) == NULL
-     || (tc->importer.fmt.i_chroma != VLC_CODEC_VDPAU_VIDEO_420
-      && tc->importer.fmt.i_chroma != VLC_CODEC_VDPAU_VIDEO_422
-      && tc->importer.fmt.i_chroma != VLC_CODEC_VDPAU_VIDEO_444)
+     || (tc->fmt.i_chroma != VLC_CODEC_VDPAU_VIDEO_420
+      && tc->fmt.i_chroma != VLC_CODEC_VDPAU_VIDEO_422
+      && tc->fmt.i_chroma != VLC_CODEC_VDPAU_VIDEO_444)
      || !vlc_gl_StrHasToken(tc->glexts, "GL_NV_vdpau_interop")
      || tc->gl->surface->type != VOUT_WINDOW_TYPE_XID)
     {
@@ -149,7 +149,7 @@ Open(vlc_object_t *obj)
     }
     sys->dec_device = dec_device;
 
-    tc->importer.fmt.i_chroma = VLC_CODEC_VDPAU_OUTPUT;
+    tc->fmt.i_chroma = VLC_CODEC_VDPAU_OUTPUT;
 
     VdpDevice device;
     vdpau_decoder_device_t *vdpau_dev = GetVDPAUOpaqueDevice(dec_device);
