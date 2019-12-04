@@ -550,6 +550,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     tc->glsl_precision_header = "";
 #endif
 
+    imp->init = opengl_importer_init_impl;
     imp->ops = NULL;
     imp->glexts = glexts;
     imp->fmt = *fmt;
