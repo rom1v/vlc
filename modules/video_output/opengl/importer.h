@@ -97,7 +97,8 @@ struct vlc_gl_importer {
     /* Available gl extensions (from GL_EXTENSIONS) */
     const char *glexts;
 
-    const video_format_t *fmt;
+    /* TODO: move field from opengl_tex_converter_t? */
+    video_format_t *fmt;
 
     /* Software format (useful if fmt only exposes opaque chroma) */
     video_format_t sw_fmt;
