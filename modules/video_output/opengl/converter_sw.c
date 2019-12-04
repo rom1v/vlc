@@ -387,17 +387,6 @@ opengl_tex_converter_generic_init(opengl_tex_converter_t *tc, bool allow_dr)
         }
     }
 
-    GLuint fragment_shader =
-        opengl_fragment_shader_init_impl(tc, imp->tex_target,
-                                         imp->fmt->i_chroma, imp->fmt->space);
-    if (fragment_shader == 0)
-    {
-        return VLC_EGENERIC;
-        free(priv);
-    }
-
-    tc->fshader = fragment_shader;
-
     return VLC_SUCCESS;
 }
 
