@@ -148,6 +148,20 @@ struct vlc_gl_importer {
 
     void *priv;
     const struct vlc_gl_importer_ops *ops;
+
+    /* Set by the caller to opengl_importer_init_impl().
+     * This avoids each module to link against opengl_importer_init_impl()
+     * directly. */
+    int
+    (*init)(struct vlc_gl_importer *imp, GLenum tex_target,
+            vlc_fourcc_t chroma, video_color_space_t yuv_space);
 };
+
+static inline int
+opengl_importer_init(struct vlc_gl_importer *imp, GLenum tex_target,
+                     vlc_fourcc_t chroma, video_color_space_t yuv_space)
+{
+    return imp->init(imp, tex_target, chroma, yuv_space);
+}
 
 #endif
