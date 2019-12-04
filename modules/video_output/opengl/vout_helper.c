@@ -344,7 +344,7 @@ static GLuint BuildVertexShader(const opengl_tex_converter_t *tc,
     tc->vt->ShaderSource(shader, 1, (const char **) &code, NULL);
     if (tc->b_dump_shaders)
         msg_Dbg(tc->gl, "\n=== Vertex shader for fourcc: %4.4s ===\n%s\n",
-                (const char *)&tc->importer.fmt.i_chroma, code);
+                (const char *)&tc->fmt.i_chroma, code);
     tc->vt->CompileShader(shader);
     free(code);
     return shader;
@@ -543,7 +543,8 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     tc->glsl_version = 120;
     tc->glsl_precision_header = "";
 #endif
-    tc->importer.fmt = *fmt;
+    tc->fmt = *fmt;
+    tc->importer.fmt = &tc->fmt;
 
     tc->importer.gl = tc->gl;
     tc->importer.vt = tc->vt;
@@ -568,13 +569,13 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     int ret;
     if (subpics)
     {
-        tc->importer.fmt.i_chroma = VLC_CODEC_RGB32;
+        tc->fmt.i_chroma = VLC_CODEC_RGB32;
         /* Normal orientation and no projection for subtitles */
-        tc->importer.fmt.orientation = ORIENT_NORMAL;
-        tc->importer.fmt.projection_mode = PROJECTION_MODE_RECTANGULAR;
-        tc->importer.fmt.primaries = COLOR_PRIMARIES_UNDEF;
-        tc->importer.fmt.transfer = TRANSFER_FUNC_UNDEF;
-        tc->importer.fmt.space = COLOR_SPACE_UNDEF;
+        tc->fmt.orientation = ORIENT_NORMAL;
+        tc->fmt.projection_mode = PROJECTION_MODE_RECTANGULAR;
+        tc->fmt.primaries = COLOR_PRIMARIES_UNDEF;
+        tc->fmt.transfer = TRANSFER_FUNC_UNDEF;
+        tc->fmt.space = COLOR_SPACE_UNDEF;
 
         ret = opengl_tex_converter_generic_init(tc, false);
     }
@@ -627,9 +628,9 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
         return VLC_EGENERIC;
     }
 
-    getOrientationTransformMatrix(tc->importer.fmt.orientation,
+    getOrientationTransformMatrix(tc->fmt.orientation,
                                   prgm->var.OrientationMatrix);
-    getViewpointMatrixes(vgl, tc->importer.fmt.projection_mode, prgm);
+    getViewpointMatrixes(vgl, tc->fmt.projection_mode, prgm);
 
     return VLC_SUCCESS;
 }
@@ -841,7 +842,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
     GL_ASSERT_NOERROR();
     /* Update the fmt to main program one */
-    vgl->fmt = vgl->prgm->tc->importer.fmt;
+    vgl->fmt = vgl->prgm->tc->fmt;
     /* The orientation is handled by the orientation matrix */
     vgl->fmt.orientation = fmt->orientation;
 
