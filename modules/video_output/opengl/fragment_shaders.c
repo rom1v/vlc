@@ -535,12 +535,16 @@ opengl_init_swizzle(const struct vlc_gl_importer *imp,
     return VLC_SUCCESS;
 }
 
-static int
-opengl_importer_init(struct vlc_gl_importer *imp, GLenum tex_target,
-                     vlc_fourcc_t chroma, bool is_yuv,
-                     const vlc_chroma_description_t *desc,
-                     video_color_space_t yuv_space)
+int
+opengl_importer_init_impl(struct vlc_gl_importer *imp, GLenum tex_target,
+                          vlc_fourcc_t chroma, video_color_space_t yuv_space)
 {
+    bool is_yuv = vlc_fourcc_IsYUV(chroma);
+    const vlc_chroma_description_t *desc =
+        vlc_fourcc_GetChromaDescription(chroma);
+    if (!desc)
+        return VLC_EGENERIC;
+
     assert(!imp->fmt.p_palette);
     imp->sw_fmt = imp->fmt;
     imp->sw_fmt.i_chroma = chroma;
@@ -574,8 +578,8 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
     if (desc == NULL)
         return 0;
 
-    ret = opengl_importer_init(&tc->importer, tex_target, chroma, is_yuv,
-                               desc, yuv_space);
+    ret = opengl_importer_init_impl(&tc->importer, tex_target, chroma,
+                                    yuv_space);
     if (ret != VLC_SUCCESS)
         return 0;
 
