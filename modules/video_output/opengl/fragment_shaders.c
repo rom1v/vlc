@@ -303,7 +303,7 @@ importer_rgb_base_init(struct vlc_gl_importer *imp, GLenum tex_target,
 static int
 tc_base_fetch_locations(opengl_tex_converter_t *tc, GLuint program)
 {
-    struct vlc_gl_importer *imp = &tc->importer;
+    struct vlc_gl_importer *imp = tc->importer;
 
     if (tc->yuv_color)
     {
@@ -350,7 +350,7 @@ tc_base_prepare_shader(const opengl_tex_converter_t *tc,
                        float alpha)
 {
     (void) tex_width; (void) tex_height;
-    const struct vlc_gl_importer *imp = &tc->importer;
+    const struct vlc_gl_importer *imp = tc->importer;
 
     if (tc->yuv_color)
         tc->vt->Uniform4fv(tc->uloc.Coefficients, 4, tc->yuv_coefficients);
@@ -567,7 +567,7 @@ GLuint
 opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
                                  vlc_fourcc_t chroma, video_color_space_t yuv_space)
 {
-    struct vlc_gl_importer *imp = &tc->importer;
+    struct vlc_gl_importer *imp = tc->importer;
 
     const char *swizzle_per_tex[PICTURE_PLANE_MAX] = { NULL, };
     const bool is_yuv = vlc_fourcc_IsYUV(chroma);
@@ -586,7 +586,7 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
         ret = tc_yuv_base_init(tc, chroma, desc, yuv_space, &yuv_swap_uv);
         if (ret != VLC_SUCCESS)
             return 0;
-        ret = opengl_init_swizzle(&tc->importer, swizzle_per_tex, chroma, desc);
+        ret = opengl_init_swizzle(tc->importer, swizzle_per_tex, chroma, desc);
         if (ret != VLC_SUCCESS)
             return 0;
     }
