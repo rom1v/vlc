@@ -4,10 +4,10 @@ vout_LTLIBRARIES =
 EXTRA_DIST += video_output/README
 
 OPENGL_COMMONSOURCES = video_output/opengl/vout_helper.c \
-	video_output/opengl/gl_common.h \
+	video_output/opengl/gl_common.h video_output/opengl/importer.h \
 	video_output/opengl/vout_helper.h video_output/opengl/converter.h \
 	video_output/opengl/internal.h video_output/opengl/fragment_shaders.c \
-	video_output/opengl/converter_sw.c
+	video_output/opengl/importer_sw.c
 if HAVE_LIBPLACEBO
 OPENGL_COMMONSOURCES += video_output/placebo_utils.c video_output/placebo_utils.h
 endif
@@ -86,14 +86,14 @@ libgl_plugin_la_CFLAGS += -DHAVE_GL_CORE_SYMBOLS
 libgl_plugin_la_LIBADD += $(GL_LIBS)
 endif
 
-libglconv_vaapi_plugin_la_SOURCES = video_output/opengl/converter_vaapi.c \
-	video_output/opengl/converter.h \
+libglconv_vaapi_plugin_la_SOURCES = video_output/opengl/importer_vaapi.c \
+	video_output/opengl/importer.h \
 	hw/vaapi/vlc_vaapi.c hw/vaapi/vlc_vaapi.h
 libglconv_vaapi_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS)
 libglconv_vaapi_plugin_la_LIBADD = $(LIBVA_LIBS) $(LIBVA_EGL_LIBS)
 
-libglconv_vdpau_plugin_la_SOURCES = video_output/opengl/converter_vdpau.c \
-	video_output/opengl/converter.h hw/vdpau/picture.c hw/vdpau/vlc_vdpau.h
+libglconv_vdpau_plugin_la_SOURCES = video_output/opengl/importer_vdpau.c \
+	video_output/opengl/importer.h hw/vdpau/picture.c hw/vdpau/vlc_vdpau.h
 libglconv_vdpau_plugin_la_CFLAGS = $(AM_CFLAGS) $(VDPAU_CFLAGS)
 libglconv_vdpau_plugin_la_LIBADD = $(LIBDL) libvlc_vdpau.la $(X_LIBS) $(X_PRE_LIBS) -lX11
 
