@@ -93,8 +93,8 @@ tc_get_transform_matrix(const struct vlc_gl_importer *imp)
 static void
 Close(vlc_object_t *obj)
 {
-    opengl_tex_converter_t *tc = (void *)obj;
-    struct priv *priv = tc->priv;
+    struct vlc_gl_importer *imp = (void *)obj;
+    struct priv *priv = imp->priv;
 
     if (priv->stex_attached)
         SurfaceTexture_detachFromGLContext(priv->awh);
@@ -105,8 +105,7 @@ Close(vlc_object_t *obj)
 static int
 Open(vlc_object_t *obj)
 {
-    opengl_tex_converter_t *tc = (void *) obj;
-    struct vlc_gl_importer *imp = &tc->importer;
+    struct vlc_gl_importer *imp = (void *) obj;
 
     if (imp->fmt.i_chroma != VLC_CODEC_ANDROID_OPAQUE
      || !imp->gl->surface->handle.anativewindow
@@ -167,12 +166,13 @@ Open(vlc_object_t *obj)
             break;
     }
 
-    tc->fshader = opengl_fragment_shader_init(tc, GL_TEXTURE_EXTERNAL_OES,
-                                              VLC_CODEC_RGB32,
-                                              COLOR_SPACE_UNDEF);
-    if (!tc->fshader)
+    int ret = opengl_importer_init(imp, GL_TEXTURE_EXTERNAL_OES,
+                                        VLC_CODEC_RGB32,
+                                        COLOR_SPACE_UNDEF);
+
+    if (ret != VLC_SUCCESS)
     {
-        free(tc->priv);
+        free(imp->priv);
         return VLC_EGENERIC;
     }
 
