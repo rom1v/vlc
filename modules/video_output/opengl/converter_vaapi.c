@@ -288,11 +288,11 @@ error:
 static void
 Close(vlc_object_t *obj)
 {
-    opengl_tex_converter_t *tc = (void *)obj;
-    struct priv *priv = tc->importer->priv;
+    struct vlc_gl_importer *imp = (void *)obj;
+    struct priv *priv = imp->priv;
 
     if (priv->last.pic != NULL)
-        vaegl_release_last_pic(tc->importer, priv);
+        vaegl_release_last_pic(imp, priv);
 
     free(priv);
 }
@@ -355,42 +355,42 @@ tc_va_check_derive_image(const struct vlc_gl_importer *imp)
 static int
 Open(vlc_object_t *obj)
 {
-    opengl_tex_converter_t *tc = (void *) obj;
+    struct vlc_gl_importer *imp = (void *) obj;
 
-    if (tc->importer->vctx == NULL)
+    if (imp->vctx == NULL)
         return VLC_EGENERIC;
-    vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(tc->importer->vctx);
+    vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(imp->vctx);
     if (dec_device->type != VLC_DECODER_DEVICE_VAAPI
-     || !vlc_vaapi_IsChromaOpaque(tc->fmt.i_chroma)
-     || tc->gl->ext != VLC_GL_EXT_EGL
-     || tc->gl->egl.createImageKHR == NULL
-     || tc->gl->egl.destroyImageKHR == NULL)
+     || !vlc_vaapi_IsChromaOpaque(imp->fmt->i_chroma)
+     || imp->gl->ext != VLC_GL_EXT_EGL
+     || imp->gl->egl.createImageKHR == NULL
+     || imp->gl->egl.destroyImageKHR == NULL)
     {
         vlc_decoder_device_Release(dec_device);
         return VLC_EGENERIC;
     }
 
-    if (!vlc_gl_StrHasToken(tc->importer->glexts, "GL_OES_EGL_image"))
+    if (!vlc_gl_StrHasToken(imp->glexts, "GL_OES_EGL_image"))
     {
         vlc_decoder_device_Release(dec_device);
         return VLC_EGENERIC;
     }
 
-    const char *eglexts = tc->gl->egl.queryString(tc->gl, EGL_EXTENSIONS);
+    const char *eglexts = imp->gl->egl.queryString(imp->gl, EGL_EXTENSIONS);
     if (eglexts == NULL || !vlc_gl_StrHasToken(eglexts, "EGL_EXT_image_dma_buf_import"))
     {
         vlc_decoder_device_Release(dec_device);
         return VLC_EGENERIC;
     }
 
-    struct priv *priv = tc->importer->priv = calloc(1, sizeof(struct priv));
+    struct priv *priv = imp->priv = calloc(1, sizeof(struct priv));
     if (unlikely(priv == NULL))
         goto error;
     priv->fourcc = 0;
 
     int va_fourcc;
     int vlc_sw_chroma;
-    switch (tc->fmt.i_chroma)
+    switch (imp->fmt->i_chroma)
     {
         case VLC_CODEC_VAAPI_420:
             va_fourcc = VA_FOURCC_NV12;
@@ -408,29 +408,29 @@ Open(vlc_object_t *obj)
         goto error;
 
     priv->glEGLImageTargetTexture2DOES =
-        vlc_gl_GetProcAddress(tc->gl, "glEGLImageTargetTexture2DOES");
+        vlc_gl_GetProcAddress(imp->gl, "glEGLImageTargetTexture2DOES");
     if (priv->glEGLImageTargetTexture2DOES == NULL)
         goto error;
 
     priv->vadpy = dec_device->opaque;
     assert(priv->vadpy != NULL);
 
-    if (tc_va_check_interop_blacklist(tc->importer, priv->vadpy))
+    if (tc_va_check_interop_blacklist(imp, priv->vadpy))
         goto error;
 
-    if (tc_va_check_derive_image(tc->importer))
+    if (tc_va_check_derive_image(imp))
         goto error;
 
-    tc->fshader = opengl_fragment_shader_init(tc, GL_TEXTURE_2D, vlc_sw_chroma,
-                                              tc->fmt.space);
-    if (tc->fshader == 0)
+    int ret = opengl_importer_init(imp, GL_TEXTURE_2D, vlc_sw_chroma,
+                                   imp->fmt->space);
+    if (ret != VLC_SUCCESS)
         goto error;
 
     static const struct vlc_gl_importer_ops ops = {
         .update_textures = tc_vaegl_update,
         .get_pool = tc_vaegl_get_pool,
     };
-    tc->importer->ops = &ops;
+    imp->ops = &ops;
 
     vlc_decoder_device_Release(dec_device);
 

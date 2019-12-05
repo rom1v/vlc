@@ -607,7 +607,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
         {
             /* Opaque chroma: load a module to handle it */
             imp->vctx = context;
-            tc->p_module = module_need_var(tc, "glconv", "glconv");
+            tc->p_module = module_need_var(imp, "glconv", "glconv");
         }
 
         if (tc->p_module != NULL)
