@@ -289,10 +289,10 @@ static void
 Close(vlc_object_t *obj)
 {
     opengl_tex_converter_t *tc = (void *)obj;
-    struct priv *priv = tc->importer.priv;
+    struct priv *priv = tc->importer->priv;
 
     if (priv->last.pic != NULL)
-        vaegl_release_last_pic(&tc->importer, priv);
+        vaegl_release_last_pic(tc->importer, priv);
 
     free(priv);
 }
@@ -356,7 +356,7 @@ static int
 Open(vlc_object_t *obj)
 {
     opengl_tex_converter_t *tc = (void *) obj;
-    struct vlc_gl_importer *imp = &tc->importer;
+    struct vlc_gl_importer *imp = tc->importer;
 
     if (imp->vctx == NULL)
         return VLC_EGENERIC;
