@@ -118,7 +118,7 @@ Close(vlc_object_t *obj)
 {
     opengl_tex_converter_t *tc = (void *)obj;
     _glVDPAUFiniNV(); assert(tc->vt->GetError() == GL_NO_ERROR);
-    converter_sys_t *sys = tc->importer.priv;
+    converter_sys_t *sys = tc->importer->priv;
     vlc_decoder_device *dec_device = sys->dec_device;
     vlc_decoder_device_Release(dec_device);
 }
@@ -127,14 +127,14 @@ static int
 Open(vlc_object_t *obj)
 {
     opengl_tex_converter_t *tc = (void *) obj;
-    if (tc->importer.vctx == NULL)
+    if (tc->importer->vctx == NULL)
         return VLC_EGENERIC;
-    vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(tc->importer.vctx);
+    vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(tc->importer->vctx);
     if (GetVDPAUOpaqueDevice(dec_device) == NULL
      || (tc->fmt.i_chroma != VLC_CODEC_VDPAU_VIDEO_420
       && tc->fmt.i_chroma != VLC_CODEC_VDPAU_VIDEO_422
       && tc->fmt.i_chroma != VLC_CODEC_VDPAU_VIDEO_444)
-     || !vlc_gl_StrHasToken(tc->importer.glexts, "GL_NV_vdpau_interop")
+     || !vlc_gl_StrHasToken(tc->importer->glexts, "GL_NV_vdpau_interop")
      || tc->gl->surface->type != VOUT_WINDOW_TYPE_XID)
     {
         vlc_decoder_device_Release(dec_device);
@@ -183,7 +183,7 @@ Open(vlc_object_t *obj)
     SAFE_GPA(glVDPAUUnmapSurfacesNV);
 #undef SAFE_GPA
 
-    struct vlc_gl_importer *imp = &tc->importer;
+    struct vlc_gl_importer *imp = tc->importer;
     INTEROP_CALL(glVDPAUInitNV, (void *)(uintptr_t)device, vdp_gpa);
 
     tc->fshader = opengl_fragment_shader_init(tc, GL_TEXTURE_2D,

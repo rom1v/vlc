@@ -398,7 +398,7 @@ opengl_link_program(struct prgm *prgm)
 {
     opengl_tex_converter_t *tc = prgm->tc;
 
-    GLuint vertex_shader = BuildVertexShader(tc, tc->importer.tex_count);
+    GLuint vertex_shader = BuildVertexShader(tc, tc->importer->tex_count);
     GLuint shaders[] = { tc->fshader, vertex_shader };
 
     /* Check shaders messages */
@@ -471,11 +471,11 @@ opengl_link_program(struct prgm *prgm)
     GET_ALOC(VertexPosition, "VertexPosition");
     GET_ALOC(MultiTexCoord[0], "MultiTexCoord0");
     /* MultiTexCoord 1 and 2 can be optimized out if not used */
-    if (prgm->tc->importer.tex_count > 1)
+    if (prgm->tc->importer->tex_count > 1)
         GET_ALOC(MultiTexCoord[1], "MultiTexCoord1");
     else
         prgm->aloc.MultiTexCoord[1] = -1;
-    if (prgm->tc->importer.tex_count > 2)
+    if (prgm->tc->importer->tex_count > 2)
         GET_ALOC(MultiTexCoord[2], "MultiTexCoord2");
     else
         prgm->aloc.MultiTexCoord[2] = -1;
@@ -504,8 +504,9 @@ opengl_deinit_program(vout_display_opengl_t *vgl, struct prgm *prgm)
     opengl_tex_converter_t *tc = prgm->tc;
     if (tc->p_module != NULL)
         module_unneed(tc, tc->p_module);
-    else if (tc->importer.priv != NULL)
-        opengl_importer_generic_deinit(&tc->importer);
+    else if (tc->importer->priv != NULL)
+        opengl_importer_generic_deinit(tc->importer);
+    vlc_object_delete(tc->importer);
     if (prgm->id != 0)
         vgl->vt.DeleteProgram(prgm->id);
 
@@ -529,18 +530,27 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     if (tc == NULL)
         return VLC_ENOMEM;
 
+    struct vlc_gl_importer *imp = vlc_object_create(tc, sizeof(*imp));
+    if (!imp)
+    {
+        vlc_object_delete(tc);
+        return VLC_ENOMEM;
+    }
+
+    tc->importer = imp;
+
     tc->gl = vgl->gl;
     tc->vt = &vgl->vt;
     tc->b_dump_shaders = b_dump_shaders;
     tc->pf_fragment_shader_init = opengl_fragment_shader_init_impl;
-    tc->importer.init = opengl_importer_init_impl;
-    tc->importer.glexts = glexts;
+    imp->init = opengl_importer_init_impl;
+    imp->glexts = glexts;
 #if defined(USE_OPENGL_ES2)
-    tc->importer.is_gles = true;
+    imp->is_gles = true;
     tc->glsl_version = 100;
     tc->glsl_precision_header = "precision highp float;\n";
 #else
-    tc->importer.is_gles = false;
+    imp->is_gles = false;
     tc->glsl_version = 120;
     tc->glsl_precision_header = "";
 #endif
@@ -548,10 +558,10 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     /* this is the only allocated field, and we don't need it */
     tc->fmt.p_palette = NULL;
 
-    tc->importer.fmt = &tc->fmt;
+    imp->fmt = &tc->fmt;
 
-    tc->importer.gl = tc->gl;
-    tc->importer.vt = tc->vt;
+    imp->gl = tc->gl;
+    imp->vt = tc->vt;
 
 #ifdef HAVE_LIBPLACEBO
     // Create the main libplacebo context
@@ -569,8 +579,6 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
         }
     }
 #endif
-
-    struct vlc_gl_importer *imp = &tc->importer;
 
     int ret;
     if (subpics)
@@ -630,9 +638,9 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     tc->fshader = fragment_shader;
 
     assert(tc->fshader != 0 &&
-           tc->importer.tex_target != 0 &&
-           tc->importer.tex_count > 0 &&
-           tc->importer.ops->update_textures != NULL &&
+           tc->importer->tex_target != 0 &&
+           tc->importer->tex_count > 0 &&
+           tc->importer->ops->update_textures != NULL &&
            tc->pf_fetch_locations != NULL &&
            tc->pf_prepare_shader != NULL);
 
@@ -865,11 +873,11 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
 
     /* Texture size */
     const opengl_tex_converter_t *tc = vgl->prgm->tc;
-    for (unsigned j = 0; j < tc->importer.tex_count; j++) {
-        const GLsizei w = vgl->fmt.i_visible_width  * tc->importer.texs[j].w.num
-                        / tc->importer.texs[j].w.den;
-        const GLsizei h = vgl->fmt.i_visible_height * tc->importer.texs[j].h.num
-                        / tc->importer.texs[j].h.den;
+    for (unsigned j = 0; j < tc->importer->tex_count; j++) {
+        const GLsizei w = vgl->fmt.i_visible_width  * tc->importer->texs[j].w.num
+                        / tc->importer->texs[j].w.den;
+        const GLsizei h = vgl->fmt.i_visible_height * tc->importer->texs[j].h.num
+                        / tc->importer->texs[j].h.den;
         if (vgl->supports_npot) {
             vgl->tex_width[j]  = w;
             vgl->tex_height[j] = h;
@@ -880,11 +888,11 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
 
     /* Allocates our textures */
-    assert(!vgl->sub_prgm->tc->importer.handle_texs_gen);
+    assert(!vgl->sub_prgm->tc->importer->handle_texs_gen);
 
-    if (!vgl->prgm->tc->importer.handle_texs_gen)
+    if (!vgl->prgm->tc->importer->handle_texs_gen)
     {
-        ret = GenTextures(&vgl->prgm->tc->importer, vgl->tex_width, vgl->tex_height,
+        ret = GenTextures(vgl->prgm->tc->importer, vgl->tex_width, vgl->tex_height,
                           vgl->texture);
         if (ret != VLC_SUCCESS)
         {
@@ -903,7 +911,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
 
     vgl->vt.GenBuffers(1, &vgl->vertex_buffer_object);
     vgl->vt.GenBuffers(1, &vgl->index_buffer_object);
-    vgl->vt.GenBuffers(vgl->prgm->tc->importer.tex_count, vgl->texture_buffer_object);
+    vgl->vt.GenBuffers(vgl->prgm->tc->importer->tex_count, vgl->texture_buffer_object);
 
     /* Initial number of allocated buffer objects for subpictures, will grow dynamically. */
     int subpicture_buffer_object_count = 8;
@@ -944,8 +952,8 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vgl->vt.Finish();
     vgl->vt.Flush();
 
-    const size_t main_tex_count = vgl->prgm->tc->importer.tex_count;
-    const bool main_del_texs = !vgl->prgm->tc->importer.handle_texs_gen;
+    const size_t main_tex_count = vgl->prgm->tc->importer->tex_count;
+    const bool main_del_texs = !vgl->prgm->tc->importer->handle_texs_gen;
 
     if (vgl->pool)
         picture_pool_Release(vgl->pool);
@@ -1050,7 +1058,7 @@ void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
 
 bool vout_display_opengl_HasPool(const vout_display_opengl_t *vgl)
 {
-    const struct vlc_gl_importer *imp = &vgl->prgm->tc->importer;
+    const struct vlc_gl_importer *imp = vgl->prgm->tc->importer;
     return imp->ops->get_pool != NULL;
 }
 
@@ -1061,7 +1069,7 @@ picture_pool_t *vout_display_opengl_GetPool(vout_display_opengl_t *vgl, unsigned
     if (vgl->pool)
         return vgl->pool;
 
-    const struct vlc_gl_importer *imp = &vgl->prgm->tc->importer;
+    const struct vlc_gl_importer *imp = vgl->prgm->tc->importer;
     requested_count = __MIN(VLCGL_PICTURE_MAX, requested_count);
     /* Allocate with tex converter pool callback if it exists */
     assert(imp->ops->get_pool != NULL);
@@ -1081,11 +1089,12 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
     GL_ASSERT_NOERROR();
 
     opengl_tex_converter_t *tc = vgl->prgm->tc;
-    const struct vlc_gl_importer *imp = &tc->importer;
+    const struct vlc_gl_importer *imp = tc->importer;
 
     /* Update the texture */
-    int ret = tc->importer.ops->update_textures(imp, vgl->texture, vgl->tex_width, vgl->tex_height,
-                            picture, NULL);
+    int ret =
+        tc->importer->ops->update_textures(imp, vgl->texture, vgl->tex_width,
+                                           vgl->tex_height, picture, NULL);
     if (ret != VLC_SUCCESS)
         return ret;
 
@@ -1096,7 +1105,7 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
     vgl->region       = NULL;
 
     tc = vgl->sub_prgm->tc;
-    imp = &tc->importer;
+    imp = tc->importer;
     if (subpicture) {
 
         int count = 0;
@@ -1451,19 +1460,19 @@ static int SetupCoords(vout_display_opengl_t *vgl,
     switch (vgl->fmt.projection_mode)
     {
     case PROJECTION_MODE_RECTANGULAR:
-        i_ret = BuildRectangle(vgl->prgm->tc->importer.tex_count,
+        i_ret = BuildRectangle(vgl->prgm->tc->importer->tex_count,
                                &vertexCoord, &textureCoord, &nbVertices,
                                &indices, &nbIndices,
                                left, top, right, bottom);
         break;
     case PROJECTION_MODE_EQUIRECTANGULAR:
-        i_ret = BuildSphere(vgl->prgm->tc->importer.tex_count,
+        i_ret = BuildSphere(vgl->prgm->tc->importer->tex_count,
                             &vertexCoord, &textureCoord, &nbVertices,
                             &indices, &nbIndices,
                             left, top, right, bottom);
         break;
     case PROJECTION_MODE_CUBEMAP_LAYOUT_STANDARD:
-        i_ret = BuildCube(vgl->prgm->tc->importer.tex_count,
+        i_ret = BuildCube(vgl->prgm->tc->importer->tex_count,
                           (float)vgl->fmt.i_cubemap_padding / vgl->fmt.i_width,
                           (float)vgl->fmt.i_cubemap_padding / vgl->fmt.i_height,
                           &vertexCoord, &textureCoord, &nbVertices,
@@ -1478,7 +1487,7 @@ static int SetupCoords(vout_display_opengl_t *vgl,
     if (i_ret != VLC_SUCCESS)
         return i_ret;
 
-    for (unsigned j = 0; j < vgl->prgm->tc->importer.tex_count; j++)
+    for (unsigned j = 0; j < vgl->prgm->tc->importer->tex_count; j++)
     {
         vgl->vt.BindBuffer(GL_ARRAY_BUFFER, vgl->texture_buffer_object[j]);
         vgl->vt.BufferData(GL_ARRAY_BUFFER, nbVertices * 2 * sizeof(GLfloat),
@@ -1507,10 +1516,10 @@ static void DrawWithShaders(vout_display_opengl_t *vgl, struct prgm *prgm)
     opengl_tex_converter_t *tc = prgm->tc;
     tc->pf_prepare_shader(tc, vgl->tex_width, vgl->tex_height, 1.0f);
 
-    for (unsigned j = 0; j < vgl->prgm->tc->importer.tex_count; j++) {
+    for (unsigned j = 0; j < vgl->prgm->tc->importer->tex_count; j++) {
         assert(vgl->texture[j] != 0);
         vgl->vt.ActiveTexture(GL_TEXTURE0+j);
-        vgl->vt.BindTexture(tc->importer.tex_target, vgl->texture[j]);
+        vgl->vt.BindTexture(tc->importer->tex_target, vgl->texture[j]);
 
         vgl->vt.BindBuffer(GL_ARRAY_BUFFER, vgl->texture_buffer_object[j]);
 
@@ -1569,7 +1578,7 @@ static void TextureCropForStereo(vout_display_opengl_t *vgl,
         // Display only the left eye.
         stereoCoefs[0] = 1; stereoCoefs[1] = 0.5;
         stereoOffsets[0] = 0; stereoOffsets[1] = 0;
-        GetTextureCropParamsForStereo(vgl->prgm->tc->importer.tex_count,
+        GetTextureCropParamsForStereo(vgl->prgm->tc->importer->tex_count,
                                       stereoCoefs, stereoOffsets,
                                       left, top, right, bottom);
         break;
@@ -1577,7 +1586,7 @@ static void TextureCropForStereo(vout_display_opengl_t *vgl,
         // Display only the left eye.
         stereoCoefs[0] = 0.5; stereoCoefs[1] = 1;
         stereoOffsets[0] = 0; stereoOffsets[1] = 0;
-        GetTextureCropParamsForStereo(vgl->prgm->tc->importer.tex_count,
+        GetTextureCropParamsForStereo(vgl->prgm->tc->importer->tex_count,
                                       stereoCoefs, stereoOffsets,
                                       left, top, right, bottom);
         break;
@@ -1608,11 +1617,11 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         float right[PICTURE_PLANE_MAX];
         float bottom[PICTURE_PLANE_MAX];
         const opengl_tex_converter_t *tc = vgl->prgm->tc;
-        for (unsigned j = 0; j < tc->importer.tex_count; j++)
+        for (unsigned j = 0; j < tc->importer->tex_count; j++)
         {
-            float scale_w = (float)tc->importer.texs[j].w.num / tc->importer.texs[j].w.den
+            float scale_w = (float)tc->importer->texs[j].w.num / tc->importer->texs[j].w.den
                           / vgl->tex_width[j];
-            float scale_h = (float)tc->importer.texs[j].h.num / tc->importer.texs[j].h.den
+            float scale_h = (float)tc->importer->texs[j].h.num / tc->importer->texs[j].h.den
                           / vgl->tex_height[j];
 
             /* Warning: if NPOT is not supported a larger texture is
@@ -1688,7 +1697,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         };
 
         assert(glr->texture != 0);
-        vgl->vt.BindTexture(tc->importer.tex_target, glr->texture);
+        vgl->vt.BindTexture(tc->importer->tex_target, glr->texture);
 
         tc->pf_prepare_shader(tc, &glr->width, &glr->height, glr->alpha);
 

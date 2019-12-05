@@ -289,10 +289,10 @@ static void
 Close(vlc_object_t *obj)
 {
     opengl_tex_converter_t *tc = (void *)obj;
-    struct priv *priv = tc->importer.priv;
+    struct priv *priv = tc->importer->priv;
 
     if (priv->last.pic != NULL)
-        vaegl_release_last_pic(&tc->importer, priv);
+        vaegl_release_last_pic(tc->importer, priv);
 
     free(priv);
 }
@@ -357,9 +357,9 @@ Open(vlc_object_t *obj)
 {
     opengl_tex_converter_t *tc = (void *) obj;
 
-    if (tc->importer.vctx == NULL)
+    if (tc->importer->vctx == NULL)
         return VLC_EGENERIC;
-    vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(tc->importer.vctx);
+    vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(tc->importer->vctx);
     if (dec_device->type != VLC_DECODER_DEVICE_VAAPI
      || !vlc_vaapi_IsChromaOpaque(tc->fmt.i_chroma)
      || tc->gl->ext != VLC_GL_EXT_EGL
@@ -370,7 +370,7 @@ Open(vlc_object_t *obj)
         return VLC_EGENERIC;
     }
 
-    if (!vlc_gl_StrHasToken(tc->importer.glexts, "GL_OES_EGL_image"))
+    if (!vlc_gl_StrHasToken(tc->importer->glexts, "GL_OES_EGL_image"))
     {
         vlc_decoder_device_Release(dec_device);
         return VLC_EGENERIC;
@@ -383,7 +383,7 @@ Open(vlc_object_t *obj)
         return VLC_EGENERIC;
     }
 
-    struct priv *priv = tc->importer.priv = calloc(1, sizeof(struct priv));
+    struct priv *priv = tc->importer->priv = calloc(1, sizeof(struct priv));
     if (unlikely(priv == NULL))
         goto error;
     priv->fourcc = 0;
@@ -415,10 +415,10 @@ Open(vlc_object_t *obj)
     priv->vadpy = dec_device->opaque;
     assert(priv->vadpy != NULL);
 
-    if (tc_va_check_interop_blacklist(&tc->importer, priv->vadpy))
+    if (tc_va_check_interop_blacklist(tc->importer, priv->vadpy))
         goto error;
 
-    if (tc_va_check_derive_image(&tc->importer))
+    if (tc_va_check_derive_image(tc->importer))
         goto error;
 
     tc->fshader = opengl_fragment_shader_init(tc, GL_TEXTURE_2D, vlc_sw_chroma,
@@ -430,7 +430,7 @@ Open(vlc_object_t *obj)
         .update_textures = tc_vaegl_update,
         .get_pool = tc_vaegl_get_pool,
     };
-    tc->importer.ops = &ops;
+    tc->importer->ops = &ops;
 
     vlc_decoder_device_Release(dec_device);
 

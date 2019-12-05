@@ -311,14 +311,14 @@ tc_base_fetch_locations(opengl_tex_converter_t *tc, GLuint program)
             return VLC_EGENERIC;
     }
 
-    for (unsigned int i = 0; i < tc->importer.tex_count; ++i)
+    for (unsigned int i = 0; i < tc->importer->tex_count; ++i)
     {
         char name[sizeof("TextureX")];
         snprintf(name, sizeof(name), "Texture%1u", i);
         tc->uloc.Texture[i] = tc->vt->GetUniformLocation(program, name);
         if (tc->uloc.Texture[i] == -1)
             return VLC_EGENERIC;
-        if (tc->importer.tex_target == GL_TEXTURE_RECTANGLE)
+        if (tc->importer->tex_target == GL_TEXTURE_RECTANGLE)
         {
             snprintf(name, sizeof(name), "TexSize%1u", i);
             tc->uloc.TexSize[i] = tc->vt->GetUniformLocation(program, name);
@@ -352,14 +352,14 @@ tc_base_prepare_shader(const opengl_tex_converter_t *tc,
     if (tc->yuv_color)
         tc->vt->Uniform4fv(tc->uloc.Coefficients, 4, tc->yuv_coefficients);
 
-    for (unsigned i = 0; i < tc->importer.tex_count; ++i)
+    for (unsigned i = 0; i < tc->importer->tex_count; ++i)
         tc->vt->Uniform1i(tc->uloc.Texture[i], i);
 
     tc->vt->Uniform4f(tc->uloc.FillColor, 1.0f, 1.0f, 1.0f, alpha);
 
-    if (tc->importer.tex_target == GL_TEXTURE_RECTANGLE)
+    if (tc->importer->tex_target == GL_TEXTURE_RECTANGLE)
     {
-        for (unsigned i = 0; i < tc->importer.tex_count; ++i)
+        for (unsigned i = 0; i < tc->importer->tex_count; ++i)
             tc->vt->Uniform2f(tc->uloc.TexSize[i], tex_width[i],
                                tex_height[i]);
     }
@@ -589,7 +589,7 @@ opengl_fragment_shader_init_internal(opengl_tex_converter_t *tc,
         ret = tc_yuv_base_init(tc, chroma, desc, yuv_space, &yuv_swap_uv);
         if (ret != VLC_SUCCESS)
             return 0;
-        ret = opengl_init_swizzle(&tc->importer, swizzle_per_tex, chroma, desc);
+        ret = opengl_init_swizzle(tc->importer, swizzle_per_tex, chroma, desc);
         if (ret != VLC_SUCCESS)
             return 0;
     }
@@ -620,7 +620,7 @@ opengl_fragment_shader_init_internal(opengl_tex_converter_t *tc,
 
     ADDF("#version %u\n%s", tc->glsl_version, tc->glsl_precision_header);
 
-    for (unsigned i = 0; i < tc->importer.tex_count; ++i)
+    for (unsigned i = 0; i < tc->importer->tex_count; ++i)
         ADDF("uniform %s Texture%u;\n"
              "varying vec2 TexCoord%u;\n", sampler, i, i);
 
@@ -706,7 +706,7 @@ opengl_fragment_shader_init_internal(opengl_tex_converter_t *tc,
 
     if (tex_target == GL_TEXTURE_RECTANGLE)
     {
-        for (unsigned i = 0; i < tc->importer.tex_count; ++i)
+        for (unsigned i = 0; i < tc->importer->tex_count; ++i)
             ADDF("uniform vec2 TexSize%u;\n", i);
     }
 
@@ -719,13 +719,13 @@ opengl_fragment_shader_init_internal(opengl_tex_converter_t *tc,
 
     if (tex_target == GL_TEXTURE_RECTANGLE)
     {
-        for (unsigned i = 0; i < tc->importer.tex_count; ++i)
+        for (unsigned i = 0; i < tc->importer->tex_count; ++i)
             ADDF(" vec2 TexCoordRect%u = vec2(TexCoord%u.x * TexSize%u.x, "
                  "TexCoord%u.y * TexSize%u.y);\n", i, i, i, i, i);
     }
 
     unsigned color_idx = 0;
-    for (unsigned i = 0; i < tc->importer.tex_count; ++i)
+    for (unsigned i = 0; i < tc->importer->tex_count; ++i)
     {
         const char *swizzle = swizzle_per_tex[i];
         if (swizzle)
@@ -821,7 +821,7 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
     if (desc == NULL)
         return 0;
 
-    int ret = opengl_importer_init_internal(&tc->importer, tex_target, chroma,
+    int ret = opengl_importer_init_internal(tc->importer, tex_target, chroma,
                                             yuv_space, is_yuv, desc);
     if (ret != VLC_SUCCESS)
         return 0;
