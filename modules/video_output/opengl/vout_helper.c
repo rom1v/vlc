@@ -352,7 +352,7 @@ static GLuint BuildVertexShader(const opengl_tex_converter_t *tc,
     tc->vt->ShaderSource(shader, 1, (const char **) &code, NULL);
     if (tc->b_dump_shaders)
         msg_Dbg(tc->gl, "\n=== Vertex shader for fourcc: %4.4s ===\n%s\n",
-                (const char *)&tc->importer.fmt.i_chroma, code);
+                (const char *)&tc->importer->fmt.i_chroma, code);
     tc->vt->CompileShader(shader);
     free(code);
     return shader;
@@ -405,7 +405,7 @@ static int
 opengl_link_program(struct prgm *prgm)
 {
     opengl_tex_converter_t *tc = prgm->tc;
-    struct vlc_gl_importer *imp = &tc->importer;
+    struct vlc_gl_importer *imp = tc->importer;
 
     GLuint vertex_shader = BuildVertexShader(tc, imp->tex_count);
     GLuint shaders[] = { tc->fshader, vertex_shader };
@@ -512,11 +512,12 @@ static void
 opengl_deinit_program(vout_display_opengl_t *vgl, struct prgm *prgm)
 {
     opengl_tex_converter_t *tc = prgm->tc;
-    struct vlc_gl_importer *imp = &tc->importer;
+    struct vlc_gl_importer *imp = tc->importer;
     if (tc->p_module != NULL)
         module_unneed(tc, tc->p_module);
     else if (imp->priv != NULL)
         opengl_importer_generic_deinit(imp);
+    vlc_object_delete(tc->importer);
     if (prgm->id != 0)
         vgl->vt.DeleteProgram(prgm->id);
 
@@ -540,7 +541,14 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     if (tc == NULL)
         return VLC_ENOMEM;
 
-    struct vlc_gl_importer *imp = &tc->importer;
+    struct vlc_gl_importer *imp = vlc_object_create(tc, sizeof(*imp));
+    if (!imp)
+    {
+        vlc_object_delete(tc);
+        return VLC_ENOMEM;
+    }
+
+    tc->importer = imp;
 
     tc->gl = vgl->gl;
     tc->vt = &vgl->vt;
@@ -871,7 +879,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
     GL_ASSERT_NOERROR();
 
-    const struct vlc_gl_importer *imp = &vgl->prgm->tc->importer;
+    const struct vlc_gl_importer *imp = vgl->prgm->tc->importer;
     /* Update the fmt to main program one */
     vgl->fmt = imp->fmt;
     /* The orientation is handled by the orientation matrix */
@@ -893,11 +901,11 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
 
     /* Allocates our textures */
-    assert(!vgl->sub_prgm->tc->importer.handle_texs_gen);
+    assert(!vgl->sub_prgm->tc->importer->handle_texs_gen);
 
     if (!imp->handle_texs_gen)
     {
-        ret = GenTextures(&vgl->prgm->tc->importer, vgl->tex_width, vgl->tex_height,
+        ret = GenTextures(vgl->prgm->tc->importer, vgl->tex_width, vgl->tex_height,
                           vgl->texture);
         if (ret != VLC_SUCCESS)
         {
@@ -957,7 +965,7 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vgl->vt.Finish();
     vgl->vt.Flush();
 
-    const struct vlc_gl_importer *imp = &vgl->prgm->tc->importer;
+    const struct vlc_gl_importer *imp = vgl->prgm->tc->importer;
     const size_t main_tex_count = imp->tex_count;
     const bool main_del_texs = !imp->handle_texs_gen;
 
@@ -1064,8 +1072,7 @@ void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
 
 bool vout_display_opengl_HasPool(const vout_display_opengl_t *vgl)
 {
-    opengl_tex_converter_t *tc = vgl->prgm->tc;
-    struct vlc_gl_importer *imp = &tc->importer;
+    struct vlc_gl_importer *imp = vgl->prgm->tc->importer;
     return imp->ops->get_pool != NULL;
 }
 
@@ -1076,8 +1083,7 @@ picture_pool_t *vout_display_opengl_GetPool(vout_display_opengl_t *vgl, unsigned
     if (vgl->pool)
         return vgl->pool;
 
-    opengl_tex_converter_t *tc = vgl->prgm->tc;
-    const struct vlc_gl_importer *imp = &tc->importer;
+    const struct vlc_gl_importer *imp = vgl->prgm->tc->importer;
     requested_count = __MIN(VLCGL_PICTURE_MAX, requested_count);
     /* Allocate with tex converter pool callback if it exists */
     assert(imp->ops->get_pool != NULL);
@@ -1097,7 +1103,7 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
     GL_ASSERT_NOERROR();
 
     opengl_tex_converter_t *tc = vgl->prgm->tc;
-    const struct vlc_gl_importer *imp = &tc->importer;
+    const struct vlc_gl_importer *imp = tc->importer;
 
     /* Update the texture */
     int ret = imp->ops->update_textures(imp, vgl->texture, vgl->tex_width, vgl->tex_height,
@@ -1112,7 +1118,7 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
     vgl->region       = NULL;
 
     tc = vgl->sub_prgm->tc;
-    imp = &tc->importer;
+    imp = tc->importer;
     if (subpicture) {
 
         int count = 0;
@@ -1459,7 +1465,7 @@ static int SetupCoords(vout_display_opengl_t *vgl,
                        const float *left, const float *top,
                        const float *right, const float *bottom)
 {
-    const struct vlc_gl_importer *imp = &vgl->prgm->tc->importer;
+    const struct vlc_gl_importer *imp = vgl->prgm->tc->importer;
 
     GLfloat *vertexCoord, *textureCoord;
     GLushort *indices;
@@ -1523,7 +1529,7 @@ static int SetupCoords(vout_display_opengl_t *vgl,
 static void DrawWithShaders(vout_display_opengl_t *vgl, struct prgm *prgm)
 {
     opengl_tex_converter_t *tc = prgm->tc;
-    const struct vlc_gl_importer *imp = &tc->importer;
+    const struct vlc_gl_importer *imp = tc->importer;
     tc->pf_prepare_shader(tc, vgl->tex_width, vgl->tex_height, 1.0f);
 
     for (unsigned j = 0; j < imp->tex_count; j++) {
@@ -1587,7 +1593,7 @@ static void TextureCropForStereo(vout_display_opengl_t *vgl,
                                  float *left, float *top,
                                  float *right, float *bottom)
 {
-    const struct vlc_gl_importer *imp = &vgl->prgm->tc->importer;
+    const struct vlc_gl_importer *imp = vgl->prgm->tc->importer;
 
     float stereoCoefs[2];
     float stereoOffsets[2];
@@ -1637,8 +1643,8 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         float right[PICTURE_PLANE_MAX];
         float bottom[PICTURE_PLANE_MAX];
         const opengl_tex_converter_t *tc = vgl->prgm->tc;
-        const struct vlc_gl_importer *imp = &tc->importer;
-        for (unsigned j = 0; j < tc->importer.tex_count; j++)
+        const struct vlc_gl_importer *imp = tc->importer;
+        for (unsigned j = 0; j < imp->tex_count; j++)
         {
             float scale_w = (float)imp->texs[j].w.num / imp->texs[j].w.den
                           / vgl->tex_width[j];
@@ -1679,7 +1685,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     struct prgm *prgm = vgl->sub_prgm;
     GLuint program = prgm->id;
     opengl_tex_converter_t *tc = prgm->tc;
-    const struct vlc_gl_importer *imp = &tc->importer;
+    const struct vlc_gl_importer *imp = tc->importer;
     vgl->vt.UseProgram(program);
 
     vgl->vt.Enable(GL_BLEND);

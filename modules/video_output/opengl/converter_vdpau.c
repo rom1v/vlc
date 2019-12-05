@@ -118,7 +118,7 @@ Close(vlc_object_t *obj)
 {
     opengl_tex_converter_t *tc = (void *)obj;
     _glVDPAUFiniNV(); assert(tc->vt->GetError() == GL_NO_ERROR);
-    converter_sys_t *sys = tc->importer.priv;
+    converter_sys_t *sys = tc->importer->priv;
     vlc_decoder_device *dec_device = sys->dec_device;
     vlc_decoder_device_Release(dec_device);
 }
@@ -127,7 +127,7 @@ static int
 Open(vlc_object_t *obj)
 {
     opengl_tex_converter_t *tc = (void *) obj;
-    struct vlc_gl_importer *imp = &tc->importer;
+    struct vlc_gl_importer *imp = tc->importer;
 
     if (imp->vctx == NULL)
         return VLC_EGENERIC;
