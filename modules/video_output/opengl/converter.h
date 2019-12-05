@@ -55,11 +55,6 @@ struct opengl_tex_converter_t
     /* True to dump shaders, set by the caller */
     bool b_dump_shaders;
 
-    /* Function pointer to the shader init command, set by the caller, see
-     * opengl_fragment_shader_init() documentation. */
-    GLuint (*pf_fragment_shader_init)(opengl_tex_converter_t *, GLenum,
-                                      vlc_fourcc_t, video_color_space_t);
-
     /* GLSL version, set by the caller. 100 for GLSL ES, 120 for desktop GLSL */
     unsigned glsl_version;
     /* Precision header, set by the caller. In OpenGLES, the fragment language
@@ -138,7 +133,12 @@ static inline GLuint
 opengl_fragment_shader_init(opengl_tex_converter_t *tc, GLenum tex_target,
                             vlc_fourcc_t chroma, video_color_space_t yuv_space)
 {
-    return tc->pf_fragment_shader_init(tc, tex_target, chroma, yuv_space);
+    (void) tc;
+    (void) tex_target;
+    (void) chroma;
+    (void) yuv_space;
+    return 0;
+    //return tc->pf_fragment_shader_init(tc, tex_target, chroma, yuv_space);
 }
 
 #endif /* include-guard */
