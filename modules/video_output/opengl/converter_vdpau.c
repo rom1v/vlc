@@ -116,9 +116,9 @@ tc_vdpau_gl_update(const struct vlc_gl_importer *imp, GLuint textures[],
 static void
 Close(vlc_object_t *obj)
 {
-    opengl_tex_converter_t *tc = (void *)obj;
-    _glVDPAUFiniNV(); assert(tc->vt->GetError() == GL_NO_ERROR);
-    converter_sys_t *sys = tc->importer->priv;
+    struct vlc_gl_importer *imp = (void *)obj;
+    _glVDPAUFiniNV(); assert(imp->vt->GetError() == GL_NO_ERROR);
+    converter_sys_t *sys = imp->priv;
     vlc_decoder_device *dec_device = sys->dec_device;
     vlc_decoder_device_Release(dec_device);
 }
@@ -126,9 +126,7 @@ Close(vlc_object_t *obj)
 static int
 Open(vlc_object_t *obj)
 {
-    opengl_tex_converter_t *tc = (void *) obj;
-    struct vlc_gl_importer *imp = tc->importer;
-
+    struct vlc_gl_importer *imp = (void *) obj;
     if (imp->vctx == NULL)
         return VLC_EGENERIC;
     vlc_decoder_device *dec_device = vlc_video_context_HoldDevice(imp->vctx);
@@ -137,13 +135,13 @@ Open(vlc_object_t *obj)
       && imp->fmt.i_chroma != VLC_CODEC_VDPAU_VIDEO_422
       && imp->fmt.i_chroma != VLC_CODEC_VDPAU_VIDEO_444)
      || !vlc_gl_StrHasToken(imp->glexts, "GL_NV_vdpau_interop")
-     || tc->gl->surface->type != VOUT_WINDOW_TYPE_XID)
+     || imp->gl->surface->type != VOUT_WINDOW_TYPE_XID)
     {
         vlc_decoder_device_Release(dec_device);
         return VLC_EGENERIC;
     }
 
-    converter_sys_t *sys = vlc_obj_malloc(VLC_OBJECT(tc), sizeof(*sys));
+    converter_sys_t *sys = vlc_obj_malloc(VLC_OBJECT(imp), sizeof(*sys));
     if (unlikely(sys == NULL))
     {
         vlc_decoder_device_Release(dec_device);
@@ -168,7 +166,7 @@ Open(vlc_object_t *obj)
     }
 
 #define SAFE_GPA(fct) \
-    _##fct = vlc_gl_GetProcAddress(tc->gl, #fct); \
+    _##fct = vlc_gl_GetProcAddress(imp->gl, #fct); \
     if (!_##fct) \
     { \
         vlc_decoder_device_Release(dec_device); \
@@ -187,10 +185,9 @@ Open(vlc_object_t *obj)
 
     INTEROP_CALL(glVDPAUInitNV, (void *)(uintptr_t)device, vdp_gpa);
 
-    tc->fshader = opengl_fragment_shader_init(tc, GL_TEXTURE_2D,
-                                              VLC_CODEC_RGB32,
-                                              COLOR_SPACE_UNDEF);
-    if (!tc->fshader)
+    int ret = opengl_importer_init(imp, GL_TEXTURE_2D, VLC_CODEC_RGB32,
+                                   COLOR_SPACE_UNDEF);
+    if (ret != VLC_SUCCESS)
     {
         Close(obj);
         return VLC_EGENERIC;
