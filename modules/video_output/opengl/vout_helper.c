@@ -552,6 +552,8 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
 
     imp->glexts = glexts;
     imp->fmt = *fmt;
+    /* this is the only allocated field, and we don't need it */
+    imp->fmt.p_palette = NULL;
 
     imp->gl = tc->gl;
     imp->vt = tc->vt;
