@@ -151,6 +151,8 @@ tc_anop_update(const opengl_tex_converter_t *tc, GLuint *textures,
         return VLC_EGENERIC;
     }
 
+    ((opengl_tex_converter_t *) tc)->transform_matrix = priv->transform_mtx;
+
     tc->vt->ActiveTexture(GL_TEXTURE0);
     tc->vt->BindTexture(tc->tex_target, textures[0]);
 
@@ -249,29 +251,38 @@ Open(vlc_object_t *obj)
             break;
     }
 
-    static const char *template =
-        "#version %u\n"
-        "#extension GL_OES_EGL_image_external : require\n"
-        "%s" /* precision */
-        "varying vec2 TexCoord0;"
-        "uniform samplerExternalOES sTexture;"
-        "uniform mat4 uSTMatrix;"
-        "void main()"
-        "{ "
-        "  gl_FragColor = texture2D(sTexture, (uSTMatrix * vec4(TexCoord0, 1, 1)).xy).rgba;"
-        "}";
+    //static const char *template =
+    //    "#version %u\n"
+    //    "#extension GL_OES_EGL_image_external : require\n"
+    //    "%s" /* precision */
+    //    "varying vec2 TexCoord0;"
+    //    "uniform samplerExternalOES sTexture;"
+    //    "uniform mat4 uSTMatrix;"
+    //    "void main()"
+    //    "{ "
+    //    "  gl_FragColor = texture2D(sTexture, (uSTMatrix * vec4(TexCoord0, 1, 1)).xy).rgba;"
+    //    "}";
 
-    char *code;
-    if (asprintf(&code, template, tc->glsl_version, tc->glsl_precision_header) < 0)
+    //char *code;
+    //if (asprintf(&code, template, tc->glsl_version, tc->glsl_precision_header) < 0)
+    //{
+    //    free(tc->priv);
+    //    return VLC_EGENERIC;
+    //}
+    //GLuint fragment_shader = tc->vt->CreateShader(GL_FRAGMENT_SHADER);
+    //tc->vt->ShaderSource(fragment_shader, 1, (const char **) &code, NULL);
+    //tc->vt->CompileShader(fragment_shader);
+    //tc->fshader = fragment_shader;
+    //free(code);
+
+    tc->fshader = opengl_fragment_shader_init(tc, GL_TEXTURE_2D,
+                                              VLC_CODEC_RGB32,
+                                              COLOR_SPACE_UNDEF);
+    if (!tc->fshader)
     {
-        free(tc->priv);
+        Close(obj);
         return VLC_EGENERIC;
     }
-    GLuint fragment_shader = tc->vt->CreateShader(GL_FRAGMENT_SHADER);
-    tc->vt->ShaderSource(fragment_shader, 1, (const char **) &code, NULL);
-    tc->vt->CompileShader(fragment_shader);
-    tc->fshader = fragment_shader;
-    free(code);
 
     return VLC_SUCCESS;
 }

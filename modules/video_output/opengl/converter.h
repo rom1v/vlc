@@ -287,6 +287,8 @@ struct opengl_tex_converter_t
      * has no default precision qualifier for floating point types. */
     const char *glsl_precision_header;
 
+    const float *transform_matrix;
+
     /* Can only be changed from the module open function */
     video_format_t fmt;
 

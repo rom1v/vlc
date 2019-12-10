@@ -105,6 +105,7 @@ struct prgm
     } var;
 
     struct { /* UniformLocation */
+        GLint TransformMatrix;
         GLint OrientationMatrix;
         GLint ProjectionMatrix;
         GLint ViewMatrix;
@@ -1497,6 +1498,14 @@ static void DrawWithShaders(vout_display_opengl_t *vgl, struct prgm *prgm)
     vgl->vt.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, vgl->index_buffer_object);
     vgl->vt.EnableVertexAttribArray(prgm->aloc.VertexPosition);
     vgl->vt.VertexAttribPointer(prgm->aloc.VertexPosition, 3, GL_FLOAT, 0, 0, 0);
+
+#ifdef __ANDROID__
+    if (tc->transform_matrix) {
+        fprintf(stderr, "++++++++++++++\n");
+        vgl->vt.UniformMatrix4fv(prgm->uloc.TransformMatrix, 1, GL_FALSE,
+                                 tc->transform_matrix);
+    }
+#endif
 
     vgl->vt.UniformMatrix4fv(prgm->uloc.OrientationMatrix, 1, GL_FALSE,
                              prgm->var.OrientationMatrix);
