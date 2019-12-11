@@ -105,6 +105,7 @@ struct prgm
     } var;
 
     struct { /* UniformLocation */
+        GLint TransformMatrix;
         GLint OrientationMatrix;
         GLint ProjectionMatrix;
         GLint ViewMatrix;
@@ -315,12 +316,13 @@ static GLuint BuildVertexShader(const opengl_tex_converter_t *tc,
         "attribute vec4 MultiTexCoord0;\n"
         "%s%s"
         "attribute vec3 VertexPosition;\n"
+        "uniform mat4 TransformMatrix;\n"
         "uniform mat4 OrientationMatrix;\n"
         "uniform mat4 ProjectionMatrix;\n"
         "uniform mat4 ZoomMatrix;\n"
         "uniform mat4 ViewMatrix;\n"
         "void main() {\n"
-        " TexCoord0 = vec4(OrientationMatrix * MultiTexCoord0).st;\n"
+        " TexCoord0 = vec4(TransformMatrix * OrientationMatrix * MultiTexCoord0).st;\n"
         "%s%s"
         " gl_Position = ProjectionMatrix * ZoomMatrix * ViewMatrix\n"
         "               * vec4(VertexPosition, 1.0);\n"
@@ -463,6 +465,7 @@ opengl_link_program(struct prgm *prgm)
 } while (0)
 #define GET_ULOC(x, str) GET_LOC(Uniform, prgm->uloc.x, str)
 #define GET_ALOC(x, str) GET_LOC(Attrib, prgm->aloc.x, str)
+    GET_ULOC(TransformMatrix, "TransformMatrix");
     GET_ULOC(OrientationMatrix, "OrientationMatrix");
     GET_ULOC(ProjectionMatrix, "ProjectionMatrix");
     GET_ULOC(ViewMatrix, "ViewMatrix");
@@ -1497,6 +1500,19 @@ static void DrawWithShaders(vout_display_opengl_t *vgl, struct prgm *prgm)
     vgl->vt.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, vgl->index_buffer_object);
     vgl->vt.EnableVertexAttribArray(prgm->aloc.VertexPosition);
     vgl->vt.VertexAttribPointer(prgm->aloc.VertexPosition, 3, GL_FLOAT, 0, 0, 0);
+
+    const GLfloat *tm = tc->pf_get_transform_matrix
+                      ? tc->pf_get_transform_matrix(tc) : NULL;
+    if (!tm) {
+        static const GLfloat MATRIX_IDENTITY[16] =
+            { 1, 0, 0, 0,
+              0, 1, 0, 0,
+              0, 0, 1, 0,
+              0, 0, 0, 1 };
+        tm = MATRIX_IDENTITY;
+    }
+
+    vgl->vt.UniformMatrix4fv(prgm->uloc.TransformMatrix, 1, GL_FALSE, tm);
 
     vgl->vt.UniformMatrix4fv(prgm->uloc.OrientationMatrix, 1, GL_FALSE,
                              prgm->var.OrientationMatrix);
