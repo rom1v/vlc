@@ -524,6 +524,13 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
     const char *sampler, *lookup, *coord_name;
     switch (tex_target)
     {
+#ifdef __ANDROID__
+        case GL_TEXTURE_EXTERNAL_OES:
+            sampler = "samplerExternalOES";
+            lookup = "texture2D";
+            coord_name = "TexCoord";
+            break;
+#endif
         case GL_TEXTURE_2D:
             sampler = "sampler2D";
             lookup  = "texture2D";
@@ -545,7 +552,17 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
 #define ADD(x) vlc_memstream_puts(&ms, x)
 #define ADDF(x, ...) vlc_memstream_printf(&ms, x, ##__VA_ARGS__)
 
-    ADDF("#version %u\n%s", tc->glsl_version, tc->glsl_precision_header);
+    ADDF("#version %u\n", tc->glsl_version);
+
+#ifdef __ANDROID__
+    ADDF("#extension GL_OES_EGL_image_external : require\n");
+#endif
+
+    ADDF("%s", tc->glsl_precision_header);
+
+#ifdef __ANDROID__
+    ADDF("uniform mat4 TransformMatrix;");
+#endif
 
     for (unsigned i = 0; i < tc->tex_count; ++i)
         ADDF("uniform %s Texture%u;\n"
@@ -655,10 +672,15 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
     for (unsigned i = 0; i < tc->tex_count; ++i)
     {
         const char *swizzle = swizzle_per_tex[i];
+        ADDF(" vec2 trcoords%u = %s%u;", i, coord_name, i);
+#ifdef __ANDROID__
+        /* apply transform to coords */
+        ADDF(" trcoords%u = (TransformMatrix * vec4(trcoords%u, 1, 1)).xy;", i, i);
+#endif
         if (swizzle)
         {
             size_t swizzle_count = strlen(swizzle);
-            ADDF(" colors = %s(Texture%u, %s%u);\n", lookup, i, coord_name, i);
+            ADDF(" colors = %s(Texture%u, trcoords%u);\n", lookup, i, i);
             for (unsigned j = 0; j < swizzle_count; ++j)
             {
                 ADDF(" val = colors.%c;\n"
@@ -670,8 +692,8 @@ opengl_fragment_shader_init_impl(opengl_tex_converter_t *tc, GLenum tex_target,
         }
         else
         {
-            ADDF(" vec4 color%u = %s(Texture%u, %s%u);\n",
-                 color_idx, lookup, i, coord_name, i);
+            ADDF(" vec4 color%u = %s(Texture%u, trcoords%u);\n",
+                 color_idx, lookup, i, i);
             color_idx++;
             assert(color_idx <= PICTURE_PLANE_MAX);
         }
