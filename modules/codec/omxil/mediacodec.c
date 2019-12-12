@@ -675,8 +675,6 @@ CreateVideoContext(decoder_t *p_dec)
     if (!p_sys->video.p_surface)
     {
         msg_Err(p_dec, "Could not find a valid ANativeWindow");
-        vlc_video_context_Release(p_sys->video.ctx);
-        p_sys->video.ctx = NULL;
         return VLC_EGENERIC;
     }
 
