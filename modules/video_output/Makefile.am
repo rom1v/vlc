@@ -30,8 +30,8 @@ libdecklinkoutput_plugin_la_LIBADD = $(LIBS_decklink) $(LIBDL) -lpthread
 vout_LTLIBRARIES += libdecklinkoutput_plugin.la
 endif
 
-libglconv_cvpx_plugin_la_SOURCES = video_output/opengl/converter_cvpx.c \
-	video_output/opengl/converter.h
+libglconv_cvpx_plugin_la_SOURCES = video_output/opengl/interop_cvpx.c \
+	video_output/opengl/interop.h
 libglconv_cvpx_plugin_la_LDFLAGS = $(AM_LDFLAGS) -rpath '$(voutdir)'
 
 if HAVE_OSX
