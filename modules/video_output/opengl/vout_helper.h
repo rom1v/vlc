@@ -76,12 +76,12 @@
 #define add_glopts_placebo()
 #endif
 
-#define GLCONV_TEXT N_("Open GL/GLES hardware converter")
+#define GLCONV_TEXT N_("Open GL/GLES hardware interop")
 #define GLCONV_LONGTEXT N_( \
-    "Force a \"glconv\" module.")
+    "Force a \"glinterop\" module.")
 
 #define add_glopts() \
-    add_module("glconv", "glconv", NULL, GLCONV_TEXT, GLCONV_LONGTEXT) \
+    add_module("glinterop", "glinterop", NULL, GLCONV_TEXT, GLCONV_LONGTEXT) \
     add_glopts_placebo ()
 
 typedef struct vout_display_opengl_t vout_display_opengl_t;
