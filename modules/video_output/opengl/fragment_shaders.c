@@ -129,7 +129,7 @@ tc_yuv_base_init(opengl_tex_converter_t *tc, vlc_fourcc_t chroma,
 {
     /* The current implementation always converts from limited to full range. */
     const video_color_range_t range = COLOR_RANGE_LIMITED;
-    float matrix[4*4];
+    float *matrix = tc->yuv_coefficients;
     init_conv_matrix(matrix, yuv_space, range);
 
     if (desc->pixel_size == 2)
@@ -160,11 +160,6 @@ tc_yuv_base_init(opengl_tex_converter_t *tc, vlc_fourcc_t chroma,
             for (int i = 0; i < 4*3; ++i)
                 matrix[i] *= yuv_range_correction;
         }
-    }
-
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++)
-            tc->yuv_coefficients[i*4+j] = matrix[j*4+i];
     }
 
     tc->yuv_color = true;
@@ -227,7 +222,7 @@ tc_base_prepare_shader(const opengl_tex_converter_t *tc,
     const struct vlc_gl_interop *interop = tc->interop;
 
     if (tc->yuv_color)
-        tc->vt->UniformMatrix4fv(tc->uloc.conv_matrix, 1, GL_FALSE,
+        tc->vt->UniformMatrix4fv(tc->uloc.conv_matrix, 1, GL_TRUE,
                                  tc->yuv_coefficients);
 
     for (unsigned i = 0; i < interop->tex_count; ++i)
