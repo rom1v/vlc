@@ -90,15 +90,19 @@ init_conv_matrix(float conv_matrix_out[],
             space_matrix = MATRIX_BT709;
     }
 
-    /* Init the conversion matrix in row-major order. */
+    /* Init the conversion matrix in column-major order. */
 
     if (color_range == COLOR_RANGE_FULL) {
-        memcpy(conv_matrix_out, space_matrix, 3 * sizeof(float));
-        conv_matrix_out[3] = 0;
-        memcpy(conv_matrix_out + 4, space_matrix + 3, 3 * sizeof(float));
-        conv_matrix_out[7] = 0;
-        memcpy(conv_matrix_out + 8, space_matrix + 6, 3 * sizeof(float));
-        conv_matrix_out[11] = 0;
+        for (int x = 0; x < 3; ++x) {
+            for (int y = 0; y < 3; ++y) {
+                /* space_matrix is a 3x3 matrix in row-major order,
+                 * conv_matrix_out is a 4x4 matrix in column_major order. */
+                conv_matrix_out[x * 4 + y] = space_matrix[y * 3 + x];
+            }
+        }
+        conv_matrix_out[12] = 0;
+        conv_matrix_out[13] = 0;
+        conv_matrix_out[14] = 0;
     } else {
         /* Multiply the matrices on CPU once for all */
         for (int x = 0; x < 4; ++x) {
@@ -108,16 +112,18 @@ init_conv_matrix(float conv_matrix_out[],
                     sum += space_matrix[y * 3 + k]
                          * MATRIX_COLOR_RANGE_LIMITED_TO_FULL[k * 4 + x];
                 }
-                conv_matrix_out[y * 4 + x] = sum;
+                /* Notice the reversed indices: x is now the row, y is the
+                 * column. */
+                conv_matrix_out[x * 4 + y] = sum;
             }
         }
     }
 
-    /* Add a row to fill a 4x4 matrix.
+    /* Add a row (physically a "column") to fill a 4x4 matrix.
      * (non-square matrices are not supported on old OpenGL ES versions) */
-    conv_matrix_out[12] = 0;
-    conv_matrix_out[13] = 0;
-    conv_matrix_out[14] = 0;
+    conv_matrix_out[3] = 0;
+    conv_matrix_out[7] = 0;
+    conv_matrix_out[11] = 0;
     conv_matrix_out[15] = 1;
 }
 
@@ -129,7 +135,7 @@ tc_yuv_base_init(opengl_tex_converter_t *tc, vlc_fourcc_t chroma,
 {
     /* The current implementation always converts from limited to full range. */
     const video_color_range_t range = COLOR_RANGE_LIMITED;
-    float matrix[4*4];
+    float *matrix = tc->yuv_coefficients;
     init_conv_matrix(matrix, yuv_space, range);
 
     if (desc->pixel_size == 2)
@@ -160,11 +166,6 @@ tc_yuv_base_init(opengl_tex_converter_t *tc, vlc_fourcc_t chroma,
             for (int i = 0; i < 4*3; ++i)
                 matrix[i] *= yuv_range_correction;
         }
-    }
-
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++)
-            tc->yuv_coefficients[i*4+j] = matrix[j*4+i];
     }
 
     tc->yuv_color = true;
