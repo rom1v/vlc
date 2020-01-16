@@ -575,7 +575,7 @@ opengl_fragment_shader_init(opengl_tex_converter_t *tc, GLenum tex_target,
         ADD("uniform mat4 vlc_conv_matrix;\n");
 
     ADD("uniform vec4 FillColor;\n"
-        "void main(void) {\n");
+        "vec4 vlc_pixel(void) {\n");
 
     if (tex_target == GL_TEXTURE_RECTANGLE)
     {
@@ -621,8 +621,12 @@ opengl_fragment_shader_init(opengl_tex_converter_t *tc, GLenum tex_target,
     }
 #endif
 
-    ADD(" gl_FragColor = result * FillColor;\n"
-        "}");
+    ADD(" return result * FillColor;\n"
+        "}\n");
+
+    ADD("void main(void) {\n"
+        " gl_FragColor = vlc_pixel();\n"
+        "}\n");
 
 #undef ADD
 #undef ADDF
