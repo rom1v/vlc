@@ -75,22 +75,6 @@
 # define GL_ASSERT_NOERROR()
 #endif
 
-typedef struct {
-    GLuint   texture;
-    GLsizei  width;
-    GLsizei  height;
-
-    float    alpha;
-
-    float    top;
-    float    left;
-    float    bottom;
-    float    right;
-
-    float    tex_width;
-    float    tex_height;
-} gl_region_t;
-
 struct prgm
 {
     GLuint id;
@@ -127,9 +111,6 @@ struct vout_display_opengl_t {
     GLsizei    tex_height[PICTURE_PLANE_MAX];
 
     GLuint     texture[PICTURE_PLANE_MAX];
-
-    int         region_count;
-    gl_region_t *region;
 
     /* One YUV program and one RGBA program (for subpics) */
     struct prgm prgms[2];
