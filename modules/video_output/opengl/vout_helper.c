@@ -913,16 +913,6 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     vgl->vt.GenBuffers(1, &vgl->index_buffer_object);
     vgl->vt.GenBuffers(interop->tex_count, vgl->texture_buffer_object);
 
-    /* Initial number of allocated buffer objects for subpictures, will grow dynamically. */
-    //int subpicture_buffer_object_count = 8;
-    //vgl->subpicture_buffer_object = vlc_alloc(subpicture_buffer_object_count, sizeof(GLuint));
-    //if (!vgl->subpicture_buffer_object) {
-    //    vout_display_opengl_Delete(vgl);
-    //    return NULL;
-    //}
-    //vgl->subpicture_buffer_object_count = subpicture_buffer_object_count;
-    //vgl->vt.GenBuffers(vgl->subpicture_buffer_object_count, vgl->subpicture_buffer_object);
-
     if (vgl->fmt.projection_mode != PROJECTION_MODE_RECTANGULAR
      && vout_display_opengl_SetViewpoint(vgl, viewpoint) != VLC_SUCCESS)
     {

@@ -58,27 +58,10 @@ struct vlc_sub_renderer
     struct {
         GLint sampler;
     } uloc;
+
+    GLuint *buffer_objects;
+    unsigned buffer_object_count;
 };
-
-struct vlc_sub_renderer *
-vlc_sub_renderer_New(vlc_gl_t *gl, const opengl_vtable_t *vt)
-{
-    struct vlc_sub_renderer *sr = malloc(sizeof(*sr));
-    if (!sr)
-        return NULL;
-
-    sr->gl = gl;
-    sr->vt = vt;
-    sr->region_count = 0;
-    sr->regions = NULL;
-    return sr;
-}
-
-void
-vlc_sub_renderer_Delete(struct vlc_sub_renderer *sr)
-{
-    free(sr);
-}
 
 static void
 LogGLInfo(vlc_object_t *obj, const opengl_vtable_t *vt, GLuint id)
@@ -212,23 +195,47 @@ FetchLocations(struct vlc_sub_renderer *sr)
     return VLC_SUCCESS;
 }
 
-static int
-InitProgram(struct vlc_sub_renderer *sr)
+struct vlc_sub_renderer *
+vlc_sub_renderer_New(vlc_gl_t *gl, const opengl_vtable_t *vt)
 {
-    const opengl_vtable_t *vt = sr->vt;
+    struct vlc_sub_renderer *sr = malloc(sizeof(*sr));
+    if (!sr)
+        return NULL;
+
+    sr->gl = gl;
+    sr->vt = vt;
+    sr->region_count = 0;
+    sr->regions = NULL;
 
     sr->program_id = CreateProgram(VLC_OBJECT(sr->gl), vt);
     if (!sr->program_id)
-        return VLC_EGENERIC;
+        return NULL;
 
     int ret = FetchLocations(sr);
     if (ret != VLC_SUCCESS)
     {
-        sr->vt->DeleteProgram(sr->program_id);
-        return ret;
+        vt->DeleteProgram(sr->program_id);
+        return NULL;
     }
 
-    return VLC_SUCCESS;
+    /* Initial number of allocated buffer objects for subpictures, will grow dynamically. */
+    static const unsigned INITIAL_BUFFER_OBJECT_COUNT = 8;
+    sr->buffer_objects = vlc_alloc(INITIAL_BUFFER_OBJECT_COUNT, sizeof(GLuint));
+    if (!sr->buffer_objects) {
+        vt->DeleteProgram(sr->program_id);
+        return NULL;
+    }
+    sr->buffer_object_count = INITIAL_BUFFER_OBJECT_COUNT;
+
+    vt->GenBuffers(sr->buffer_object_count, sr->buffer_objects);
+
+    return sr;
+}
+
+void
+vlc_sub_renderer_Delete(struct vlc_sub_renderer *sr)
+{
+    free(sr);
 }
 
 int
