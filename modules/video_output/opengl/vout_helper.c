@@ -528,36 +528,19 @@ opengl_deinit_program(vout_display_opengl_t *vgl, struct prgm *prgm)
     free(tc);
 }
 
-static int
-opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
-                    struct prgm *prgm, const char *glexts,
-                    const video_format_t *fmt, bool subpics,
-                    bool b_dump_shaders)
+static struct vlc_gl_interop *
+CreateInterop(struct vlc_gl_t *gl, const opengl_vtable_t *vt,
+              vlc_video_context *context, const char *glexts,
+              const video_format_t *fmt, bool subpics)
 {
-    opengl_tex_converter_t *tc = calloc(1, sizeof(*tc));
-    if (tc == NULL)
-        return VLC_ENOMEM;
-
-    struct vlc_gl_interop *interop = vlc_gl_interop_New(vgl->gl, &vgl->vt);
+    struct vlc_gl_interop *interop = vlc_gl_interop_New(gl, vt);
     if (!interop)
-    {
-        free(tc);
-        return VLC_ENOMEM;
-    }
+        return NULL;
 
-    tc->interop = interop;
-
-    tc->gl = vgl->gl;
-    tc->vt = &vgl->vt;
-    tc->b_dump_shaders = b_dump_shaders;
-#if defined(USE_OPENGL_ES2)
+#ifdef USE_OPENGL_ES2
     interop->is_gles = true;
-    tc->glsl_version = 100;
-    tc->glsl_precision_header = "precision highp float;\n";
 #else
     interop->is_gles = false;
-    tc->glsl_version = 120;
-    tc->glsl_precision_header = "";
 #endif
 
     interop->init = opengl_interop_init_impl;
@@ -567,22 +550,6 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     /* this is the only allocated field, and we don't need it */
     interop->fmt.p_palette = NULL;
 
-#ifdef HAVE_LIBPLACEBO
-    // Create the main libplacebo context
-    if (!subpics)
-    {
-        tc->pl_ctx = vlc_placebo_Create(VLC_OBJECT(vgl->gl));
-        if (tc->pl_ctx) {
-#   if PL_API_VER >= 20
-            tc->pl_sh = pl_shader_alloc(tc->pl_ctx, NULL);
-#   elif PL_API_VER >= 6
-            tc->pl_sh = pl_shader_alloc(tc->pl_ctx, NULL, 0);
-#   else
-            tc->pl_sh = pl_shader_alloc(tc->pl_ctx, NULL, 0, 0);
-#   endif
-        }
-    }
-#endif
 
     int ret;
     if (subpics)
@@ -605,8 +572,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
         if (desc == NULL)
         {
             vlc_object_delete(interop);
-            free(tc);
-            return VLC_EGENERIC;
+            return NULL;
         }
         if (desc->plane_count == 0)
         {
@@ -628,13 +594,63 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     if (ret != VLC_SUCCESS)
     {
         vlc_gl_interop_Delete(interop);
-        free(tc);
-        return VLC_EGENERIC;
+        return NULL;
     }
+
+    return interop;
+}
+
+static int
+opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
+                    struct prgm *prgm, const char *glexts,
+                    const video_format_t *fmt, bool subpics,
+                    bool b_dump_shaders)
+{
+    opengl_tex_converter_t *tc = calloc(1, sizeof(*tc));
+    if (tc == NULL)
+        return VLC_ENOMEM;
+
+    struct vlc_gl_interop *interop =
+        CreateInterop(vgl->gl, &vgl->vt, context, glexts, fmt, subpics);
+    if (!interop)
+    {
+        free(tc);
+        return VLC_ENOMEM;
+    }
+
+    tc->interop = interop;
+
+    tc->gl = vgl->gl;
+    tc->vt = &vgl->vt;
+    tc->b_dump_shaders = b_dump_shaders;
+#if defined(USE_OPENGL_ES2)
+    tc->glsl_version = 100;
+    tc->glsl_precision_header = "precision highp float;\n";
+#else
+    tc->glsl_version = 120;
+    tc->glsl_precision_header = "";
+#endif
+
+#ifdef HAVE_LIBPLACEBO
+    // Create the main libplacebo context
+    if (!subpics)
+    {
+        tc->pl_ctx = vlc_placebo_Create(VLC_OBJECT(vgl->gl));
+        if (tc->pl_ctx) {
+#   if PL_API_VER >= 20
+            tc->pl_sh = pl_shader_alloc(tc->pl_ctx, NULL);
+#   elif PL_API_VER >= 6
+            tc->pl_sh = pl_shader_alloc(tc->pl_ctx, NULL, 0);
+#   else
+            tc->pl_sh = pl_shader_alloc(tc->pl_ctx, NULL, 0, 0);
+#   endif
+        }
+    }
+#endif
 
     prgm->tc = tc;
 
-    ret = opengl_link_program(prgm);
+    int ret = opengl_link_program(prgm);
     if (ret != VLC_SUCCESS)
     {
         opengl_deinit_program(vgl, prgm);
