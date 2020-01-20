@@ -26,11 +26,12 @@
 #endif
 
 #include <vlc_common.h>
+#include <vlc_opengl.h>
 
 struct vlc_sub_renderer;
 
 struct vlc_sub_renderer *
-vlc_sub_renderer_New(void);
+vlc_sub_renderer_New(vlc_gl_t *gl, const opengl_vtable_t *vt);
 
 void
 vlc_sub_renderer_Delete(struct vlc_sub_renderer *sr);

@@ -22,6 +22,8 @@
 # include "config.h"
 #endif
 
+#include <assert.h>
+#include "gl_common.h"
 #include "sub_renderer.h"
 
 typedef struct {
@@ -42,7 +44,7 @@ typedef struct {
 
 struct vlc_sub_renderer
 {
-    const opengl_tex_converter_t *tc;
+    vlc_gl_t *gl;
     const opengl_vtable_t *vt;
 
     int region_count;
@@ -50,26 +52,26 @@ struct vlc_sub_renderer
 
     GLuint program_id;
     struct {
-        GLint vectex_pos;
+        GLint vertex_pos;
         GLint tex_coords_in;
     } aloc;
     struct {
         GLint sampler;
     } uloc;
-}
+};
 
 struct vlc_sub_renderer *
-vlc_sub_renderer_New(const opengl_tex_converter_t *tc)
+vlc_sub_renderer_New(vlc_gl_t *gl, const opengl_vtable_t *vt)
 {
     struct vlc_sub_renderer *sr = malloc(sizeof(*sr));
     if (!sr)
         return NULL;
 
-    sr->tc = tc;
-    sr->vt = tc->vt;
+    sr->gl = gl;
+    sr->vt = vt;
     sr->region_count = 0;
     sr->regions = NULL;
-    return NULL;
+    return sr;
 }
 
 void
@@ -79,17 +81,17 @@ vlc_sub_renderer_Delete(struct vlc_sub_renderer *sr)
 }
 
 static void
-LogGLInfo(vlc_object_t *obj, const opengl_vtable_t *vt)
+LogGLInfo(vlc_object_t *obj, const opengl_vtable_t *vt, GLuint id)
 {
     GLint info_len;
-    vt->GetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLength);
+    vt->GetShaderiv(id, GL_INFO_LOG_LENGTH, &info_len);
     if (info_len)
     {
         char *info_log = malloc(info_len);
         if (info_log)
         {
             GLsizei written;
-            vt->GetShaderInfoLog(shader, info_len, &written, info_log);
+            vt->GetShaderInfoLog(id, info_len, &written, info_log);
             msg_Err(obj, "shader: %s", info_log);
             free(info_log);
         }
@@ -107,7 +109,7 @@ CreateShader(vlc_object_t *obj, const opengl_vtable_t *vt, GLenum type,
     vt->ShaderSource(shader, 1, &src, NULL);
     vt->CompileShader(shader);
 
-    LogGLInfo(obj, vt);
+    LogGLInfo(obj, vt, shader);
 
     GLint compiled;
     vt->GetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
@@ -130,7 +132,7 @@ CreateProgram(vlc_object_t *obj, const opengl_vtable_t *vt)
         "attribute vec2 tex_coords_in;\n"
         "varying vec2 tex_coords;\n"
         "void main() {\n"
-        "  tex_coords = tex_coords_in;
+        "  tex_coords = tex_coords_in;\n"
         "  gl_Position = vec4(vertex_pos, 0.0, 1.0);\n"
         "}\n";
 
@@ -139,16 +141,17 @@ CreateProgram(vlc_object_t *obj, const opengl_vtable_t *vt)
         "uniform sampler2D sampler\n"
         "varying vec2 tex_coords\n"
         "void main(void) {\n"
-        "  gl_FragColor = texture2D(sampler, tex_coords);
+        "  gl_FragColor = texture2D(sampler, tex_coords);\n"
         "}\n";
 
     GLuint program = 0;
 
-    GLuint vertex_shader = CreateShader(sr, GL_VERTEX_SHADER, VERTEX_SHADER_SRC);
+    GLuint vertex_shader = CreateShader(obj, vt, GL_VERTEX_SHADER,
+                                        VERTEX_SHADER_SRC);
     if (!vertex_shader)
         return 0;
 
-    GLuint fragment_shader = CreateShader(sr, GL_FRAGMENT_SHADER,
+    GLuint fragment_shader = CreateShader(obj, vt, GL_FRAGMENT_SHADER,
                                           FRAGMENT_SHADER_SRC);
     if (!fragment_shader)
         goto finally_1;
@@ -158,25 +161,25 @@ CreateProgram(vlc_object_t *obj, const opengl_vtable_t *vt)
         goto finally_2;
 
     vt->AttachShader(program, vertex_shader);
-    vt->attachShader(program, fragment_shader);
+    vt->AttachShader(program, fragment_shader);
 
     vt->LinkProgram(program);
 
-    LogGLInfo(obj, vt);
+    LogGLInfo(obj, vt, program);
 
     GLint linked;
-    glGetProgramiv(program, GL_LINK_STATUS, &linked);
+    vt->GetProgramiv(program, GL_LINK_STATUS, &linked);
     if (!linked)
     {
-        msg_Err(sr->tc->gl, "Failed to link program");
+        msg_Err(obj, "Failed to link program");
         vt->DeleteProgram(program);
         program = 0;
     }
 
 finally_2:
-    gl->DeleteShader(fragment_shader);
+    vt->DeleteShader(fragment_shader);
 finally_1:
-    gl->DeleteShader(vertex_shader);
+    vt->DeleteShader(vertex_shader);
 
     return program;
 }
@@ -184,12 +187,16 @@ finally_1:
 static int
 FetchLocations(struct vlc_sub_renderer *sr)
 {
+    assert(sr->program_id);
+
+    const opengl_vtable_t *vt = sr->vt;
+
 #define GET_LOC(type, x, str) do { \
-    x = vt->Get##type##Location(program, str); \
+    x = vt->Get##type##Location(sr->program_id, str); \
     assert(x != -1); \
     if (x == -1) { \
-        msg_Err(tc->gl, "Unable to Get"#type"Location(%s)", str); \
-        return VLC_EGENERIC;
+        msg_Err(sr->gl, "Unable to Get"#type"Location(%s)", str); \
+        return VLC_EGENERIC; \
     } \
 } while (0)
 #define GET_ULOC(x, str) GET_LOC(Uniform, x, str)
@@ -210,20 +217,18 @@ InitProgram(struct vlc_sub_renderer *sr)
 {
     const opengl_vtable_t *vt = sr->vt;
 
-    GLuint program = CreateProgram(sr->tc->gl, vt);
-    if (!program)
+    sr->program_id = CreateProgram(VLC_OBJECT(sr->gl), vt);
+    if (!sr->program_id)
         return VLC_EGENERIC;
 
     int ret = FetchLocations(sr);
     if (ret != VLC_SUCCESS)
+    {
+        sr->vt->DeleteProgram(sr->program_id);
         return ret;
+    }
 
-    sr->program_id = program;
     return VLC_SUCCESS;
-
-error:
-    vt->DeleteProgram(program);
-    return VLC_EGENERIC;
 }
 
 int

@@ -914,18 +914,14 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     vgl->vt.GenBuffers(interop->tex_count, vgl->texture_buffer_object);
 
     /* Initial number of allocated buffer objects for subpictures, will grow dynamically. */
-    int subpicture_buffer_object_count = 8;
-    vgl->subpicture_buffer_object = vlc_alloc(subpicture_buffer_object_count, sizeof(GLuint));
-    if (!vgl->subpicture_buffer_object) {
-        vout_display_opengl_Delete(vgl);
-        return NULL;
-    }
-    vgl->subpicture_buffer_object_count = subpicture_buffer_object_count;
-    vgl->vt.GenBuffers(vgl->subpicture_buffer_object_count, vgl->subpicture_buffer_object);
-
-    /* */
-    vgl->region_count = 0;
-    vgl->region = NULL;
+    //int subpicture_buffer_object_count = 8;
+    //vgl->subpicture_buffer_object = vlc_alloc(subpicture_buffer_object_count, sizeof(GLuint));
+    //if (!vgl->subpicture_buffer_object) {
+    //    vout_display_opengl_Delete(vgl);
+    //    return NULL;
+    //}
+    //vgl->subpicture_buffer_object_count = subpicture_buffer_object_count;
+    //vgl->vt.GenBuffers(vgl->subpicture_buffer_object_count, vgl->subpicture_buffer_object);
 
     if (vgl->fmt.projection_mode != PROJECTION_MODE_RECTANGULAR
      && vout_display_opengl_SetViewpoint(vgl, viewpoint) != VLC_SUCCESS)
@@ -970,12 +966,12 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     if (main_del_texs)
         vgl->vt.DeleteTextures(main_tex_count, vgl->texture);
 
-    for (int i = 0; i < vgl->region_count; i++)
-    {
-        if (vgl->region[i].texture)
-            vgl->vt.DeleteTextures(1, &vgl->region[i].texture);
-    }
-    free(vgl->region);
+    //for (int i = 0; i < vgl->region_count; i++)
+    //{
+    //    if (vgl->region[i].texture)
+    //        vgl->vt.DeleteTextures(1, &vgl->region[i].texture);
+    //}
+    //free(vgl->region);
     GL_ASSERT_NOERROR();
 
     free(vgl);
@@ -1054,6 +1050,7 @@ void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
     vgl->vt.Viewport(x, y, width, height);
 }
 
+#if 0
 static int
 vout_display_opengl_PrepareSubPicture(vout_display_opengl_t *vgl,
                                       subpicture_t *subpicture)
@@ -1141,6 +1138,7 @@ vout_display_opengl_PrepareSubPicture(vout_display_opengl_t *vgl,
 
     return VLC_SUCCESS;
 }
+#endif
 
 int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
                                 picture_t *picture, subpicture_t *subpicture)
@@ -1156,7 +1154,7 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
     if (ret != VLC_SUCCESS)
         return ret;
 
-    ret = vout_display_opengl_PrepareSubPicture(vgl, subpicture);
+    //ret = vout_display_opengl_PrepareSubPicture(vgl, subpicture);
     GL_ASSERT_NOERROR();
     return ret;
 }
@@ -1589,6 +1587,7 @@ static void TextureCropForStereo(vout_display_opengl_t *vgl,
     }
 }
 
+#if 0
 static int
 vout_display_opengl_DrawSubPicture(vout_display_opengl_t *vgl)
 {
@@ -1669,6 +1668,7 @@ vout_display_opengl_DrawSubPicture(vout_display_opengl_t *vgl)
 
     return VLC_SUCCESS;
 }
+#endif
 
 int vout_display_opengl_Display(vout_display_opengl_t *vgl,
                                 const video_format_t *source)
@@ -1729,7 +1729,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     }
     DrawWithShaders(vgl, vgl->prgm);
 
-    int ret = vout_display_opengl_DrawSubPicture(vgl);
+    int ret = VLC_SUCCESS;//vout_display_opengl_DrawSubPicture(vgl);
     if (ret != VLC_SUCCESS)
         return ret;
 
