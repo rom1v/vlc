@@ -29,6 +29,7 @@
 #ifndef VLC_OPENGL_VOUT_HELPER_H
 #define VLC_OPENGL_VOUT_HELPER_H
 
+#include <vlc_common.h>
 #include "converter.h"
 
 #ifdef HAVE_LIBPLACEBO
@@ -111,5 +112,12 @@ vout_display_opengl_CreateInterop(struct vlc_gl_t *gl,
                                   const opengl_vtable_t *vt,
                                   vlc_video_context *context,
                                   const video_format_t *fmt, bool subpics);
+
+static inline GLsizei vout_display_opengl_GetAlignedSize(unsigned size)
+{
+    /* Return the smallest larger or equal power of 2 */
+    unsigned align = 1 << (8 * sizeof (unsigned) - clz(size));
+    return ((align >> 1) == size) ? size : align;
+}
 
 #endif
