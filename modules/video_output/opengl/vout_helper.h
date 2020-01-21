@@ -113,6 +113,15 @@ vout_display_opengl_CreateInterop(struct vlc_gl_t *gl,
                                   vlc_video_context *context,
                                   const video_format_t *fmt, bool subpics);
 
+int
+vout_display_opengl_GenTextures(const struct vlc_gl_interop *interop,
+                                const GLsizei *tex_width,
+                                const GLsizei *tex_height, GLuint *textures);
+
+void
+vout_display_opengl_DelTextures(const struct vlc_gl_interop *interop,
+                                GLuint *textures);
+
 static inline GLsizei vout_display_opengl_GetAlignedSize(unsigned size)
 {
     /* Return the smallest larger or equal power of 2 */
