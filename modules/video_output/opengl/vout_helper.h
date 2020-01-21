@@ -106,4 +106,10 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
 int vout_display_opengl_Display(vout_display_opengl_t *vgl,
                                 const video_format_t *source);
 
+struct vlc_gl_interop *
+vout_display_opengl_CreateInterop(struct vlc_gl_t *gl,
+                                  const opengl_vtable_t *vt,
+                                  vlc_video_context *context,
+                                  const video_format_t *fmt, bool subpics);
+
 #endif
