@@ -64,6 +64,7 @@ struct vlc_gl_renderer
     struct vlc_gl_interop *interop;
 
     bool supports_npot;
+    bool dump_shaders;
 
     video_format_t fmt;
 
@@ -123,7 +124,8 @@ static const GLfloat identity[] = {
     0.0f, 0.0f, 0.0f, 1.0f
 };
 
-static void getZoomMatrix(float zoom, GLfloat matrix[static 16]) {
+static void
+getZoomMatrix(float zoom, GLfloat matrix[static 16]) {
 
     const GLfloat m[] = {
         /* x   y     z     w */
@@ -137,7 +139,8 @@ static void getZoomMatrix(float zoom, GLfloat matrix[static 16]) {
 }
 
 /* perspective matrix see https://www.opengl.org/sdk/docs/man2/xhtml/gluPerspective.xml */
-static void getProjectionMatrix(float sar, float fovy, GLfloat matrix[static 16]) {
+static void
+getProjectionMatrix(float sar, float fovy, GLfloat matrix[static 16]) {
 
     float zFar  = 1000;
     float zNear = 0.01;
@@ -153,26 +156,25 @@ static void getProjectionMatrix(float sar, float fovy, GLfloat matrix[static 16]
      memcpy(matrix, m, sizeof(m));
 }
 
-static void getViewpointMatrixes(vout_display_opengl_t *vgl,
-                                 video_projection_mode_t projection_mode,
-                                 struct prgm *prgm)
+static void
+getViewpointMatrixes(struct vlc_gl_renderer *r,
+                     video_projection_mode_t projection_mode)
 {
     if (projection_mode == PROJECTION_MODE_EQUIRECTANGULAR
         || projection_mode == PROJECTION_MODE_CUBEMAP_LAYOUT_STANDARD)
     {
-        getProjectionMatrix(vgl->f_sar, vgl->f_fovy, prgm->var.ProjectionMatrix);
-        getZoomMatrix(vgl->f_z, prgm->var.ZoomMatrix);
+        getProjectionMatrix(r->f_sar, r->f_fovy, r->var.ProjectionMatrix);
+        getZoomMatrix(r->f_z, r->var.ZoomMatrix);
 
-        /* vgl->vp has been reversed and is a world transform */
-        vlc_viewpoint_to_4x4(&vgl->vp, prgm->var.ViewMatrix);
+        /* r->vp has been reversed and is a world transform */
+        vlc_viewpoint_to_4x4(&r->vp, r->var.ViewMatrix);
     }
     else
     {
-        memcpy(prgm->var.ProjectionMatrix, identity, sizeof(identity));
-        memcpy(prgm->var.ZoomMatrix, identity, sizeof(identity));
-        memcpy(prgm->var.ViewMatrix, identity, sizeof(identity));
+        memcpy(r->var.ProjectionMatrix, identity, sizeof(identity));
+        memcpy(r->var.ZoomMatrix, identity, sizeof(identity));
+        memcpy(r->var.ViewMatrix, identity, sizeof(identity));
     }
-
 }
 
 static void getOrientationTransformMatrix(video_orientation_t orientation,
@@ -241,12 +243,13 @@ static void getOrientationTransformMatrix(video_orientation_t orientation,
     }
 }
 
-static GLuint BuildVertexShader(const opengl_tex_converter_t *tc,
-                                unsigned plane_count)
+static GLuint BuildVertexShader(struct vlc_gl_renderer *r, unsigned plane_count)
 {
+    const opengl_vtable_t *vt = r->vt;
+
     /* Basic vertex shader */
     static const char *template =
-        "#version %u\n"
+        "#version 100\n"
         "varying vec2 TexCoord0;\n"
         "attribute vec4 MultiTexCoord0;\n"
         "%s%s"
@@ -273,27 +276,26 @@ static GLuint BuildVertexShader(const opengl_tex_converter_t *tc,
         " TexCoord2 = vec4(OrientationMatrix * MultiTexCoord2).st;\n" : "";
 
     char *code;
-    if (asprintf(&code, template, tc->glsl_version, coord1_header, coord2_header,
-                 coord1_code, coord2_code) < 0)
+    if (asprintf(&code, template, coord1_header, coord2_header, coord1_code,
+                 coord2_code) < 0)
         return 0;
 
-    GLuint shader = tc->vt->CreateShader(GL_VERTEX_SHADER);
-    tc->vt->ShaderSource(shader, 1, (const char **) &code, NULL);
-    if (tc->b_dump_shaders)
+    GLuint shader = vt->CreateShader(GL_VERTEX_SHADER);
+    vt->ShaderSource(shader, 1, (const char **) &code, NULL);
+    if (r->dump_shaders)
         msg_Dbg(tc->gl, "\n=== Vertex shader for fourcc: %4.4s ===\n%s\n",
-                (const char *)&tc->interop->fmt.i_chroma, code);
-    tc->vt->CompileShader(shader);
+                (const char *) &r->interop->fmt.i_chroma, code);
+    vt->CompileShader(shader);
     free(code);
     return shader;
 }
 
 static int
-opengl_link_program(struct prgm *prgm)
+opengl_link_program(struct vlc_gl_renderer *r)
 {
-    opengl_tex_converter_t *tc = prgm->tc;
-    struct vlc_gl_interop *interop = tc->interop;
+    struct vlc_gl_interop *interop = r->interop;
 
-    GLuint vertex_shader = BuildVertexShader(tc, interop->tex_count);
+    GLuint vertex_shader = BuildVertexShader(r, interop->tex_count);
     GLuint shaders[] = { tc->fshader, vertex_shader };
 
     /* Check shaders messages */
@@ -494,6 +496,23 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     getViewpointMatrixes(vgl, interop->fmt.projection_mode, prgm);
 
     return VLC_SUCCESS;
+}
+
+struct vlc_gl_renderer *
+vlc_gl_renderer_New(vlc_gl_t *gl, const opengl_vtable_t *vt,
+                    bool supports_npot, bool dump_shaders)
+{
+    struct vlc_gl_renderer *r = malloc(sizeof(*r));
+    if (!r)
+        return NULL;
+
+    // TODO
+    r->gl = gl;
+    r->vt = vt;
+    r->supports_npot = supports_npot;
+    r->dump_shaders = dump_shaders;
+
+    return r;
 }
 
 static void UpdateZ(vout_display_opengl_t *vgl)

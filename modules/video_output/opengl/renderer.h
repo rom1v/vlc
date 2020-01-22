@@ -42,7 +42,7 @@ struct vlc_gl_renderer;
  */
 struct vlc_gl_renderer *
 vlc_gl_renderer_New(vlc_gl_t *gl, const opengl_vtable_t *vt,
-                    bool supports_npot);
+                    bool supports_npot, bool dump_shaders);
 
 /**
  * Delete a renderer
