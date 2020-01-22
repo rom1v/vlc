@@ -23,10 +23,33 @@
 #endif
 
 #include <vlc_common.h>
+#include <vlc_modules.h>
 
 #include "interop.h"
 #include "internal.h"
 #include "vout_helper.h"
+
+struct vlc_gl_interop *
+vlc_gl_interop_New(vlc_gl_t *gl, const opengl_vtable_t *vt)
+{
+    struct vlc_gl_interop *interop = vlc_object_create(gl, sizeof(*interop));
+    if (!interop)
+        return NULL;
+
+    interop->gl = gl;
+    interop->vt = vt;
+    return interop;
+}
+
+void
+vlc_gl_interop_Delete(struct vlc_gl_interop *interop)
+{
+    if (interop->module)
+        module_unneed(interop, interop->module);
+    if (interop->ops && interop->ops->close)
+        interop->ops->close(interop);
+    vlc_object_delete(interop);
+}
 
 static int GetTexFormatSize(const opengl_vtable_t *vt, int target,
                             int tex_format, int tex_internal, int tex_type)
