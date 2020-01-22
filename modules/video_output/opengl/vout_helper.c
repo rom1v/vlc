@@ -498,12 +498,7 @@ static void
 opengl_deinit_program(vout_display_opengl_t *vgl, struct prgm *prgm)
 {
     opengl_tex_converter_t *tc = prgm->tc;
-    struct vlc_gl_interop *interop = tc->interop;
-    if (interop->module != NULL)
-        module_unneed(interop, interop->module);
-    if (interop->ops && interop->ops->close)
-        interop->ops->close(interop);
-    vlc_object_delete(interop);
+    vlc_gl_interop_Delete(tc->interop);
     if (prgm->id != 0)
         vgl->vt.DeleteProgram(prgm->id);
 
@@ -526,7 +521,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     if (tc == NULL)
         return VLC_ENOMEM;
 
-    struct vlc_gl_interop *interop = vlc_object_create(vgl->gl, sizeof(*interop));
+    struct vlc_gl_interop *interop = vlc_gl_interop_New(vgl->gl, &vgl->vt);
     if (!interop)
     {
         free(tc);
@@ -554,9 +549,6 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     interop->fmt = *fmt;
     /* this is the only allocated field, and we don't need it */
     interop->fmt.p_palette = NULL;
-
-    interop->gl = tc->gl;
-    interop->vt = tc->vt;
 
 #ifdef HAVE_LIBPLACEBO
     // Create the main libplacebo context
@@ -618,7 +610,7 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
 
     if (ret != VLC_SUCCESS)
     {
-        vlc_object_delete(interop);
+        vlc_gl_interop_Delete(interop);
         free(tc);
         return VLC_EGENERIC;
     }
