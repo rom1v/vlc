@@ -50,7 +50,7 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const opengl_vtable_t *vt,
  * \param sr the renderer
  */
 void
-vlc_gl_renderer_Delete(struct vlc_gl_sub_renderer *sr);
+vlc_gl_renderer_Delete(struct vlc_gl_renderer *r);
 
 /**
  * Prepare the fragment shader
@@ -62,7 +62,7 @@ vlc_gl_renderer_Delete(struct vlc_gl_sub_renderer *sr);
  * \param picture the picture to render
  */
 int
-vlc_gl_renderer_Prepare(struct vlc_gl_sub_renderer *sr, picture_t *picture);
+vlc_gl_renderer_Prepare(struct vlc_gl_sub_renderer *r, picture_t *picture);
 
 /**
  * Draw the prepared picture
@@ -70,6 +70,17 @@ vlc_gl_renderer_Prepare(struct vlc_gl_sub_renderer *sr, picture_t *picture);
  * \param sr the renderer
  */
 int
-vlc_gl_renderer_Draw(struct vlc_gl_renderer *sr);
+vlc_gl_renderer_Draw(struct vlc_gl_renderer *r);
+
+int
+vlc_gl_renderer_SetViewpoint(struct vlc_gl_renderer *r,
+                             const vlc_viewpoint_t *vp);
+
+void
+vlc_gl_renderer_SetWindowAspectRatio(struct vlc_gl_renderer *r, float sar);
+
+void
+vlc_gl_renderer_SetViewport(struct vlc_gl_renderer *r, int x, int y,
+                            unsigned width, unsigned height);
 
 #endif
