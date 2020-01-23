@@ -72,31 +72,6 @@
 # define GL_ASSERT_NOERROR()
 #endif
 
-struct prgm
-{
-    GLuint id;
-    struct vlc_gl_renderer *renderer;
-
-    struct {
-        GLfloat OrientationMatrix[16];
-        GLfloat ProjectionMatrix[16];
-        GLfloat ZoomMatrix[16];
-        GLfloat ViewMatrix[16];
-    } var;
-
-    struct { /* UniformLocation */
-        GLint TransformMatrix;
-        GLint OrientationMatrix;
-        GLint ProjectionMatrix;
-        GLint ViewMatrix;
-        GLint ZoomMatrix;
-    } uloc;
-    struct { /* AttribLocation */
-        GLint MultiTexCoord[3];
-        GLint VertexPosition;
-    } aloc;
-};
-
 struct vout_display_opengl_t {
 
     vlc_gl_t   *gl;
@@ -108,8 +83,6 @@ struct vout_display_opengl_t {
     GLsizei    tex_height[PICTURE_PLANE_MAX];
 
     GLuint     texture[PICTURE_PLANE_MAX];
-
-    struct prgm prgm;
 
     unsigned nb_indices;
     GLuint vertex_buffer_object;
@@ -133,6 +106,7 @@ struct vout_display_opengl_t {
     float f_z;    /* Position of the camera on the shpere radius vector */
     float f_sar;
 
+    struct vlc_gl_renderer *renderer;
     struct vlc_gl_sub_renderer *sub_renderer;
 };
 
@@ -179,23 +153,23 @@ static void getProjectionMatrix(float sar, float fovy, GLfloat matrix[static 16]
 }
 
 static void getViewpointMatrixes(vout_display_opengl_t *vgl,
-                                 video_projection_mode_t projection_mode,
-                                 struct prgm *prgm)
+                                 video_projection_mode_t projection_mode)
 {
+    struct vlc_gl_renderer *renderer = vgl->renderer;
     if (projection_mode == PROJECTION_MODE_EQUIRECTANGULAR
         || projection_mode == PROJECTION_MODE_CUBEMAP_LAYOUT_STANDARD)
     {
-        getProjectionMatrix(vgl->f_sar, vgl->f_fovy, prgm->var.ProjectionMatrix);
-        getZoomMatrix(vgl->f_z, prgm->var.ZoomMatrix);
+        getProjectionMatrix(vgl->f_sar, vgl->f_fovy, renderer->var.ProjectionMatrix);
+        getZoomMatrix(vgl->f_z, renderer->var.ZoomMatrix);
 
         /* vgl->vp has been reversed and is a world transform */
-        vlc_viewpoint_to_4x4(&vgl->vp, prgm->var.ViewMatrix);
+        vlc_viewpoint_to_4x4(&vgl->vp, renderer->var.ViewMatrix);
     }
     else
     {
-        memcpy(prgm->var.ProjectionMatrix, identity, sizeof(identity));
-        memcpy(prgm->var.ZoomMatrix, identity, sizeof(identity));
-        memcpy(prgm->var.ViewMatrix, identity, sizeof(identity));
+        memcpy(renderer->var.ProjectionMatrix, identity, sizeof(identity));
+        memcpy(renderer->var.ZoomMatrix, identity, sizeof(identity));
+        memcpy(renderer->var.ViewMatrix, identity, sizeof(identity));
     }
 
 }
@@ -359,9 +333,8 @@ vout_display_opengl_DelTextures(const struct vlc_gl_interop *interop,
 }
 
 static int
-opengl_link_program(struct prgm *prgm)
+opengl_link_program(struct vlc_gl_renderer *renderer)
 {
-    struct vlc_gl_renderer *renderer = prgm->renderer;
     struct vlc_gl_interop *interop = renderer->interop;
     const opengl_vtable_t *vt = renderer->vt;
 
@@ -403,24 +376,24 @@ opengl_link_program(struct prgm *prgm)
         }
     }
 
-    prgm->id = vt->CreateProgram();
-    vt->AttachShader(prgm->id, fragment_shader);
-    vt->AttachShader(prgm->id, vertex_shader);
-    vt->LinkProgram(prgm->id);
+    GLuint program_id = renderer->program_id = vt->CreateProgram();
+    vt->AttachShader(program_id, fragment_shader);
+    vt->AttachShader(program_id, vertex_shader);
+    vt->LinkProgram(program_id);
 
     vt->DeleteShader(vertex_shader);
     vt->DeleteShader(fragment_shader);
 
     /* Check program messages */
     int infoLength = 0;
-    vt->GetProgramiv(prgm->id, GL_INFO_LOG_LENGTH, &infoLength);
+    vt->GetProgramiv(program_id, GL_INFO_LOG_LENGTH, &infoLength);
     if (infoLength > 1)
     {
         char *infolog = malloc(infoLength);
         if (infolog != NULL)
         {
             int charsWritten;
-            vt->GetProgramInfoLog(prgm->id, infoLength, &charsWritten,
+            vt->GetProgramInfoLog(program_id, infoLength, &charsWritten,
                                   infolog);
             msg_Err(renderer->gl, "shader program: %s", infolog);
             free(infolog);
@@ -428,7 +401,7 @@ opengl_link_program(struct prgm *prgm)
 
         /* If there is some message, better to check linking is ok */
         GLint link_status = GL_TRUE;
-        vt->GetProgramiv(prgm->id, GL_LINK_STATUS, &link_status);
+        vt->GetProgramiv(program_id, GL_LINK_STATUS, &link_status);
         if (link_status == GL_FALSE)
         {
             msg_Err(renderer->gl, "Unable to use program");
@@ -438,15 +411,15 @@ opengl_link_program(struct prgm *prgm)
 
     /* Fetch UniformLocations and AttribLocations */
 #define GET_LOC(type, x, str) do { \
-    x = vt->Get##type##Location(prgm->id, str); \
+    x = vt->Get##type##Location(program_id, str); \
     assert(x != -1); \
     if (x == -1) { \
         msg_Err(renderer->gl, "Unable to Get"#type"Location(%s)", str); \
         goto error; \
     } \
 } while (0)
-#define GET_ULOC(x, str) GET_LOC(Uniform, prgm->uloc.x, str)
-#define GET_ALOC(x, str) GET_LOC(Attrib, prgm->aloc.x, str)
+#define GET_ULOC(x, str) GET_LOC(Uniform, renderer->uloc.x, str)
+#define GET_ALOC(x, str) GET_LOC(Attrib, renderer->aloc.x, str)
     GET_ULOC(TransformMatrix, "TransformMatrix");
     GET_ULOC(OrientationMatrix, "OrientationMatrix");
     GET_ULOC(ProjectionMatrix, "ProjectionMatrix");
@@ -459,15 +432,15 @@ opengl_link_program(struct prgm *prgm)
     if (interop->tex_count > 1)
         GET_ALOC(MultiTexCoord[1], "MultiTexCoord1");
     else
-        prgm->aloc.MultiTexCoord[1] = -1;
+        renderer->aloc.MultiTexCoord[1] = -1;
     if (interop->tex_count > 2)
         GET_ALOC(MultiTexCoord[2], "MultiTexCoord2");
     else
-        prgm->aloc.MultiTexCoord[2] = -1;
+        renderer->aloc.MultiTexCoord[2] = -1;
 #undef GET_LOC
 #undef GET_ULOC
 #undef GET_ALOC
-    int ret = prgm->renderer->pf_fetch_locations(prgm->renderer, prgm->id);
+    int ret = renderer->pf_fetch_locations(renderer, program_id);
     assert(ret == VLC_SUCCESS);
     if (ret != VLC_SUCCESS)
     {
@@ -478,19 +451,19 @@ opengl_link_program(struct prgm *prgm)
     return VLC_SUCCESS;
 
 error:
-    vt->DeleteProgram(prgm->id);
-    prgm->id = 0;
+    vt->DeleteProgram(program_id);
+    renderer->program_id = 0;
     return VLC_EGENERIC;
 }
 
 static void
-opengl_deinit_program(vout_display_opengl_t *vgl, struct prgm *prgm)
+opengl_deinit_program(vout_display_opengl_t *vgl)
 {
-    struct vlc_gl_renderer *renderer = prgm->renderer;
+    struct vlc_gl_renderer *renderer = vgl->renderer;
 
     vlc_gl_interop_Delete(renderer->interop);
-    if (prgm->id != 0)
-        vgl->vt.DeleteProgram(prgm->id);
+    if (renderer->program_id != 0)
+        vgl->vt.DeleteProgram(renderer->program_id);
 
 #ifdef HAVE_LIBPLACEBO
     FREENULL(renderer->uloc.pl_vars);
@@ -592,8 +565,8 @@ vout_display_opengl_CreateInterop(struct vlc_gl_t *gl,
 
 static int
 opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
-                    struct prgm *prgm, const char *glexts,
-                    const video_format_t *fmt, bool b_dump_shaders)
+                    const char *glexts, const video_format_t *fmt,
+                    bool b_dump_shaders)
 {
     struct vlc_gl_renderer *renderer = calloc(1, sizeof(*renderer));
     if (!renderer)
@@ -634,18 +607,18 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
     }
 #endif
 
-    prgm->renderer = renderer;
+    vgl->renderer = renderer;
 
-    int ret = opengl_link_program(prgm);
+    int ret = opengl_link_program(renderer);
     if (ret != VLC_SUCCESS)
     {
-        opengl_deinit_program(vgl, prgm);
+        opengl_deinit_program(vgl);
         return VLC_EGENERIC;
     }
 
     getOrientationTransformMatrix(interop->fmt.orientation,
-                                  prgm->var.OrientationMatrix);
-    getViewpointMatrixes(vgl, interop->fmt.projection_mode, prgm);
+                                  renderer->var.OrientationMatrix);
+    getViewpointMatrixes(vgl, interop->fmt.projection_mode);
 
     return VLC_SUCCESS;
 }
@@ -841,7 +814,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
 
     GL_ASSERT_NOERROR();
-    int ret = opengl_init_program(vgl, context, &vgl->prgm, extensions, fmt,
+    int ret = opengl_init_program(vgl, context, extensions, fmt,
                                   b_dump_shaders);
     if (ret != VLC_SUCCESS)
     {
@@ -854,7 +827,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
 
     GL_ASSERT_NOERROR();
 
-    const struct vlc_gl_interop *interop = vgl->prgm.renderer->interop;
+    const struct vlc_gl_interop *interop = vgl->renderer->interop;
     /* Update the fmt to main program one */
     vgl->fmt = interop->fmt;
     /* The orientation is handled by the orientation matrix */
@@ -923,13 +896,13 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vgl->vt.Finish();
     vgl->vt.Flush();
 
-    const struct vlc_gl_interop *interop = vgl->prgm.renderer->interop;
+    const struct vlc_gl_interop *interop = vgl->renderer->interop;
     const size_t main_tex_count = interop->tex_count;
     const bool main_del_texs = !interop->handle_texs_gen;
 
     vlc_gl_sub_renderer_Delete(vgl->sub_renderer);
 
-    opengl_deinit_program(vgl, &vgl->prgm);
+    opengl_deinit_program(vgl);
 
     vgl->vt.DeleteBuffers(1, &vgl->vertex_buffer_object);
     vgl->vt.DeleteBuffers(1, &vgl->index_buffer_object);
@@ -992,7 +965,7 @@ int vout_display_opengl_SetViewpoint(vout_display_opengl_t *vgl,
         UpdateFOVy(vgl);
         UpdateZ(vgl);
     }
-    getViewpointMatrixes(vgl, vgl->fmt.projection_mode, &vgl->prgm);
+    getViewpointMatrixes(vgl, vgl->fmt.projection_mode);
 
     return VLC_SUCCESS;
 }
@@ -1007,7 +980,7 @@ void vout_display_opengl_SetWindowAspectRatio(vout_display_opengl_t *vgl,
     vgl->f_sar = f_sar;
     UpdateFOVy(vgl);
     UpdateZ(vgl);
-    getViewpointMatrixes(vgl, vgl->fmt.projection_mode, &vgl->prgm);
+    getViewpointMatrixes(vgl, vgl->fmt.projection_mode);
 }
 
 void vout_display_opengl_Viewport(vout_display_opengl_t *vgl, int x, int y,
@@ -1021,7 +994,7 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
 {
     GL_ASSERT_NOERROR();
 
-    struct vlc_gl_renderer *renderer = vgl->prgm.renderer;
+    struct vlc_gl_renderer *renderer = vgl->renderer;
     const struct vlc_gl_interop *interop = renderer->interop;
 
     /* Update the texture */
@@ -1307,7 +1280,7 @@ static int SetupCoords(vout_display_opengl_t *vgl,
                        const float *left, const float *top,
                        const float *right, const float *bottom)
 {
-    const struct vlc_gl_interop *interop = vgl->prgm.renderer->interop;
+    const struct vlc_gl_interop *interop = vgl->renderer->interop;
 
     GLfloat *vertexCoord, *textureCoord;
     GLushort *indices;
@@ -1368,9 +1341,9 @@ static int SetupCoords(vout_display_opengl_t *vgl,
     return VLC_SUCCESS;
 }
 
-static void DrawWithShaders(vout_display_opengl_t *vgl, struct prgm *prgm)
+static void DrawWithShaders(vout_display_opengl_t *vgl)
 {
-    struct vlc_gl_renderer *renderer = prgm->renderer;
+    struct vlc_gl_renderer *renderer = vgl->renderer;
     const struct vlc_gl_interop *interop = renderer->interop;
     renderer->pf_prepare_shader(renderer, vgl->tex_width, vgl->tex_height, 1.0f);
 
@@ -1381,16 +1354,16 @@ static void DrawWithShaders(vout_display_opengl_t *vgl, struct prgm *prgm)
 
         vgl->vt.BindBuffer(GL_ARRAY_BUFFER, vgl->texture_buffer_object[j]);
 
-        assert(prgm->aloc.MultiTexCoord[j] != -1);
-        vgl->vt.EnableVertexAttribArray(prgm->aloc.MultiTexCoord[j]);
-        vgl->vt.VertexAttribPointer(prgm->aloc.MultiTexCoord[j], 2, GL_FLOAT,
-                                     0, 0, 0);
+        assert(renderer->aloc.MultiTexCoord[j] != -1);
+        vgl->vt.EnableVertexAttribArray(renderer->aloc.MultiTexCoord[j]);
+        vgl->vt.VertexAttribPointer(renderer->aloc.MultiTexCoord[j], 2,
+                                    GL_FLOAT, 0, 0, 0);
     }
 
     vgl->vt.BindBuffer(GL_ARRAY_BUFFER, vgl->vertex_buffer_object);
     vgl->vt.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, vgl->index_buffer_object);
-    vgl->vt.EnableVertexAttribArray(prgm->aloc.VertexPosition);
-    vgl->vt.VertexAttribPointer(prgm->aloc.VertexPosition, 3, GL_FLOAT, 0, 0, 0);
+    vgl->vt.EnableVertexAttribArray(renderer->aloc.VertexPosition);
+    vgl->vt.VertexAttribPointer(renderer->aloc.VertexPosition, 3, GL_FLOAT, 0, 0, 0);
 
     const GLfloat *tm = NULL;
     if (interop->ops && interop->ops->get_transform_matrix)
@@ -1398,16 +1371,16 @@ static void DrawWithShaders(vout_display_opengl_t *vgl, struct prgm *prgm)
     if (!tm)
         tm = identity;
 
-    vgl->vt.UniformMatrix4fv(prgm->uloc.TransformMatrix, 1, GL_FALSE, tm);
+    vgl->vt.UniformMatrix4fv(renderer->uloc.TransformMatrix, 1, GL_FALSE, tm);
 
-    vgl->vt.UniformMatrix4fv(prgm->uloc.OrientationMatrix, 1, GL_FALSE,
-                             prgm->var.OrientationMatrix);
-    vgl->vt.UniformMatrix4fv(prgm->uloc.ProjectionMatrix, 1, GL_FALSE,
-                             prgm->var.ProjectionMatrix);
-    vgl->vt.UniformMatrix4fv(prgm->uloc.ViewMatrix, 1, GL_FALSE,
-                             prgm->var.ViewMatrix);
-    vgl->vt.UniformMatrix4fv(prgm->uloc.ZoomMatrix, 1, GL_FALSE,
-                             prgm->var.ZoomMatrix);
+    vgl->vt.UniformMatrix4fv(renderer->uloc.OrientationMatrix, 1, GL_FALSE,
+                             renderer->var.OrientationMatrix);
+    vgl->vt.UniformMatrix4fv(renderer->uloc.ProjectionMatrix, 1, GL_FALSE,
+                             renderer->var.ProjectionMatrix);
+    vgl->vt.UniformMatrix4fv(renderer->uloc.ViewMatrix, 1, GL_FALSE,
+                             renderer->var.ViewMatrix);
+    vgl->vt.UniformMatrix4fv(renderer->uloc.ZoomMatrix, 1, GL_FALSE,
+                             renderer->var.ZoomMatrix);
 
     vgl->vt.DrawElements(GL_TRIANGLES, vgl->nb_indices, GL_UNSIGNED_SHORT, 0);
 }
@@ -1435,7 +1408,7 @@ static void TextureCropForStereo(vout_display_opengl_t *vgl,
                                  float *left, float *top,
                                  float *right, float *bottom)
 {
-    const struct vlc_gl_interop *interop = vgl->prgm.renderer->interop;
+    const struct vlc_gl_interop *interop = vgl->renderer->interop;
 
     float stereoCoefs[2];
     float stereoOffsets[2];
@@ -1473,7 +1446,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
        Currently, the OS X provider uses it to get a smooth window resizing */
     vgl->vt.Clear(GL_COLOR_BUFFER_BIT);
 
-    vgl->vt.UseProgram(vgl->prgm.id);
+    vgl->vt.UseProgram(vgl->renderer->program_id);
 
     if (source->i_x_offset != vgl->last_source.i_x_offset
      || source->i_y_offset != vgl->last_source.i_y_offset
@@ -1484,7 +1457,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         float top[PICTURE_PLANE_MAX];
         float right[PICTURE_PLANE_MAX];
         float bottom[PICTURE_PLANE_MAX];
-        const struct vlc_gl_renderer *renderer = vgl->prgm.renderer;
+        const struct vlc_gl_renderer *renderer = vgl->renderer;
         const struct vlc_gl_interop *interop = renderer->interop;
         for (unsigned j = 0; j < interop->tex_count; j++)
         {
@@ -1520,7 +1493,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         vgl->last_source.i_visible_width = source->i_visible_width;
         vgl->last_source.i_visible_height = source->i_visible_height;
     }
-    DrawWithShaders(vgl, &vgl->prgm);
+    DrawWithShaders(vgl);
 
     int ret = vlc_gl_sub_renderer_Draw(vgl->sub_renderer);
     if (ret != VLC_SUCCESS)
