@@ -296,7 +296,24 @@ opengl_link_program(struct vlc_gl_renderer *r)
     struct vlc_gl_interop *interop = r->interop;
 
     GLuint vertex_shader = BuildVertexShader(r, interop->tex_count);
-    GLuint shaders[] = { tc->fshader, vertex_shader };
+    if (!vertex_shader)
+        return VLC_EGENERIC;
+
+    GLuint fragment_shader =
+        opengl_fragment_shader_init(tc, interop->tex_target,
+                                    interop->sw_fmt.i_chroma,
+                                    interop->sw_fmt.space);
+    if (!fragment_shader)
+        return VLC_EGENERIC;
+
+    assert(fragment_shader != 0 &&
+           interop->tex_target != 0 &&
+           interop->tex_count > 0 &&
+           interop->ops->update_textures != NULL &&
+           tc->pf_fetch_locations != NULL &&
+           tc->pf_prepare_shader != NULL);
+
+    GLuint shaders[] = { fragment_shader, vertex_shader };
 
     /* Check shaders messages */
     for (unsigned i = 0; i < 2; i++) {
@@ -461,26 +478,6 @@ opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
 #   endif
     }
 #endif
-
-    GLuint fragment_shader =
-        opengl_fragment_shader_init(tc, interop->tex_target,
-                                    interop->sw_fmt.i_chroma,
-                                    interop->sw_fmt.space);
-    if (!fragment_shader)
-    {
-        vlc_object_delete(interop);
-        free(tc);
-        return VLC_EGENERIC;
-    }
-
-    tc->fshader = fragment_shader;
-
-    assert(tc->fshader != 0 &&
-           interop->tex_target != 0 &&
-           interop->tex_count > 0 &&
-           interop->ops->update_textures != NULL &&
-           tc->pf_fetch_locations != NULL &&
-           tc->pf_prepare_shader != NULL);
 
     prgm->tc = tc;
 
