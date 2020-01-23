@@ -5,9 +5,10 @@ EXTRA_DIST += video_output/README
 
 OPENGL_COMMONSOURCES = video_output/opengl/vout_helper.c \
 	video_output/opengl/gl_common.h video_output/opengl/interop.h \
-	video_output/opengl/vout_helper.h video_output/opengl/converter.h \
+	video_output/opengl/vout_helper.h \
 	video_output/opengl/internal.h video_output/opengl/fragment_shaders.c \
 	video_output/opengl/interop.c video_output/opengl/interop_sw.c \
+	video_output/opengl/renderer.h \
 	video_output/opengl/sub_renderer.c \
 	video_output/opengl/sub_renderer.h
 if HAVE_LIBPLACEBO
