@@ -445,11 +445,20 @@ opengl_deinit_program(vout_display_opengl_t *vgl)
     free(renderer);
 }
 
-static struct vlc_gl_interop *
-CreateInterop(struct vlc_gl_t *gl, const opengl_vtable_t *vt,
-              vlc_video_context *context, const char *glexts,
-              const video_format_t *fmt, bool subpics)
+struct vlc_gl_interop *
+vout_display_opengl_CreateInterop(struct vlc_gl_t *gl,
+                                  const opengl_vtable_t *vt,
+                                  vlc_video_context *context,
+                                  const video_format_t *fmt, bool subpics)
 {
+    const char *glexts = (const char *) vt->GetString(GL_EXTENSIONS);
+    assert(glexts);
+    if (!glexts)
+    {
+        msg_Err(gl, "glGetString returned NULL");
+        return NULL;
+    }
+
     struct vlc_gl_interop *interop = vlc_gl_interop_New(gl, vt);
     if (!interop)
         return NULL;
@@ -515,23 +524,6 @@ CreateInterop(struct vlc_gl_t *gl, const opengl_vtable_t *vt,
     }
 
     return interop;
-}
-
-struct vlc_gl_interop *
-vout_display_opengl_CreateInterop(struct vlc_gl_t *gl,
-                                  const opengl_vtable_t *vt,
-                                  vlc_video_context *context,
-                                  const video_format_t *fmt, bool subpics)
-{
-    const char *glexts = (const char *) vt->GetString(GL_EXTENSIONS);
-    assert(glexts);
-    if (!glexts)
-    {
-        msg_Err(gl, "glGetString returned NULL");
-        return NULL;
-    }
-
-    return CreateInterop(gl, vt, context, glexts, fmt, subpics);
 }
 
 static int
