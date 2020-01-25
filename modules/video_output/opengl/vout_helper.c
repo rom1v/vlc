@@ -536,15 +536,15 @@ vout_display_opengl_CreateInterop(struct vlc_gl_t *gl,
 
 static int
 opengl_init_program(vout_display_opengl_t *vgl, vlc_video_context *context,
-                    const char *glexts, const video_format_t *fmt,
-                    bool b_dump_shaders)
+                    const video_format_t *fmt, bool b_dump_shaders)
 {
     struct vlc_gl_renderer *renderer = calloc(1, sizeof(*renderer));
     if (!renderer)
         return VLC_ENOMEM;
 
     struct vlc_gl_interop *interop =
-        CreateInterop(vgl->gl, &vgl->vt, context, glexts, fmt, false);
+        vout_display_opengl_CreateInterop(vgl->gl, &vgl->vt, context, fmt,
+                                          false);
     if (!interop)
     {
         free(renderer);
@@ -785,8 +785,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
 
     GL_ASSERT_NOERROR();
-    int ret = opengl_init_program(vgl, context, extensions, fmt,
-                                  b_dump_shaders);
+    int ret = opengl_init_program(vgl, context, fmt, b_dump_shaders);
     if (ret != VLC_SUCCESS)
     {
         msg_Warn(gl, "could not init tex converter for %4.4s",
