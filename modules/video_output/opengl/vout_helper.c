@@ -151,8 +151,8 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
 
     bool b_dump_shaders = var_InheritInteger(gl, "verbose") >= 4;
 
-    vgl->renderer = vlc_gl_renderer_New(gl, vt, context, fmt, supports_npot,
-                                        b_dump_shaders);
+    vgl->renderer = vlc_gl_renderer_New(gl, &vgl->api, context, fmt,
+                                        supports_npot, b_dump_shaders);
     if (!vgl->renderer)
     {
         msg_Warn(gl, "Could not create renderer for %4.4s",
@@ -163,7 +163,8 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
 
     GL_ASSERT_NOERROR();
 
-    vgl->sub_renderer = vlc_gl_sub_renderer_New(gl, vt, supports_npot);
+    vgl->sub_renderer = vlc_gl_sub_renderer_New(gl, &vgl->api,
+                                                supports_npot);
     if (!vgl->sub_renderer)
     {
         msg_Err(gl, "Could not create sub renderer");
