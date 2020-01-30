@@ -24,6 +24,7 @@
 
 #include "gl_api.h"
 
+#include <assert.h>
 #include <vlc_common.h>
 #include <vlc_opengl.h>
 
@@ -129,6 +130,20 @@ vlc_gl_api_Init(struct vlc_gl_api *api, vlc_gl_t *gl)
 #undef GET_PROC_ADDR
 
     GL_ASSERT_NOERROR(&api->vt);
+
+    api->extensions = (const char *) api->vt.GetString(GL_EXTENSIONS);
+    assert(api->extensions);
+    if (!api->extensions)
+    {
+        msg_Err(gl, "glGetString returned NULL");
+        return VLC_EGENERIC;
+    }
+
+#ifdef USE_OPENGL_ES2
+    api->is_gles = true;
+#else
+    api->is_gles = false;
+#endif
 
     return VLC_SUCCESS;
 }
