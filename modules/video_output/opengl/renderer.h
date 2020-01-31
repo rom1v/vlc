@@ -162,7 +162,7 @@ struct vlc_gl_renderer
 struct vlc_gl_renderer *
 vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
                     vlc_video_context *context, const video_format_t *fmt,
-                    bool supports_npot, bool dump_shaders);
+                    bool dump_shaders);
 
 /**
  * Delete a renderer
