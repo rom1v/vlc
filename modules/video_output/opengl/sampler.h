@@ -107,4 +107,7 @@ vlc_gl_sampler_New(struct vlc_gl_interop *interop, const video_format_t *fmt);
 void
 vlc_gl_sampler_Delete(struct vlc_gl_sampler *sampler);
 
+int
+vlc_gl_sampler_Fetch(struct vlc_gl_sampler *sampler, GLuint program);
+
 #endif
