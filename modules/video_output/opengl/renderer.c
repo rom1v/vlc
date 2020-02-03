@@ -441,6 +441,8 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
     if (!sampler)
         return NULL;
 
+    sampler->interop = interop;
+
     struct vlc_gl_renderer *renderer = calloc(1, sizeof(*renderer));
     if (!renderer)
     {
