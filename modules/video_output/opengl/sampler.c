@@ -108,3 +108,32 @@ vlc_gl_sampler_Delete(struct vlc_gl_sampler *sampler)
 
     free(sampler);
 }
+
+int
+vlc_gl_sampler_Fetch(struct vlc_gl_sampler *sampler, GLuint program_id)
+{
+    const struct vlc_gl_interop *interop = sampler->interop;
+    const opengl_vtable_t *vt = interop->vt;
+
+#define GET_LOC(type, x, str) do { \
+    x = vt->Get##type##Location(program_id, str); \
+    assert(x != -1); \
+    if (x == -1) { \
+        msg_Err(interop->gl, "Unable to Get"#type"Location(%s)", str); \
+        return VLC_EGENERIC; \
+    } \
+} while (0)
+
+#define GET_ULOC(x, str) GET_LOC(Uniform, sampler->uloc.x, str)
+    GET_ULOC(TexCoordsMap[0], "TexCoordsMap0");
+    /* MultiTexCoord 1 and 2 can be optimized out if not used */
+    if (interop->tex_count > 1)
+        GET_ULOC(TexCoordsMap[1], "TexCoordsMap1");
+    else
+        sampler->uloc.TexCoordsMap[1] = -1;
+    if (interop->tex_count > 2)
+        GET_ULOC(TexCoordsMap[2], "TexCoordsMap2");
+    else
+        sampler->uloc.TexCoordsMap[2] = -1;
+#undef GET_ULOC
+}
