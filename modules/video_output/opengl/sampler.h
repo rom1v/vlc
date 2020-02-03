@@ -59,6 +59,8 @@ struct vlc_gl_sampler {
     GLuint textures[PICTURE_PLANE_MAX];
 
     GLuint texture_buffer_object;
+
+    struct vlc_gl_interop *interop;
 };
 
 #endif
