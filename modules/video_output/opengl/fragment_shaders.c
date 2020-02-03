@@ -218,13 +218,30 @@ sampler_base_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
             return VLC_EGENERIC;
     }
 
+    sampler->uloc.TransformMatrix =
+        vt->GetUniformLocation(program, "TransformMatrix");
+    if (sampler->uloc.TransformMatrix == -1)
+        return VLC_EGENERIC;
+
+    sampler->uloc.OrientationMatrix =
+        vt->GetUniformLocation(program, "OrientationMatrix");
+    if (sampler->uloc.OrientationMatrix == -1)
+        return VLC_EGENERIC;
+
     for (unsigned int i = 0; i < interop->tex_count; ++i)
     {
-        char name[sizeof("TextureX")];
+        char name[sizeof("TexCoordsMapX")];
+
         snprintf(name, sizeof(name), "Texture%1u", i);
         sampler->uloc.Texture[i] = vt->GetUniformLocation(program, name);
         if (sampler->uloc.Texture[i] == -1)
             return VLC_EGENERIC;
+
+        snprintf(name, sizeof(name), "TexCoordsMap%1u", i);
+        sampler->uloc.TexCoordsMap[i] = vt->GetUniformLocation(program, name);
+        if (sampler->uloc.TexCoordsMap[i] == -1)
+            return VLC_EGENERIC;
+
         if (interop->tex_target == GL_TEXTURE_RECTANGLE)
         {
             snprintf(name, sizeof(name), "TexSize%1u", i);
