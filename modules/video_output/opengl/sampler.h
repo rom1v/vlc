@@ -57,6 +57,8 @@ struct vlc_gl_sampler {
     GLsizei tex_height[PICTURE_PLANE_MAX];
 
     GLuint textures[PICTURE_PLANE_MAX];
+
+    struct vlc_gl_interop *interop;
 };
 
 #endif
