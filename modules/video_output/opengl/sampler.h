@@ -30,6 +30,7 @@
 #include <vlc_picture.h>
 
 #include "gl_common.h"
+#include "../placebo_utils.h"
 
 struct vlc_gl_sampler {
     struct {
@@ -70,5 +71,11 @@ struct vlc_gl_sampler {
 
     struct vlc_gl_interop *interop;
 };
+
+struct vlc_gl_sampler *
+vlc_gl_sampler_New(struct vlc_gl_interop *interop, const video_format_t *fmt);
+
+void
+vlc_gl_sampler_Delete(struct vlc_gl_sampler *sampler);
 
 #endif
