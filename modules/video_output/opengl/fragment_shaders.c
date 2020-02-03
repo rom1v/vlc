@@ -207,8 +207,8 @@ renderer_yuv_base_init(struct vlc_gl_renderer *renderer, vlc_fourcc_t chroma,
 static int
 renderer_base_fetch_locations(struct vlc_gl_renderer *renderer, GLuint program)
 {
-    struct vlc_gl_interop *interop = renderer->interop;
     struct vlc_gl_sampler *sampler = renderer->sampler;
+    const struct vlc_gl_interop *interop = sampler->interop;
     const opengl_vtable_t *vt = renderer->vt;
 
     if (sampler->yuv_color)
@@ -256,8 +256,8 @@ renderer_base_prepare_shader(const struct vlc_gl_renderer *renderer,
                              const GLsizei *tex_height, float alpha)
 {
     (void) tex_width; (void) tex_height;
-    const struct vlc_gl_interop *interop = renderer->interop;
     struct vlc_gl_sampler *sampler = renderer->sampler;
+    const struct vlc_gl_interop *interop = sampler->interop;
     const opengl_vtable_t *vt = renderer->vt;
 
     if (sampler->yuv_color)
@@ -433,8 +433,8 @@ char *
 opengl_fragment_shader_init(struct vlc_gl_renderer *renderer, GLenum tex_target,
                             vlc_fourcc_t chroma, video_color_space_t yuv_space)
 {
-    struct vlc_gl_interop *interop = renderer->interop;
     struct vlc_gl_sampler *sampler = renderer->sampler;
+    struct vlc_gl_interop *interop = sampler->interop;
     const opengl_vtable_t *vt = renderer->vt;
 
     const char *swizzle_per_tex[PICTURE_PLANE_MAX] = { NULL, };
@@ -453,7 +453,7 @@ opengl_fragment_shader_init(struct vlc_gl_renderer *renderer, GLenum tex_target,
         ret = renderer_yuv_base_init(renderer, chroma, desc, yuv_space);
         if (ret != VLC_SUCCESS)
             return NULL;
-        ret = opengl_init_swizzle(renderer->interop, swizzle_per_tex, chroma, desc);
+        ret = opengl_init_swizzle(interop, swizzle_per_tex, chroma, desc);
         if (ret != VLC_SUCCESS)
             return NULL;
     }

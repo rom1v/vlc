@@ -195,14 +195,15 @@ BuildVertexShader(const struct vlc_gl_renderer *renderer)
 
     if (renderer->b_dump_shaders)
         msg_Dbg(renderer->gl, "\n=== Vertex shader for fourcc: %4.4s ===\n%s\n",
-                (const char *) &renderer->interop->fmt.i_chroma, code);
+                (const char *) &renderer->sampler->interop->fmt.i_chroma, code);
     return code;
 }
 
 static char *
 BuildFragmentShader(struct vlc_gl_renderer *renderer)
 {
-    struct vlc_gl_interop *interop = renderer->interop;
+    const struct vlc_gl_sampler *sampler = renderer->sampler;
+    const struct vlc_gl_interop *interop = sampler->interop;
     char *vlc_texture =
         opengl_fragment_shader_init(renderer, interop->tex_target,
                                     interop->sw_fmt.i_chroma,
@@ -238,8 +239,8 @@ BuildFragmentShader(struct vlc_gl_renderer *renderer)
 static int
 opengl_link_program(struct vlc_gl_renderer *renderer)
 {
-    struct vlc_gl_interop *interop = renderer->interop;
     struct vlc_gl_sampler *sampler = renderer->sampler;
+    struct vlc_gl_interop *interop = sampler->interop;
     const opengl_vtable_t *vt = renderer->vt;
 
     char *vertex_shader = BuildVertexShader(renderer);
@@ -355,7 +356,6 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
     }
 
     renderer->sampler = sampler;
-    renderer->interop = interop;
 
     renderer->gl = gl;
     renderer->api = api;
@@ -768,8 +768,8 @@ static int SetupCoords(struct vlc_gl_renderer *renderer)
 
 static void DrawWithShaders(struct vlc_gl_renderer *renderer)
 {
-    const struct vlc_gl_interop *interop = renderer->interop;
-    struct vlc_gl_sampler *sampler = renderer->sampler;
+    const struct vlc_gl_sampler *sampler = renderer->sampler;
+    const struct vlc_gl_interop *interop = sampler->interop;
     const opengl_vtable_t *vt = renderer->vt;
     renderer->pf_prepare_shader(renderer, sampler->tex_width,
                                 sampler->tex_height, 1.0f);
@@ -836,7 +836,8 @@ static void TextureCropForStereo(struct vlc_gl_renderer *renderer,
                                  float *left, float *top,
                                  float *right, float *bottom)
 {
-    const struct vlc_gl_interop *interop = renderer->interop;
+    const struct vlc_gl_sampler *sampler = renderer->sampler;
+    const struct vlc_gl_interop *interop = sampler->interop;
 
     float stereoCoefs[2];
     float stereoOffsets[2];
@@ -867,8 +868,8 @@ static void TextureCropForStereo(struct vlc_gl_renderer *renderer,
 int
 vlc_gl_renderer_Prepare(struct vlc_gl_renderer *renderer, picture_t *picture)
 {
-    const struct vlc_gl_interop *interop = renderer->interop;
     struct vlc_gl_sampler *sampler = renderer->sampler;
+    const struct vlc_gl_interop *interop = sampler->interop;
     const video_format_t *source = &picture->format;
 
     if (source->i_x_offset != renderer->last_source.i_x_offset
