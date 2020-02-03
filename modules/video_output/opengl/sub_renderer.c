@@ -110,7 +110,8 @@ FetchLocations(struct vlc_gl_sub_renderer *sr)
 }
 
 struct vlc_gl_sub_renderer *
-vlc_gl_sub_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api)
+vlc_gl_sub_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
+                        struct vlc_gl_interop *interop)
 {
     const opengl_vtable_t *vt = &api->vt;
 
@@ -120,13 +121,11 @@ vlc_gl_sub_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api)
 
     video_format_t fmt;
     video_format_Init(&fmt, VLC_CODEC_RGB32);
-    sr->interop = vlc_gl_interop_New(gl, api, NULL, &fmt, true);
-    if (!sr->interop)
-        goto error_1;
 
     /* Allocates our textures */
-    assert(!sr->interop->handle_texs_gen);
+    assert(!interop->handle_texs_gen);
 
+    sr->interop = interop;
     sr->gl = gl;
     sr->api = api;
     sr->vt = vt;
@@ -157,17 +156,17 @@ vlc_gl_sub_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api)
                             1, (const char **) &VERTEX_SHADER_SRC,
                             1, (const char **) &FRAGMENT_SHADER_SRC);
     if (!sr->program_id)
-        goto error_2;
+        goto error_1;
 
     int ret = FetchLocations(sr);
     if (ret != VLC_SUCCESS)
-        goto error_3;
+        goto error_2;
 
     /* Initial number of allocated buffer objects for subpictures, will grow dynamically. */
     static const unsigned INITIAL_BUFFER_OBJECT_COUNT = 8;
     sr->buffer_objects = vlc_alloc(INITIAL_BUFFER_OBJECT_COUNT, sizeof(GLuint));
     if (!sr->buffer_objects)
-        goto error_3;
+        goto error_2;
 
     sr->buffer_object_count = INITIAL_BUFFER_OBJECT_COUNT;
 
@@ -175,11 +174,10 @@ vlc_gl_sub_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api)
 
     return sr;
 
-error_3:
-    vt->DeleteProgram(sr->program_id);
 error_2:
-    vlc_object_delete(sr->interop);
+    vt->DeleteProgram(sr->program_id);
 error_1:
+    vlc_object_delete(sr->interop);
     free(sr);
 
     return NULL;
@@ -198,8 +196,6 @@ vlc_gl_sub_renderer_Delete(struct vlc_gl_sub_renderer *sr)
             sr->vt->DeleteTextures(1, &sr->regions[i].texture);
     }
     free(sr->regions);
-
-    vlc_gl_interop_Delete(sr->interop);
 
     free(sr);
 }
