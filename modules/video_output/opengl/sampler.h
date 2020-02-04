@@ -33,6 +33,9 @@
 #include "../placebo_utils.h"
 
 struct vlc_gl_sampler {
+    struct vlc_gl_t *gl;
+    const opengl_vtable_t *vt;
+
     struct {
         GLfloat OrientationMatrix[4*4];
         GLfloat TexCoordsMap[PICTURE_PLANE_MAX][3*3];
