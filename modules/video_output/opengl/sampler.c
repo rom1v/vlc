@@ -41,6 +41,7 @@ vlc_gl_sampler_New(struct vlc_gl_interop *interop, const video_format_t *fmt)
         return NULL;
 
     sampler->interop = interop;
+    sampler->vt = interop->vt;
 
 #ifdef HAVE_LIBPLACEBO
     // Create the main libplacebo context
