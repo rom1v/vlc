@@ -50,6 +50,8 @@ vlc_gl_sampler_New(struct vlc_gl_interop *interop)
     sampler->gl = interop->gl;
     sampler->vt = interop->vt;
 
+    sampler->shader.body = NULL;
+
 #ifdef HAVE_LIBPLACEBO
     // Create the main libplacebo context
     sampler->pl_ctx = vlc_placebo_Create(VLC_OBJECT(interop->gl));
@@ -108,6 +110,8 @@ vlc_gl_sampler_Delete(struct vlc_gl_sampler *sampler)
     if (sampler->pl_ctx)
         pl_context_destroy(&sampler->pl_ctx);
 #endif
+
+    free(sampler->shader.body);
 
     free(sampler);
 }
