@@ -50,6 +50,7 @@ vlc_gl_sampler_New(struct vlc_gl_interop *interop)
     sampler->gl = interop->gl;
     sampler->vt = interop->vt;
 
+    sampler->shader.extensions = NULL;
     sampler->shader.body = NULL;
 
 #ifdef HAVE_LIBPLACEBO
@@ -111,6 +112,7 @@ vlc_gl_sampler_Delete(struct vlc_gl_sampler *sampler)
         pl_context_destroy(&sampler->pl_ctx);
 #endif
 
+    free(sampler->shader.extensions);
     free(sampler->shader.body);
 
     free(sampler);
