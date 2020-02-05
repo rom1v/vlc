@@ -33,6 +33,8 @@
 
 #include <vlc_common.h>
 #include <vlc_memstream.h>
+
+#include "gl_util.h"
 #include "interop.h"
 #include "internal.h"
 #include "sampler.h"
@@ -280,9 +282,28 @@ sampler_base_prepare_shader(const struct vlc_gl_sampler *sampler,
                              sampler->conv_matrix);
 
     for (unsigned i = 0; i < interop->tex_count; ++i)
+    {
         vt->Uniform1i(sampler->uloc.Texture[i], i);
 
+        assert(sampler->textures[i] != 0);
+        vt->ActiveTexture(GL_TEXTURE0 + i);
+        vt->BindTexture(interop->tex_target, sampler->textures[i]);
+
+        vt->UniformMatrix3fv(sampler->uloc.TexCoordsMap[i], 1, GL_FALSE,
+                             sampler->var.TexCoordsMap[i]);
+    }
+
     vt->Uniform4f(sampler->uloc.FillColor, 1.0f, 1.0f, 1.0f, alpha);
+
+    const GLfloat *tm = NULL;
+    if (interop->ops && interop->ops->get_transform_matrix)
+        tm = interop->ops->get_transform_matrix(interop);
+    if (!tm)
+        tm = MATRIX4_IDENTITY;
+    vt->UniformMatrix4fv(sampler->uloc.TransformMatrix, 1, GL_FALSE, tm);
+
+    vt->UniformMatrix4fv(sampler->uloc.OrientationMatrix, 1, GL_FALSE,
+                         sampler->var.OrientationMatrix);
 
     if (interop->tex_target == GL_TEXTURE_RECTANGLE)
     {
