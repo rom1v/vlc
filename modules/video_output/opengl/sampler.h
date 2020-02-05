@@ -91,6 +91,13 @@ struct vlc_gl_sampler {
     struct vlc_gl_interop *interop;
 
     struct {
+        /* GLSL declaration for extensions.
+         *
+         * If not-NULL, it must be injected immediately after the "version"
+         * line.
+         */
+        char *extensions;
+
         /* Piece of code necessary to declare and implement the GLSL function
          * vlc_texture(vec2 coords).
          *
