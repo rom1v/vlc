@@ -95,9 +95,7 @@ struct vlc_gl_sampler {
      * \param tex_width array of tex width (one per plane)
      * \param tex_height array of tex height (one per plane)
      */
-    void (*pf_prepare_shader)(const struct vlc_gl_sampler *sampler,
-                              const GLsizei *tex_width,
-                              const GLsizei *tex_height);
+    void (*pf_prepare_shader)(const struct vlc_gl_sampler *sampler);
 };
 
 struct vlc_gl_sampler *
