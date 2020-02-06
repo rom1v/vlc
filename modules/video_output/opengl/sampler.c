@@ -45,6 +45,9 @@ vlc_gl_sampler_New(struct vlc_gl_interop *interop)
     sampler->gl = interop->gl;
     sampler->vt = interop->vt;
 
+    sampler->fmt = &interop->fmt;
+    sampler->sw_fmt = &interop->sw_fmt;
+
     sampler->shader.extensions = NULL;
     sampler->shader.body = NULL;
 
