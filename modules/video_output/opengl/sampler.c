@@ -37,6 +37,7 @@
 #include "gl_api.h"
 #include "gl_common.h"
 #include "gl_util.h"
+#include "internal.h"
 #include "interop.h"
 
 struct vlc_gl_sampler *
@@ -82,11 +83,21 @@ vlc_gl_sampler_New(struct vlc_gl_interop *interop)
         }
     }
 
+    int ret =
+        opengl_fragment_shader_init(sampler, interop->tex_target,
+                                    interop->sw_fmt.i_chroma,
+                                    interop->sw_fmt.space);
+    if (ret != VLC_SUCCESS)
+    {
+        free(sampler);
+        return NULL;
+    }
+
     if (!interop->handle_texs_gen)
     {
-        int ret = vlc_gl_interop_GenerateTextures(interop, sampler->tex_width,
-                                                  sampler->tex_height,
-                                                  sampler->textures);
+        ret = vlc_gl_interop_GenerateTextures(interop, sampler->tex_width,
+                                              sampler->tex_height,
+                                              sampler->textures);
         if (ret != VLC_SUCCESS)
         {
             free(sampler);
