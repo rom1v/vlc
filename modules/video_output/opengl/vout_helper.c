@@ -263,7 +263,7 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
 {
     GL_ASSERT_NOERROR();
 
-    int ret = vlc_gl_renderer_Prepare(vgl->renderer, picture);
+    int ret = vlc_gl_sampler_Update(vgl->sampler, picture);
     if (ret != VLC_SUCCESS)
         return ret;
 
