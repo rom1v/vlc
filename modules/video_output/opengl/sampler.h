@@ -148,6 +148,17 @@ vlc_gl_sampler_New(struct vlc_gl_interop *interop);
 void
 vlc_gl_sampler_Delete(struct vlc_gl_sampler *sampler);
 
+/**
+ * Update the input picture
+ *
+ * This changes the current input picture, available from the fragment shader.
+ *
+ * \param sampler the samplre
+ * \param picture the new current picture
+ */
+int
+vlc_gl_sampler_Update(struct vlc_gl_sampler *sampler, picture_t *picture);
+
 static inline int
 vlc_gl_sampler_FetchLocations(struct vlc_gl_sampler *sampler, GLuint program)
 {
