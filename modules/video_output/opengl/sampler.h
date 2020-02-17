@@ -32,6 +32,8 @@
 #include "gl_common.h"
 #include "../placebo_utils.h"
 
+struct vlc_gl_interop;
+
 /**
  * The purpose of a sampler is to provide pixel values of a VLC input picture,
  * stored in any format.
@@ -51,51 +53,11 @@
  * implicitly available.
  */
 struct vlc_gl_sampler {
-    struct vlc_gl_t *gl;
-    const opengl_vtable_t *vt;
-
     /* Input format */
     const video_format_t *fmt;
 
     /* Software format (useful if fmt only exposes opaque chroma) */
     const video_format_t *sw_fmt;
-
-    struct {
-        GLfloat OrientationMatrix[4*4];
-        GLfloat TexCoordsMap[PICTURE_PLANE_MAX][3*3];
-    } var;
-    struct {
-        GLint Texture[PICTURE_PLANE_MAX];
-        GLint TexSize[PICTURE_PLANE_MAX]; /* for GL_TEXTURE_RECTANGLE */
-        GLint ConvMatrix;
-        GLint *pl_vars; /* for pl_sh_res */
-
-        GLint TransformMatrix;
-        GLint OrientationMatrix;
-        GLint TexCoordsMap[PICTURE_PLANE_MAX];
-    } uloc;
-
-    bool yuv_color;
-    GLfloat conv_matrix[4*4];
-
-    /* libplacebo context */
-    struct pl_context *pl_ctx;
-    struct pl_shader *pl_sh;
-    const struct pl_shader_res *pl_sh_res;
-
-    GLsizei tex_width[PICTURE_PLANE_MAX];
-    GLsizei tex_height[PICTURE_PLANE_MAX];
-
-    GLuint textures[PICTURE_PLANE_MAX];
-
-    struct {
-        unsigned int i_x_offset;
-        unsigned int i_y_offset;
-        unsigned int i_visible_width;
-        unsigned int i_visible_height;
-    } last_source;
-
-    struct vlc_gl_interop *interop;
 
     struct {
         /* GLSL declaration for extensions.
@@ -115,28 +77,6 @@ struct vlc_gl_sampler {
          */
         char *body;
     } shader;
-
-    /**
-     * Callback to fetch locations of uniform or attributes variables
-     *
-     * This function pointer cannot be NULL. This callback is called one time
-     * after init.
-     *
-     * \param sampler the sampler
-     * \param program linked program that will be used by this sampler
-     * \return VLC_SUCCESS or a VLC error
-     */
-    int (*pf_fetch_locations)(struct vlc_gl_sampler *sampler, GLuint program);
-
-    /**
-     * Callback to prepare the fragment shader
-     *
-     * This function pointer cannot be NULL. This callback can be used to
-     * specify values of uniform variables.
-     *
-     * \param sampler the sampler
-     */
-    void (*pf_prepare_shader)(const struct vlc_gl_sampler *sampler);
 };
 
 /**
@@ -166,16 +106,24 @@ vlc_gl_sampler_Delete(struct vlc_gl_sampler *sampler);
 int
 vlc_gl_sampler_Update(struct vlc_gl_sampler *sampler, picture_t *picture);
 
-static inline int
-vlc_gl_sampler_FetchLocations(struct vlc_gl_sampler *sampler, GLuint program)
-{
-    return sampler->pf_fetch_locations(sampler, program);
-}
+/**
+ * Fetch locations of uniform or attributes variables
+ *
+ * \param sampler the sampler
+ * \param program linked program that will be used by this sampler
+ * \return VLC_SUCCESS or a VLC error
+ */
+int
+vlc_gl_sampler_FetchLocations(struct vlc_gl_sampler *sampler, GLuint program);
 
-static inline void
-vlc_gl_sampler_PrepareShader(const struct vlc_gl_sampler *sampler)
-{
-    sampler->pf_prepare_shader(sampler);
-}
+/**
+ * Prepare the fragment shader
+ *
+ * Typically, this specifies values of uniform variables.
+ *
+ * \param sampler the sampler
+ */
+void
+vlc_gl_sampler_PrepareShader(const struct vlc_gl_sampler *sampler);
 
 #endif
