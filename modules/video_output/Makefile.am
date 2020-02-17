@@ -4,6 +4,7 @@ vout_LTLIBRARIES =
 EXTRA_DIST += video_output/README
 
 OPENGL_COMMONSOURCES = video_output/opengl/vout_helper.c \
+	video_output/opengl/filter.h \
 	video_output/opengl/gl_api.c \
 	video_output/opengl/gl_api.h \
 	video_output/opengl/gl_common.h \
