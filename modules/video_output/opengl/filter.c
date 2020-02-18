@@ -26,13 +26,14 @@
 
 #undef vlc_gl_filter_New
 struct vlc_gl_filter *
-vlc_gl_filter_New(vlc_object_t *parent)
+vlc_gl_filter_New(vlc_object_t *parent, const struct vlc_gl_api *api)
 {
     struct vlc_gl_filter_priv *priv = vlc_object_create(parent, sizeof(*priv));
     if (!priv)
         return NULL;
 
     struct vlc_gl_filter *filter = &priv->filter;
+    filter->api = api;
     filter->ops = NULL;
     filter->sys = NULL;
 

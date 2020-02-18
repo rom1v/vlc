@@ -41,6 +41,8 @@ struct vlc_gl_filter_ops {
 struct vlc_gl_filter {
     vlc_object_t obj;
 
+    const struct vlc_gl_api *api;
+
     const struct vlc_gl_filter_ops *ops;
     void *sys;
 };

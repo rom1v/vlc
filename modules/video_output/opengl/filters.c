@@ -42,7 +42,7 @@ struct vlc_gl_renderer *
 vlc_gl_filters_AppendRenderer(struct vlc_gl_filters *filters,
                               struct vlc_gl_sampler *sampler)
 {
-    struct vlc_gl_filter *filter = vlc_gl_filter_New(filters->gl);
+    struct vlc_gl_filter *filter = vlc_gl_filter_New(filters->gl, filters->api);
     if (!filter)
         return NULL;
 
