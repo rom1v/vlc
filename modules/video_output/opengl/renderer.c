@@ -330,7 +330,7 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
     if (!renderer)
         return NULL;
 
-    struct vlc_gl_filter *filter = vlc_gl_filter_New(gl);
+    struct vlc_gl_filter *filter = vlc_gl_filter_New(gl, api);
     if (!filter)
     {
         free(renderer);
