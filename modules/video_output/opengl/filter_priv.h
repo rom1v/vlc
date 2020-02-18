@@ -35,8 +35,8 @@ struct vlc_gl_filter_priv {
     container_of(filter, struct vlc_gl_filter_priv, filter)
 
 struct vlc_gl_filter *
-vlc_gl_filter_New(vlc_object_t *parent);
-#define vlc_gl_filter_New(o) vlc_gl_filter_New(VLC_OBJECT(o))
+vlc_gl_filter_New(vlc_object_t *parent, const struct vlc_gl_api *api);
+#define vlc_gl_filter_New(o, a) vlc_gl_filter_New(VLC_OBJECT(o), a)
 
 void
 vlc_gl_filter_Delete(struct vlc_gl_filter *filter);
