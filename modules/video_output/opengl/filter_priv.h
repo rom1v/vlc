@@ -41,6 +41,14 @@ vlc_gl_filter_New(vlc_object_t *parent, const struct vlc_gl_api *api,
                   void *owner_data);
 #define vlc_gl_filter_New(o, a, b, c) vlc_gl_filter_New(VLC_OBJECT(o), a, b, c)
 
+struct vlc_gl_filter *
+vlc_gl_filter_LoadModule(vlc_object_t *parent, const struct vlc_gl_api *api,
+                         const char *name, const config_chain_t *config,
+                         const struct vlc_gl_filter_owner_ops *owner_ops,
+                         void *owner_data);
+#define vlc_gl_filter_LoadModule(o, a, b, c, d, e) \
+    vlc_gl_filter_LoadModule(VLC_OBJECT(o), a, b, c, d, e)
+
 void
 vlc_gl_filter_Delete(struct vlc_gl_filter *filter);
 
