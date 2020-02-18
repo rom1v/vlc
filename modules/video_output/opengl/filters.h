@@ -59,6 +59,22 @@ vlc_gl_filters_AppendRenderer(struct vlc_gl_filters *filters,
                               struct vlc_gl_sampler *sampler);
 
 /**
+ * Create and append a filter loaded from a module to the filter list
+ *
+ * The created filter is owned by the filter list.
+ *
+ * \param filters the filter list
+ * \param name the module name
+ * \param config the module configuration
+ * \param sampler the OpenGL sampler to use from the filter
+ * \return a weak reference to the filter (NULL on error)
+ */
+struct vlc_gl_filter *
+vlc_gl_filters_AppendModule(struct vlc_gl_filters *filters, const char *name,
+                            const config_chain_t *config,
+                            struct vlc_gl_sampler *sampler);
+
+/**
  * Draw by executing all the filters
  *
  * \param filters the filters list

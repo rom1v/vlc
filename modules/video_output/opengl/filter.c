@@ -24,6 +24,11 @@
 
 #include "filter_priv.h"
 
+#include <assert.h>
+
+#include <vlc_common.h>
+#include <vlc_modules.h>
+
 #undef vlc_gl_filter_New
 struct vlc_gl_filter *
 vlc_gl_filter_New(vlc_object_t *parent, const struct vlc_gl_api *api)
@@ -36,6 +41,43 @@ vlc_gl_filter_New(vlc_object_t *parent, const struct vlc_gl_api *api)
     filter->api = api;
     filter->ops = NULL;
     filter->sys = NULL;
+    filter->module = NULL;
+
+    return filter;
+}
+
+static int
+ActivateGLFilter(void *func, bool forced, va_list args)
+{
+    (void) forced;
+    vlc_gl_filter_open_fn *activate = func;
+    struct vlc_gl_filter *filter = va_arg(args, struct vlc_gl_filter *);
+    const config_chain_t *config = va_arg(args, config_chain_t *);
+    struct vlc_gl_sampler *sampler = va_arg(args, struct vlc_gl_sampler *);
+
+    return activate(filter, config, sampler);
+}
+
+#undef vlc_gl_filter_LoadModule
+struct vlc_gl_filter *
+vlc_gl_filter_LoadModule(vlc_object_t *parent, const struct vlc_gl_api *api,
+                         const char *name, const config_chain_t *config,
+                         struct vlc_gl_sampler *sampler)
+{
+    struct vlc_gl_filter *filter =
+        vlc_gl_filter_New(parent, api);
+    if (!filter)
+        return NULL;
+
+    filter->module = vlc_module_load(parent, "opengl filter", name, true,
+                                     ActivateGLFilter, filter, config, sampler);
+    if (!filter->module)
+    {
+        vlc_gl_filter_Delete(filter);
+        return NULL;
+    }
+
+    assert(filter->ops->draw);
 
     return filter;
 }
@@ -45,6 +87,9 @@ vlc_gl_filter_Delete(struct vlc_gl_filter *filter)
 {
     if (filter->ops && filter->ops->close)
         filter->ops->close(filter);
+
+    if (filter->module)
+        module_unneed(filter, filter->module);
 
     vlc_object_delete(&filter->obj);
 }

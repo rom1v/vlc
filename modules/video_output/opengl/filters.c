@@ -62,6 +62,23 @@ vlc_gl_filters_AppendRenderer(struct vlc_gl_filters *filters,
     return renderer;
 }
 
+struct vlc_gl_filter *
+vlc_gl_filters_AppendModule(struct vlc_gl_filters *filters, const char *name,
+                            const config_chain_t *config,
+                            struct vlc_gl_sampler *sampler)
+{
+    struct vlc_gl_filter *filter =
+        vlc_gl_filter_LoadModule(filters->gl, filters->api, name, config,
+                                 sampler);
+    if (!filter)
+        return NULL;
+
+    struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
+    vlc_list_append(&priv->node, &filters->list);
+
+    return filter;
+}
+
 int
 vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
 {

@@ -21,7 +21,14 @@
 #ifndef VLC_GL_FILTER_H
 #define VLC_GL_FILTER_H
 
+#include "sampler.h"
+
 struct vlc_gl_filter;
+
+typedef int
+vlc_gl_filter_open_fn(struct vlc_gl_filter *filter,
+                      const config_chain_t *config,
+                      struct vlc_gl_sampler *sampler);
 
 struct vlc_gl_filter_ops {
     /**
@@ -40,6 +47,7 @@ struct vlc_gl_filter_ops {
  */
 struct vlc_gl_filter {
     vlc_object_t obj;
+    module_t *module;
 
     const struct vlc_gl_api *api;
 
