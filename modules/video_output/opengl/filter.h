@@ -39,6 +39,8 @@ struct vlc_gl_filter_ops {
  * OpenGL filter public API, which is equivalent to a rendering pass.
  */
 struct vlc_gl_filter {
+    vlc_object_t obj;
+
     const struct vlc_gl_filter_ops *ops;
     void *sys;
 };
