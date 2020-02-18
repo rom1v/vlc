@@ -21,6 +21,9 @@
 #ifndef VLC_GL_FILTER_H
 #define VLC_GL_FILTER_H
 
+#include <vlc_common.h>
+#include <vlc_list.h>
+
 struct vlc_gl_filter;
 
 struct vlc_gl_filter_ops {
