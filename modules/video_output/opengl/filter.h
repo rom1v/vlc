@@ -26,11 +26,20 @@
 
 struct vlc_gl_filter;
 
+typedef int
+vlc_gl_filter_open_fn(struct vlc_gl_filter *filter,
+                      const config_chain_t *config);
+
 struct vlc_gl_filter_ops {
     /**
      * Draw the result of the filter to the current framebuffer
      */
     int (*draw)(struct vlc_gl_filter *filter);
+
+    /**
+     * Clean up on module close
+     */
+    void (*close)(struct vlc_gl_filter *filter);
 };
 
 /**
@@ -38,6 +47,7 @@ struct vlc_gl_filter_ops {
  */
 struct vlc_gl_filter {
     vlc_object_t obj;
+    module_t *module;
 
     const struct vlc_gl_api *api;
 
