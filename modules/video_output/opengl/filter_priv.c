@@ -24,10 +24,11 @@
 
 #include "filter_priv.h"
 
+#undef vlc_gl_filter_New
 struct vlc_gl_filter *
-vlc_gl_filter_New(void)
+vlc_gl_filter_New(vlc_object_t *parent)
 {
-    struct vlc_gl_filter_priv *priv = malloc(sizeof(*priv));
+    struct vlc_gl_filter_priv *priv = vlc_object_create(parent, sizeof(*priv));
     if (!priv)
         return NULL;
     return &priv->filter;
@@ -36,6 +37,5 @@ vlc_gl_filter_New(void)
 void
 vlc_gl_filter_Delete(struct vlc_gl_filter *filter)
 {
-    struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
-    free(priv);
+    vlc_object_delete(&filter->obj);
 }
