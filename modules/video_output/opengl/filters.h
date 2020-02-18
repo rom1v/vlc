@@ -1,5 +1,5 @@
 /*****************************************************************************
- * filter_priv.h
+ * filters.h
  *****************************************************************************
  * Copyright (C) 2020 VLC authors and VideoLAN
  *
@@ -18,26 +18,37 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 
-#ifndef VLC_GL_FILTER_PRIV_H
-#define VLC_GL_FILTER_PRIV_H
+#ifndef VLC_GL_FILTERS_H
+#define VLC_GL_FILTERS_H
 
 #include <vlc_common.h>
+#include <vlc_list.h>
+#include <vlc_opengl.h>
 
 #include "filter.h"
+#include "gl_api.h"
+#include "renderer.h"
+#include "sampler.h"
 
-struct vlc_gl_filter_priv {
-    struct vlc_gl_filter filter;
-
-    struct vlc_list node; /**< node of vlc_gl_filters.list */
+struct vlc_gl_filters {
+    /* The filters are owned by this struct */
+    struct vlc_list list; /**< list of vlc_gl_filter.node */
 };
 
-#define vlc_gl_filter_PRIV(filter) \
-    container_of(filter, struct vlc_gl_filter_priv, filter)
+void
+vlc_gl_filters_Init(struct vlc_gl_filters *filters);
 
-struct vlc_gl_filter *
-vlc_gl_filter_New(void);
+/* Return a weak reference to the renderer instance */
+struct vlc_gl_renderer *
+vlc_gl_filters_AppendRenderer(struct vlc_gl_filters *filters,
+                              struct vlc_gl_t *gl,
+                              const struct vlc_gl_api *api,
+                              struct vlc_gl_sampler *sampler);
+
+int
+vlc_gl_filters_Draw(struct vlc_gl_filters *filters);
 
 void
-vlc_gl_filter_Delete(struct vlc_gl_filter *filter);
+vlc_gl_filters_Destroy(struct vlc_gl_filters *filters);
 
 #endif

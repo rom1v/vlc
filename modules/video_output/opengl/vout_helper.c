@@ -33,6 +33,7 @@
 #include <math.h>
 
 #include <vlc_common.h>
+#include <vlc_list.h>
 #include <vlc_subpicture.h>
 #include <vlc_opengl.h>
 #include <vlc_modules.h>
@@ -40,6 +41,7 @@
 #include <vlc_viewpoint.h>
 
 #include "filter_priv.h"
+#include "filters.h"
 #include "gl_api.h"
 #include "gl_util.h"
 #include "vout_helper.h"
@@ -58,6 +60,8 @@ struct vout_display_opengl_t {
     struct vlc_gl_sampler *sampler;
     struct vlc_gl_filter *renderer_filter;
     struct vlc_gl_renderer *renderer; /* week-reference */
+
+    struct vlc_gl_filters filters;
 
     struct vlc_gl_interop *sub_interop;
     struct vlc_gl_sub_renderer *sub_renderer;
@@ -155,26 +159,14 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         goto error2;
     }
 
-    vgl->renderer_filter = vlc_gl_filter_New();
-    if (!vgl->renderer_filter)
-    {
-        msg_Err(gl, "Could not create renderer filter");
-        goto error3;
-    }
+    vlc_gl_filters_Init(&vgl->filters);
 
-    /* Weak reference, owned by the renderer_filter */
+    /* The renderer is the only filter, for now */
     struct vlc_gl_renderer *renderer = vgl->renderer =
-        vlc_gl_renderer_Open(gl, &vgl->api, vgl->renderer_filter, vgl->sampler);
-    if (!vgl->renderer)
-    {
-        /* Reset the close() callback in case the renderer Open() set it */
-        vgl->renderer_filter->ops = NULL;
-        msg_Warn(gl, "Could not create renderer for %4.4s",
-                 (const char *) &fmt->i_chroma);
-        goto error4;
-    }
-
-    GL_ASSERT_NOERROR();
+        vlc_gl_filters_AppendRenderer(&vgl->filters, gl, &vgl->api,
+                                      vgl->sampler);
+    if (!renderer)
+        goto error3;
 
     vgl->sub_interop = vlc_gl_interop_New(gl, &vgl->api, NULL, fmt, true);
     if (!vgl->sub_interop)
@@ -210,7 +202,7 @@ error6:
 error5:
     vlc_gl_interop_Delete(vgl->sub_interop);
 error4:
-    vlc_gl_filter_Delete(vgl->renderer_filter);
+    vlc_gl_filters_Destroy(&vgl->filters);
 error3:
     vlc_gl_sampler_Delete(vgl->sampler);
 error2:
@@ -234,6 +226,7 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vlc_gl_sub_renderer_Delete(vgl->sub_renderer);
     vlc_gl_interop_Delete(vgl->sub_interop);
 
+    vlc_gl_filters_Destroy(&vgl->filters);
     vlc_gl_sampler_Delete(vgl->sampler);
     vlc_gl_interop_Delete(vgl->interop);
 
@@ -282,9 +275,7 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl)
        OpenGL providers can call vout_display_opengl_Display to force redraw.
        Currently, the OS X provider uses it to get a smooth window resizing */
 
-    /* Retrieve the "super-class" (renderer "extends" filter) */
-    struct vlc_gl_filter *renderer_filter = vgl->renderer->filter;
-    int ret = renderer_filter->ops->draw(renderer_filter);
+    int ret = vlc_gl_filters_Draw(&vgl->filters);
     if (ret != VLC_SUCCESS)
         return ret;
 
