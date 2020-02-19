@@ -107,7 +107,7 @@ GetSampler(struct vlc_gl_filter *filter)
     if (!priv->sampler)
     {
         struct vlc_gl_interop *interop = filter->owner_data;
-        priv->sampler = vlc_gl_sampler_New(interop);
+        priv->sampler = vlc_gl_sampler_NewFromInterop(interop);
     }
 
     return priv->sampler;
@@ -279,7 +279,7 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
     struct vlc_gl_filter *renderer_filter = vgl->renderer->filter;
     struct vlc_gl_sampler *renderer_sampler =
         vlc_gl_filter_GetSampler(renderer_filter);
-    int ret = vlc_gl_sampler_Update(renderer_sampler, picture);
+    int ret = vlc_gl_sampler_UpdatePicture(renderer_sampler, picture);
     if (ret != VLC_SUCCESS)
         return ret;
 
