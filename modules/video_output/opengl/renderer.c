@@ -321,6 +321,7 @@ Draw(struct vlc_gl_filter *filter);
 
 struct vlc_gl_renderer *
 vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
+                    struct vlc_gl_filter *filter,
                     struct vlc_gl_sampler *sampler)
 {
     const opengl_vtable_t *vt = &api->vt;
@@ -330,13 +331,7 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
     if (!renderer)
         return NULL;
 
-    struct vlc_gl_filter *filter = vlc_gl_filter_New();
-    if (!filter)
-    {
-        free(renderer);
-        return NULL;
-    }
-
+    /* Fill the filter, "super-type" of this renderer */
     static const struct vlc_gl_filter_ops filter_ops = {
         .draw = Draw,
     };
