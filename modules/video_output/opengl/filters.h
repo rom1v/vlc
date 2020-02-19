@@ -23,10 +23,16 @@
 
 #include <vlc_common.h>
 #include <vlc_list.h>
+#include <vlc_opengl.h>
 
 #include "filter.h"
+#include "gl_api.h"
+#include "sampler.h"
 
 struct vlc_gl_filters {
+    struct vlc_gl_t *gl;
+    const struct vlc_gl_api *api;
+
     struct vlc_list list; /**< list of vlc_gl_filter.node */
 };
 
@@ -36,17 +42,21 @@ struct vlc_gl_filters {
  * \param filters the filters list
  */
 void
-vlc_gl_filters_Init(struct vlc_gl_filters *filters);
+vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
+                    const struct vlc_gl_api *api);
 
 /**
- * Append a filter to the filters list
+ * Create and append a renderer to the filter list
  *
- * \param filters the filters list
- * \param filter the filter to append
+ * The created renderer is owned by the filter list.
+ *
+ * \param filters the filter list
+ * \param sampler the OpenGL sampler to use from the filter
+ * \return a weak reference to the renderer (NULL on error)
  */
-void
-vlc_gl_filters_Append(struct vlc_gl_filters *filters,
-                      struct vlc_gl_filter *filter);
+struct vlc_gl_renderer *
+vlc_gl_filters_AppendRenderer(struct vlc_gl_filters *filters,
+                              struct vlc_gl_sampler *sampler);
 
 /**
  * Draw by executing all the filters
@@ -55,5 +65,13 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters,
  */
 int
 vlc_gl_filters_Draw(struct vlc_gl_filters *filters);
+
+/**
+ * Close all the filters and destroy the filter list
+ *
+ * \param filters the filter list
+ */
+void
+vlc_gl_filters_Destroy(struct vlc_gl_filters *filters);
 
 #endif
