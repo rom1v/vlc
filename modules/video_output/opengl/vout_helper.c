@@ -188,6 +188,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     if (!vgl->sub_interop)
     {
         msg_Err(gl, "Could not create sub interop");
+        vlc_gl_filters_Close(&vgl->filters);
         vlc_gl_renderer_Delete(vgl->renderer);
         vlc_gl_sampler_Delete(vgl->sampler);
         vlc_gl_interop_Delete(vgl->interop);
@@ -201,6 +202,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     {
         msg_Err(gl, "Could not create sub renderer");
         vlc_gl_interop_Delete(vgl->sub_interop);
+        vlc_gl_filters_Close(&vgl->filters);
         vlc_gl_renderer_Delete(vgl->renderer);
         vlc_gl_sampler_Delete(vgl->sampler);
         vlc_gl_interop_Delete(vgl->interop);
@@ -239,6 +241,7 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vlc_gl_sub_renderer_Delete(vgl->sub_renderer);
     vlc_gl_interop_Delete(vgl->sub_interop);
 
+    vlc_gl_filters_Close(&vgl->filters);
     vlc_gl_renderer_Delete(vgl->renderer);
     vlc_gl_sampler_Delete(vgl->sampler);
     vlc_gl_interop_Delete(vgl->interop);

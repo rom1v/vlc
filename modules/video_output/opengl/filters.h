@@ -40,4 +40,7 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters,
 int
 vlc_gl_filters_Draw(struct vlc_gl_filters *filters);
 
+void
+vlc_gl_filters_Close(struct vlc_gl_filters *filters);
+
 #endif

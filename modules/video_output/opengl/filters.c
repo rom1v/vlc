@@ -56,3 +56,17 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
 
     return VLC_SUCCESS;
 }
+
+void
+vlc_gl_filters_Close(struct vlc_gl_filters *filters)
+{
+    struct vlc_gl_filter_priv *priv;
+    vlc_list_foreach(priv, &filters->list, node)
+    {
+        struct vlc_gl_filter *filter = &priv->filter;
+        if (filter->ops && filter->ops->close)
+            filter->ops->close(filter);
+    }
+
+    return VLC_SUCCESS;
+}
