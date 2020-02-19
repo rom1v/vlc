@@ -57,7 +57,6 @@ struct vout_display_opengl_t {
     struct vlc_gl_api api;
 
     struct vlc_gl_interop *interop;
-    struct vlc_gl_sampler *sampler;
     struct vlc_gl_filter *renderer_filter;
     struct vlc_gl_renderer *renderer; /* week-reference */
 
@@ -99,6 +98,19 @@ ResizeFormatToGLMaxTexSize(video_format_t *fmt, unsigned int max_tex_size)
         fmt->i_visible_width = nw_vis_h * vis_w / vis_h;
         fmt->i_visible_height = nw_vis_h;
     }
+}
+
+static struct vlc_gl_sampler *
+GetSampler(struct vlc_gl_filter *filter)
+{
+    struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
+    if (!priv->sampler)
+    {
+        struct vlc_gl_interop *interop = filter->owner_data;
+        priv->sampler = vlc_gl_sampler_New(interop);
+    }
+
+    return priv->sampler;
 }
 
 vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
@@ -152,12 +164,11 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         goto error1;
     }
 
-    vgl->sampler = vlc_gl_sampler_New(vgl->interop);
-    if (!vgl->sampler)
-    {
-        msg_Err(gl, "Could not create sampler");
-        goto error2;
-    }
+    static const struct vlc_gl_filter_owner_ops owner_ops = {
+        .get_sampler = GetSampler,
+    };
+    /* For now, we only need the interop to create a sampler */
+    void *owner_data = vgl->interop;
 
     vlc_gl_filters_Init(&vgl->filters);
 
@@ -204,7 +215,7 @@ error5:
 error4:
     vlc_gl_filters_Destroy(&vgl->filters);
 error3:
-    vlc_gl_sampler_Delete(vgl->sampler);
+    vlc_gl_filter_Delete(vgl->renderer_filter);
 error2:
     vlc_gl_interop_Delete(vgl->interop);
 error1:
@@ -227,7 +238,6 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vlc_gl_interop_Delete(vgl->sub_interop);
 
     vlc_gl_filters_Destroy(&vgl->filters);
-    vlc_gl_sampler_Delete(vgl->sampler);
     vlc_gl_interop_Delete(vgl->interop);
 
     GL_ASSERT_NOERROR();
@@ -259,7 +269,10 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
 {
     GL_ASSERT_NOERROR();
 
-    int ret = vlc_gl_sampler_Update(vgl->sampler, picture);
+    struct vlc_gl_filter *renderer_filter = vgl->renderer->filter;
+    struct vlc_gl_sampler *renderer_sampler =
+        vlc_gl_filter_GetSampler(renderer_filter);
+    int ret = vlc_gl_sampler_Update(renderer_sampler, picture);
     if (ret != VLC_SUCCESS)
         return ret;
 

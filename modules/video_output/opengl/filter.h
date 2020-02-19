@@ -38,6 +38,11 @@ struct vlc_gl_filter_ops {
     void (*close)(struct vlc_gl_filter *filter);
 };
 
+struct vlc_gl_filter_owner_ops {
+    struct vlc_gl_sampler *
+    (*get_sampler)(struct vlc_gl_filter *filter);
+};
+
 /**
  * OpenGL filter public API, which is equivalent to a rendering pass.
  */
@@ -48,6 +53,15 @@ struct vlc_gl_filter {
 
     const struct vlc_gl_filter_ops *ops;
     void *sys;
+
+    const struct vlc_gl_filter_owner_ops *owner_ops;
+    void *owner_data;
 };
+
+static inline struct vlc_gl_sampler *
+vlc_gl_filter_GetSampler(struct vlc_gl_filter *filter)
+{
+    return filter->owner_ops->get_sampler(filter);
+}
 
 #endif

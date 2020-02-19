@@ -321,11 +321,9 @@ Draw(struct vlc_gl_filter *filter);
 
 struct vlc_gl_renderer *
 vlc_gl_renderer_Open(vlc_gl_t *gl, const struct vlc_gl_api *api,
-                     struct vlc_gl_filter *filter,
-                     struct vlc_gl_sampler *sampler)
+                     struct vlc_gl_filter *filter)
 {
     const opengl_vtable_t *vt = &api->vt;
-    const video_format_t *fmt = sampler->fmt;
 
     struct vlc_gl_renderer *renderer = calloc(1, sizeof(*renderer));
     if (!renderer)
@@ -340,6 +338,15 @@ vlc_gl_renderer_Open(vlc_gl_t *gl, const struct vlc_gl_api *api,
     filter->sys = renderer;
 
     renderer->filter = filter;
+
+    struct vlc_gl_sampler *sampler = vlc_gl_filter_GetSampler(filter);
+    if (!sampler)
+    {
+        vlc_gl_filter_Delete(filter);
+        free(renderer);
+        return NULL;
+    }
+
     renderer->sampler = sampler;
 
     renderer->gl = gl;
@@ -360,6 +367,8 @@ vlc_gl_renderer_Open(vlc_gl_t *gl, const struct vlc_gl_api *api,
         free(renderer);
         return NULL;
     }
+
+    const video_format_t *fmt = sampler->fmt;
 
     InitStereoMatrix(renderer->var.StereoMatrix, fmt->multiview_mode);
 

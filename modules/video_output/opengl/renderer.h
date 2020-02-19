@@ -111,8 +111,7 @@ struct vlc_gl_renderer
  */
 struct vlc_gl_renderer *
 vlc_gl_renderer_Open(vlc_gl_t *gl, const struct vlc_gl_api *api,
-                     struct vlc_gl_filter *filter,
-                     struct vlc_gl_sampler *sampler);
+                     struct vlc_gl_filter *filter);
 
 int
 vlc_gl_renderer_SetViewpoint(struct vlc_gl_renderer *renderer,
