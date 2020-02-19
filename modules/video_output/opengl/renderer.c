@@ -37,7 +37,7 @@
 #include <vlc_es.h>
 #include <vlc_picture.h>
 
-#include "filter_priv.h"
+#include "filter.h"
 #include "gl_util.h"
 #include "internal.h"
 #include "vout_helper.h"
@@ -300,12 +300,11 @@ error:
     return VLC_EGENERIC;
 }
 
-void
-vlc_gl_renderer_Delete(struct vlc_gl_renderer *renderer)
+static void
+Close(struct vlc_gl_filter *filter)
 {
+    struct vlc_gl_renderer *renderer = filter->sys;
     const opengl_vtable_t *vt = renderer->vt;
-
-    vlc_gl_filter_Delete(renderer->filter);
 
     vt->DeleteBuffers(1, &renderer->vertex_buffer_object);
     vt->DeleteBuffers(1, &renderer->index_buffer_object);
@@ -322,37 +321,32 @@ static int SetupCoords(struct vlc_gl_renderer *renderer);
 static int
 Draw(struct vlc_gl_filter *filter);
 
-struct vlc_gl_renderer *
-vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
-                    struct vlc_gl_sampler *sampler)
+int
+vlc_gl_renderer_Open(struct vlc_gl_filter *filter,
+                     const config_chain_t *config,
+                     struct vlc_gl_sampler *sampler)
 {
-    const opengl_vtable_t *vt = &api->vt;
+    (void) config;
+
+    const opengl_vtable_t *vt = &filter->api->vt;
     const video_format_t *fmt = sampler->fmt;
 
     struct vlc_gl_renderer *renderer = calloc(1, sizeof(*renderer));
     if (!renderer)
-        return NULL;
-
-    struct vlc_gl_filter *filter = vlc_gl_filter_New();
-    if (!filter)
-    {
-        free(renderer);
-        return NULL;
-    }
+        return VLC_EGENERIC;
 
     static const struct vlc_gl_filter_ops filter_ops = {
         .draw = Draw,
+        .close = Close,
     };
     filter->ops = &filter_ops;
     filter->sys = renderer;
 
-    renderer->filter = filter;
     renderer->sampler = sampler;
 
-    renderer->gl = gl;
-    renderer->api = api;
+    renderer->api = filter->api;
     renderer->vt = vt;
-    renderer->dump_shaders = var_InheritInteger(gl, "verbose") >= 4;
+    renderer->dump_shaders = var_InheritInteger(filter, "verbose") >= 4;
 #if defined(USE_OPENGL_ES2)
     renderer->glsl_version = 100;
     renderer->glsl_precision_header = "precision highp float;\n";
@@ -364,8 +358,8 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
     int ret = opengl_link_program(renderer);
     if (ret != VLC_SUCCESS)
     {
-        vlc_gl_renderer_Delete(renderer);
-        return NULL;
+        free(renderer);
+        return ret;
     }
 
     InitStereoMatrix(renderer->var.StereoMatrix, fmt->multiview_mode);
@@ -387,11 +381,11 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
     ret = SetupCoords(renderer);
     if (ret != VLC_SUCCESS)
     {
-        vlc_gl_renderer_Delete(renderer);
-        return NULL;
+        Close(filter);
+        return ret;
     }
 
-    return renderer;
+    return VLC_SUCCESS;
 }
 
 static void UpdateZ(struct vlc_gl_renderer *renderer)
