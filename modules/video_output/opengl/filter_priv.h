@@ -27,6 +27,7 @@
 
 struct vlc_gl_filter_priv {
     struct vlc_gl_filter filter;
+    struct vlc_gl_sampler *sampler;
 
     struct vlc_list node; /**< node of vlc_gl_filters.list */
 };
@@ -35,8 +36,10 @@ struct vlc_gl_filter_priv {
     container_of(filter, struct vlc_gl_filter_priv, filter)
 
 struct vlc_gl_filter *
-vlc_gl_filter_New(vlc_object_t *parent, const struct vlc_gl_api *api);
-#define vlc_gl_filter_New(o, a) vlc_gl_filter_New(VLC_OBJECT(o), a)
+vlc_gl_filter_New(vlc_object_t *parent, const struct vlc_gl_api *api,
+                  const struct vlc_gl_filter_owner_ops *owner_ops,
+                  void *owner_data);
+#define vlc_gl_filter_New(o, a, b, c) vlc_gl_filter_New(VLC_OBJECT(o), a, b, c)
 
 void
 vlc_gl_filter_Delete(struct vlc_gl_filter *filter);

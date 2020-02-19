@@ -110,7 +110,8 @@ struct vlc_gl_renderer
  */
 struct vlc_gl_renderer *
 vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
-                    struct vlc_gl_sampler *sampler);
+                    const struct vlc_gl_filter_owner_ops *owner_ops,
+                    void *owner);
 
 /**
  * Delete a renderer

@@ -40,6 +40,7 @@
 #include <vlc_vout.h>
 #include <vlc_viewpoint.h>
 
+#include "filter_priv.h"
 #include "filters.h"
 #include "gl_api.h"
 #include "gl_util.h"
@@ -56,7 +57,6 @@ struct vout_display_opengl_t {
     struct vlc_gl_api api;
 
     struct vlc_gl_interop *interop;
-    struct vlc_gl_sampler *sampler;
     struct vlc_gl_renderer *renderer;
 
     struct vlc_gl_filters filters;
@@ -97,6 +97,19 @@ ResizeFormatToGLMaxTexSize(video_format_t *fmt, unsigned int max_tex_size)
         fmt->i_visible_width = nw_vis_h * vis_w / vis_h;
         fmt->i_visible_height = nw_vis_h;
     }
+}
+
+static struct vlc_gl_sampler *
+GetSampler(struct vlc_gl_filter *filter)
+{
+    struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
+    if (!priv->sampler)
+    {
+        struct vlc_gl_interop *interop = filter->owner_data;
+        priv->sampler = vlc_gl_sampler_New(interop);
+    }
+
+    return priv->sampler;
 }
 
 vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
@@ -156,22 +169,18 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         return NULL;
     }
 
-    vgl->sampler = vlc_gl_sampler_New(vgl->interop);
-    if (!vgl->sampler)
-    {
-        msg_Err(gl, "Could not create sampler");
-        vlc_gl_interop_Delete(vgl->interop);
-        free(vgl);
-        return NULL;
-    }
+    static const struct vlc_gl_filter_owner_ops owner_ops = {
+        .get_sampler = GetSampler,
+    };
+    /* For now, we only need the interop to create a sampler */
+    void *owner_data = vgl->interop;
 
     struct vlc_gl_renderer *renderer = vgl->renderer =
-        vlc_gl_renderer_New(gl, &vgl->api, vgl->sampler);
+        vlc_gl_renderer_New(gl, &vgl->api, &owner_ops, owner_data);
     if (!vgl->renderer)
     {
         msg_Warn(gl, "Could not create renderer for %4.4s",
                  (const char *) &fmt->i_chroma);
-        vlc_gl_sampler_Delete(vgl->sampler);
         vlc_gl_interop_Delete(vgl->interop);
         free(vgl);
         return NULL;
@@ -190,7 +199,6 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         msg_Err(gl, "Could not create sub interop");
         vlc_gl_filters_Close(&vgl->filters);
         vlc_gl_renderer_Delete(vgl->renderer);
-        vlc_gl_sampler_Delete(vgl->sampler);
         vlc_gl_interop_Delete(vgl->interop);
         free(vgl);
         return NULL;
@@ -204,7 +212,6 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         vlc_gl_interop_Delete(vgl->sub_interop);
         vlc_gl_filters_Close(&vgl->filters);
         vlc_gl_renderer_Delete(vgl->renderer);
-        vlc_gl_sampler_Delete(vgl->sampler);
         vlc_gl_interop_Delete(vgl->interop);
         free(vgl);
         return NULL;
@@ -243,7 +250,6 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
 
     vlc_gl_filters_Close(&vgl->filters);
     vlc_gl_renderer_Delete(vgl->renderer);
-    vlc_gl_sampler_Delete(vgl->sampler);
     vlc_gl_interop_Delete(vgl->interop);
 
     GL_ASSERT_NOERROR();
@@ -275,7 +281,10 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
 {
     GL_ASSERT_NOERROR();
 
-    int ret = vlc_gl_sampler_Update(vgl->sampler, picture);
+    struct vlc_gl_filter *renderer_filter = vgl->renderer->filter;
+    struct vlc_gl_sampler *renderer_sampler =
+        vlc_gl_filter_GetSampler(renderer_filter);
+    int ret = vlc_gl_sampler_Update(renderer_sampler, picture);
     if (ret != VLC_SUCCESS)
         return ret;
 

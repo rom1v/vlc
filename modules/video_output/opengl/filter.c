@@ -23,22 +23,32 @@
 #endif
 
 #include "filter_priv.h"
+#include "sampler_priv.h"
 
 #undef vlc_gl_filter_New
 struct vlc_gl_filter *
-vlc_gl_filter_New(vlc_object_t *parent, const struct vlc_gl_api *api)
+vlc_gl_filter_New(vlc_object_t *parent, const struct vlc_gl_api *api,
+                  const struct vlc_gl_filter_owner_ops *owner_ops,
+                  void *owner_data)
 {
     struct vlc_gl_filter_priv *priv = vlc_object_create(parent, sizeof(*priv));
     if (!priv)
         return NULL;
 
+    priv->sampler = NULL;
+
     struct vlc_gl_filter *filter = &priv->filter;
     filter->api = api;
+    filter->owner_ops = owner_ops;
+    filter->owner_data = owner_data;
     return filter;
 }
 
 void
 vlc_gl_filter_Delete(struct vlc_gl_filter *filter)
 {
+    struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
+    if (priv->sampler)
+        vlc_gl_sampler_Delete(priv->sampler);
     vlc_object_delete(&filter->obj);
 }
