@@ -28,19 +28,40 @@
 #include <vlc_common.h>
 
 #include "filter_priv.h"
+#include "renderer.h"
 
 void
-vlc_gl_filters_Init(struct vlc_gl_filters *filters)
+vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
+                    const struct vlc_gl_api *api)
 {
+    filters->gl = gl;
+    filters->api = api;
     vlc_list_init(&filters->list);
 }
 
-void
-vlc_gl_filters_Append(struct vlc_gl_filters *filters,
-                      struct vlc_gl_filter *filter)
+struct vlc_gl_filter *
+vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
+                      const config_chain_t *config,
+                      struct vlc_gl_sampler *sampler)
 {
+    struct vlc_gl_filter *filter = vlc_gl_filter_New(filters->gl, filters->api);
+    if (!filter)
+        return NULL;
+
+    int ret =
+        vlc_gl_filter_LoadModule(filters->gl, name, filter, config, sampler);
+    if (ret != VLC_SUCCESS)
+    {
+        /* Creation failed, do not call close() */
+        filter->ops = NULL;
+        vlc_gl_filter_Delete(filter);
+        return NULL;
+    }
+
     struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
     vlc_list_append(&priv->node, &filters->list);
+
+    return filter;
 }
 
 int
@@ -56,4 +77,15 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
     }
 
     return VLC_SUCCESS;
+}
+
+void
+vlc_gl_filters_Destroy(struct vlc_gl_filters *filters)
+{
+    struct vlc_gl_filter_priv *priv;
+    vlc_list_foreach(priv, &filters->list, node)
+    {
+        struct vlc_gl_filter *filter = &priv->filter;
+        vlc_gl_filter_Delete(filter);
+    }
 }
