@@ -75,40 +75,26 @@ struct vlc_gl_sampler {
          */
         char *body;
     } shader;
-
-    /**
-     * Callback to fetch locations of uniform or attributes variables
-     *
-     * This function pointer cannot be NULL. This callback is called one time
-     * after init.
-     *
-     * \param sampler the sampler
-     * \param program linked program that will be used by this sampler
-     * \return VLC_SUCCESS or a VLC error
-     */
-    int (*pf_fetch_locations)(struct vlc_gl_sampler *sampler, GLuint program);
-
-    /**
-     * Callback to prepare the fragment shader
-     *
-     * This function pointer cannot be NULL. This callback can be used to
-     * specify values of uniform variables.
-     *
-     * \param sampler the sampler
-     */
-    void (*pf_prepare_shader)(const struct vlc_gl_sampler *sampler);
 };
 
-static inline int
-vlc_gl_sampler_FetchLocations(struct vlc_gl_sampler *sampler, GLuint program)
-{
-    return sampler->pf_fetch_locations(sampler, program);
-}
+/**
+ * Fetch locations of uniform or attributes variables
+ *
+ * \param sampler the sampler
+ * \param program linked program that will be used by this sampler
+ * \return VLC_SUCCESS or a VLC error
+ */
+int
+vlc_gl_sampler_FetchLocations(struct vlc_gl_sampler *sampler, GLuint program);
 
-static inline void
-vlc_gl_sampler_PrepareShader(const struct vlc_gl_sampler *sampler)
-{
-    sampler->pf_prepare_shader(sampler);
-}
+/**
+ * Prepare the fragment shader
+ *
+ * Typically, this specifies values of uniform variables.
+ *
+ * \param sampler the sampler
+ */
+void
+vlc_gl_sampler_PrepareShader(const struct vlc_gl_sampler *sampler);
 
 #endif

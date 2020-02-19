@@ -82,6 +82,28 @@ struct vlc_gl_sampler_priv {
     } last_source;
 
     struct vlc_gl_interop *interop;
+
+    /**
+     * Callback to fetch locations of uniform or attributes variables
+     *
+     * This function pointer cannot be NULL. This callback is called one time
+     * after init.
+     *
+     * \param sampler the sampler
+     * \param program linked program that will be used by this sampler
+     * \return VLC_SUCCESS or a VLC error
+     */
+    int (*pf_fetch_locations)(struct vlc_gl_sampler *sampler, GLuint program);
+
+    /**
+     * Callback to prepare the fragment shader
+     *
+     * This function pointer cannot be NULL. This callback can be used to
+     * specify values of uniform variables.
+     *
+     * \param sampler the sampler
+     */
+    void (*pf_prepare_shader)(const struct vlc_gl_sampler *sampler);
 };
 
 #define PRIV(sampler) container_of(sampler, struct vlc_gl_sampler_priv, sampler)
@@ -409,8 +431,10 @@ sampler_xyz12_prepare_shader(const struct vlc_gl_sampler *sampler)
 static int
 xyz12_shader_init(struct vlc_gl_sampler *sampler)
 {
-    sampler->pf_fetch_locations = sampler_xyz12_fetch_locations;
-    sampler->pf_prepare_shader = sampler_xyz12_prepare_shader;
+    struct vlc_gl_sampler_priv *priv = PRIV(sampler);
+
+    priv->pf_fetch_locations = sampler_xyz12_fetch_locations;
+    priv->pf_prepare_shader = sampler_xyz12_prepare_shader;
 
     /* Shader for XYZ to RGB correction
      * 3 steps :
@@ -802,8 +826,8 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
     }
     sampler->shader.body = ms.ptr;
 
-    sampler->pf_fetch_locations = sampler_base_fetch_locations;
-    sampler->pf_prepare_shader = sampler_base_prepare_shader;
+    priv->pf_fetch_locations = sampler_base_fetch_locations;
+    priv->pf_prepare_shader = sampler_base_prepare_shader;
 
     return VLC_SUCCESS;
 }
@@ -997,4 +1021,20 @@ vlc_gl_sampler_Update(struct vlc_gl_sampler *sampler, picture_t *picture)
     return interop->ops->update_textures(interop, priv->textures,
                                          priv->tex_width, priv->tex_height,
                                          picture, NULL);
+}
+
+int
+vlc_gl_sampler_FetchLocations(struct vlc_gl_sampler *sampler, GLuint program)
+{
+    struct vlc_gl_sampler_priv *priv = PRIV(sampler);
+
+    return priv->pf_fetch_locations(sampler, program);
+}
+
+void
+vlc_gl_sampler_PrepareShader(const struct vlc_gl_sampler *sampler)
+{
+    struct vlc_gl_sampler_priv *priv = PRIV(sampler);
+
+    priv->pf_prepare_shader(sampler);
 }
