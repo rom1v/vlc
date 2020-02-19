@@ -44,7 +44,8 @@ struct vlc_gl_sampler_priv {
     struct vlc_gl_sampler sampler;
 
     struct vlc_gl_t *gl;
-    const opengl_vtable_t *vt;
+    const struct vlc_gl_api *api;
+    const opengl_vtable_t *vt; /* for convenience, same as &api->vt */
 
     struct {
         GLfloat OrientationMatrix[4*4];
@@ -473,13 +474,13 @@ xyz12_shader_init(struct vlc_gl_sampler *sampler)
 }
 
 static int
-opengl_init_swizzle(const struct vlc_gl_interop *interop,
+opengl_init_swizzle(const struct vlc_gl_api *api,
                     const char *swizzle_per_tex[],
                     vlc_fourcc_t chroma,
                     const vlc_chroma_description_t *desc)
 {
     GLint oneplane_texfmt;
-    if (vlc_gl_StrHasToken(interop->api->extensions, "GL_ARB_texture_rg"))
+    if (vlc_gl_StrHasToken(api->extensions, "GL_ARB_texture_rg"))
         oneplane_texfmt = GL_RED;
     else
         oneplane_texfmt = GL_LUMINANCE;
@@ -604,8 +605,6 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
                             video_orientation_t orientation)
 {
     struct vlc_gl_sampler_priv *priv = PRIV(sampler);
-
-    struct vlc_gl_interop *interop = priv->interop;
     const opengl_vtable_t *vt = priv->vt;
 
     const char *swizzle_per_tex[PICTURE_PLANE_MAX] = { NULL, };
@@ -626,7 +625,7 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
         ret = sampler_yuv_base_init(sampler, chroma, desc, yuv_space);
         if (ret != VLC_SUCCESS)
             return ret;
-        ret = opengl_init_swizzle(interop, swizzle_per_tex, chroma, desc);
+        ret = opengl_init_swizzle(priv->api, swizzle_per_tex, chroma, desc);
         if (ret != VLC_SUCCESS)
             return ret;
     }
@@ -649,6 +648,8 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
         default:
             vlc_assert_unreachable();
     }
+
+    struct vlc_gl_interop *interop = priv->interop;
 
     struct vlc_memstream ms;
     if (vlc_memstream_open(&ms) != 0)
@@ -843,7 +844,8 @@ vlc_gl_sampler_New(struct vlc_gl_interop *interop)
 
     priv->interop = interop;
     priv->gl = interop->gl;
-    priv->vt = interop->vt;
+    priv->api = interop->api;
+    priv->vt = &priv->api->vt;
 
     sampler->fmt = &interop->fmt;
     sampler->sw_fmt = &interop->sw_fmt;
