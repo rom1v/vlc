@@ -41,6 +41,9 @@ vlc_gl_filter_New(void)
 void
 vlc_gl_filter_Delete(struct vlc_gl_filter *filter)
 {
+    if (filter->ops && filter->ops->close)
+        filter->ops->close(filter);
+
     struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
     free(priv);
 }

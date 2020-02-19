@@ -28,6 +28,11 @@ struct vlc_gl_filter_ops {
      * Draw the result of the filter to the current framebuffer
      */
     int (*draw)(struct vlc_gl_filter *filter);
+
+    /**
+     * Free filter resources
+     */
+    void (*close)(struct vlc_gl_filter *filter);
 };
 
 /**
