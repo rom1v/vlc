@@ -110,17 +110,9 @@ struct vlc_gl_renderer
  * \param sampler the OpenGL sampler
  */
 struct vlc_gl_renderer *
-vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
-                    struct vlc_gl_filter *filter,
-                    struct vlc_gl_sampler *sampler);
-
-/**
- * Delete a renderer
- *
- * \param renderer the renderer
- */
-void
-vlc_gl_renderer_Delete(struct vlc_gl_renderer *renderer);
+vlc_gl_renderer_Open(vlc_gl_t *gl, const struct vlc_gl_api *api,
+                     struct vlc_gl_filter *filter,
+                     struct vlc_gl_sampler *sampler);
 
 int
 vlc_gl_renderer_SetViewpoint(struct vlc_gl_renderer *renderer,

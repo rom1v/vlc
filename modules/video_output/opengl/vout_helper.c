@@ -57,7 +57,7 @@ struct vout_display_opengl_t {
     struct vlc_gl_interop *interop;
     struct vlc_gl_sampler *sampler;
     struct vlc_gl_filter *renderer_filter;
-    struct vlc_gl_renderer *renderer;
+    struct vlc_gl_renderer *renderer; /* week-reference */
 
     struct vlc_gl_interop *sub_interop;
     struct vlc_gl_sub_renderer *sub_renderer;
@@ -162,10 +162,13 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         goto error3;
     }
 
+    /* Weak reference, owned by the renderer_filter */
     struct vlc_gl_renderer *renderer = vgl->renderer =
-        vlc_gl_renderer_New(gl, &vgl->api, vgl->renderer_filter, vgl->sampler);
+        vlc_gl_renderer_Open(gl, &vgl->api, vgl->renderer_filter, vgl->sampler);
     if (!vgl->renderer)
     {
+        /* Reset the close() callback in case the renderer Open() set it */
+        vgl->renderer_filter->ops = NULL;
         msg_Warn(gl, "Could not create renderer for %4.4s",
                  (const char *) &fmt->i_chroma);
         goto error4;
@@ -177,7 +180,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     if (!vgl->sub_interop)
     {
         msg_Err(gl, "Could not create sub interop");
-        goto error5;
+        goto error4;
     }
 
     vgl->sub_renderer =
@@ -185,14 +188,14 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     if (!vgl->sub_renderer)
     {
         msg_Err(gl, "Could not create sub renderer");
-        goto error6;
+        goto error5;
     }
 
     GL_ASSERT_NOERROR();
 
     if (renderer->fmt.projection_mode != PROJECTION_MODE_RECTANGULAR
      && vout_display_opengl_SetViewpoint(vgl, viewpoint) != VLC_SUCCESS)
-        goto error7;
+        goto error6;
 
     *fmt = renderer->fmt;
     if (subpicture_chromas) {
@@ -202,12 +205,10 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     GL_ASSERT_NOERROR();
     return vgl;
 
-error7:
-    vlc_gl_sub_renderer_Delete(vgl->sub_renderer);
 error6:
-    vlc_gl_interop_Delete(vgl->sub_interop);
+    vlc_gl_sub_renderer_Delete(vgl->sub_renderer);
 error5:
-    vlc_gl_renderer_Delete(vgl->renderer);
+    vlc_gl_interop_Delete(vgl->sub_interop);
 error4:
     vlc_gl_filter_Delete(vgl->renderer_filter);
 error3:
@@ -233,7 +234,6 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vlc_gl_sub_renderer_Delete(vgl->sub_renderer);
     vlc_gl_interop_Delete(vgl->sub_interop);
 
-    vlc_gl_renderer_Delete(vgl->renderer);
     vlc_gl_sampler_Delete(vgl->sampler);
     vlc_gl_interop_Delete(vgl->interop);
 

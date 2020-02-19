@@ -297,12 +297,12 @@ error:
     return VLC_EGENERIC;
 }
 
-void
-vlc_gl_renderer_Delete(struct vlc_gl_renderer *renderer)
+static void
+Close(struct vlc_gl_filter *filter)
 {
-    const opengl_vtable_t *vt = renderer->vt;
+    struct vlc_gl_renderer *renderer = filter->sys;
 
-    vlc_gl_filter_Delete(renderer->filter);
+    const opengl_vtable_t *vt = renderer->vt;
 
     vt->DeleteBuffers(1, &renderer->vertex_buffer_object);
     vt->DeleteBuffers(1, &renderer->index_buffer_object);
@@ -320,9 +320,9 @@ static int
 Draw(struct vlc_gl_filter *filter);
 
 struct vlc_gl_renderer *
-vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
-                    struct vlc_gl_filter *filter,
-                    struct vlc_gl_sampler *sampler)
+vlc_gl_renderer_Open(vlc_gl_t *gl, const struct vlc_gl_api *api,
+                     struct vlc_gl_filter *filter,
+                     struct vlc_gl_sampler *sampler)
 {
     const opengl_vtable_t *vt = &api->vt;
     const video_format_t *fmt = sampler->fmt;
@@ -334,6 +334,7 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
     /* Fill the filter, "super-type" of this renderer */
     static const struct vlc_gl_filter_ops filter_ops = {
         .draw = Draw,
+        .close = Close,
     };
     filter->ops = &filter_ops;
     filter->sys = renderer;
@@ -356,7 +357,7 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
     int ret = opengl_link_program(renderer);
     if (ret != VLC_SUCCESS)
     {
-        vlc_gl_renderer_Delete(renderer);
+        free(renderer);
         return NULL;
     }
 
@@ -384,7 +385,7 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
     ret = SetupCoords(renderer);
     if (ret != VLC_SUCCESS)
     {
-        vlc_gl_renderer_Delete(renderer);
+        Close(filter);
         return NULL;
     }
 
