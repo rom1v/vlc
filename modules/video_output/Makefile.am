@@ -114,8 +114,16 @@ libglinterop_vdpau_plugin_la_SOURCES = video_output/opengl/interop_vdpau.c \
 libglinterop_vdpau_plugin_la_CFLAGS = $(AM_CFLAGS) $(VDPAU_CFLAGS)
 libglinterop_vdpau_plugin_la_LIBADD = $(LIBDL) libvlc_vdpau.la $(X_LIBS) $(X_PRE_LIBS) -lX11
 
+libglfilter_triangle_plugin_la_SOURCES = video_output/opengl/filters/triangle.c \
+										 $(OPENGL_COMMONSOURCES)
+libglfilter_triangle_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libglfilter_triangle_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
+
 if HAVE_GL
-vout_LTLIBRARIES += libgl_plugin.la
+vout_LTLIBRARIES += \
+	libgl_plugin.la \
+	libglfilter_triangle_plugin.la
+
 if HAVE_EGL
 if HAVE_VAAPI
 vout_LTLIBRARIES += libglinterop_vaapi_plugin.la
