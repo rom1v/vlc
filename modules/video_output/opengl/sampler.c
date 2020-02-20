@@ -81,7 +81,16 @@ struct vlc_gl_sampler_priv {
         unsigned int i_visible_height;
     } last_source;
 
+    /* A sampler supports 2 kinds of input.
+     *  - created with _NewFromInterop(), it receives input pictures from VLC
+     *    (picture_t) via _UpdatePicture();
+     *  - created with _NewDirect() (interop is NULL), it receives directly
+     *    OpenGL textures via _UpdateTexture().
+     */
     struct vlc_gl_interop *interop;
+
+    /* Only used for "direct" sampler (when interop == NULL) */
+    video_format_t direct_fmt;
 };
 
 #define PRIV(sampler) container_of(sampler, struct vlc_gl_sampler_priv, sampler)
@@ -890,7 +899,7 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
 }
 
 struct vlc_gl_sampler *
-vlc_gl_sampler_New(struct vlc_gl_interop *interop)
+vlc_gl_sampler_NewFromInterop(struct vlc_gl_interop *interop)
 {
     struct vlc_gl_sampler_priv *priv = calloc(1, sizeof(*priv));
     if (!priv)
@@ -963,16 +972,88 @@ vlc_gl_sampler_New(struct vlc_gl_interop *interop)
     return sampler;
 }
 
+
+static int
+sampler_direct_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
+{
+    struct vlc_gl_sampler_priv *priv = PRIV(sampler);
+    const opengl_vtable_t *vt = priv->vt;
+
+    priv->uloc.Texture[0] =
+        vt->GetUniformLocation(program, "vlc_input_texture");
+    if (priv->uloc.Texture[0] == -1)
+        return VLC_EGENERIC;
+
+    return VLC_SUCCESS;
+}
+
+static void
+sampler_direct_prepare_shader(const struct vlc_gl_sampler *sampler)
+{
+    struct vlc_gl_sampler_priv *priv = PRIV(sampler);
+    const opengl_vtable_t *vt = priv->vt;
+
+    GLuint texture = priv->textures[0];
+
+    vt->ActiveTexture(GL_TEXTURE0);
+    vt->BindTexture(GL_TEXTURE_2D, texture);
+    vt->Uniform1i(priv->uloc.Texture[0], 0);
+}
+
+struct vlc_gl_sampler *
+vlc_gl_sampler_NewDirect(struct vlc_gl_t *gl, const struct vlc_gl_api *api,
+                         const video_format_t *fmt)
+{
+    struct vlc_gl_sampler_priv *priv = calloc(1, sizeof(*priv));
+    if (!priv)
+        return NULL;
+
+    struct vlc_gl_sampler *sampler = &priv->sampler;
+
+    priv->interop = NULL;
+    priv->gl = gl;
+    priv->vt = &api->vt;
+
+    priv->direct_fmt = *fmt;
+    /* this is the only allocated field, and we don't need it */
+    priv->direct_fmt.p_palette = NULL;
+
+    sampler->fmt = &priv->direct_fmt;
+    sampler->sw_fmt = &priv->direct_fmt;
+
+    static const char *const SHADER_BODY =
+        "uniform sampler2D vlc_input_texture;\n"
+        "vec4 vlc_texture(vec2 pic_coords) {\n"
+        "  return texture2D(vlc_input_texture, pic_coords);\n"
+        "}\n";
+
+    sampler->shader.body = strdup(SHADER_BODY);
+    if (!sampler->shader.body)
+    {
+        free(priv);
+        return NULL;
+    }
+
+    /* No extension required */
+    sampler->shader.extensions = NULL;
+
+    sampler->pf_fetch_locations = sampler_direct_fetch_locations;
+    sampler->pf_prepare_shader = sampler_direct_prepare_shader;
+
+    return sampler;
+}
+
 void
 vlc_gl_sampler_Delete(struct vlc_gl_sampler *sampler)
 {
     struct vlc_gl_sampler_priv *priv = PRIV(sampler);
 
     struct vlc_gl_interop *interop = priv->interop;
-    const opengl_vtable_t *vt = interop->vt;
-
-    if (!interop->handle_texs_gen)
+    if (interop && !interop->handle_texs_gen)
+    {
+        const opengl_vtable_t *vt = interop->vt;
         vt->DeleteTextures(interop->tex_count, priv->textures);
+    }
 
 #ifdef HAVE_LIBPLACEBO
     FREENULL(priv->uloc.pl_vars);
@@ -987,11 +1068,13 @@ vlc_gl_sampler_Delete(struct vlc_gl_sampler *sampler)
 }
 
 int
-vlc_gl_sampler_Update(struct vlc_gl_sampler *sampler, picture_t *picture)
+vlc_gl_sampler_UpdatePicture(struct vlc_gl_sampler *sampler, picture_t *picture)
 {
     struct vlc_gl_sampler_priv *priv = PRIV(sampler);
 
     const struct vlc_gl_interop *interop = priv->interop;
+    assert(interop);
+
     const video_format_t *source = &picture->format;
 
     if (source->i_x_offset != priv->last_source.i_x_offset
@@ -1079,4 +1162,18 @@ vlc_gl_sampler_Update(struct vlc_gl_sampler *sampler, picture_t *picture)
     return interop->ops->update_textures(interop, priv->textures,
                                          priv->tex_width, priv->tex_height,
                                          picture, NULL);
+}
+
+int
+vlc_gl_sampler_UpdateTexture(struct vlc_gl_sampler *sampler, GLuint texture,
+                             GLsizei tex_width, GLsizei tex_height)
+{
+    struct vlc_gl_sampler_priv *priv = PRIV(sampler);
+    assert(!priv->interop);
+
+    priv->textures[0] = texture;
+    priv->tex_width[0] = tex_width;
+    priv->tex_height[0] = tex_height;
+
+    return VLC_SUCCESS;
 }
