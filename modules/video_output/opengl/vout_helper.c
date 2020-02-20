@@ -170,6 +170,11 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         goto error3;
     }
 
+    struct vlc_gl_filter *filter =
+        vlc_gl_filters_AppendModule(&vgl->filters, "triangle", NULL, NULL);
+    if (!filter)
+        fprintf(stderr, "OOPS NO FILTER\n");
+
     vgl->sub_interop = vlc_gl_interop_New(gl, api, NULL, fmt, true);
     if (!vgl->sub_interop)
     {
