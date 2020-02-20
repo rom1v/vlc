@@ -111,7 +111,8 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     if (ret != VLC_SUCCESS)
         goto error1;
 
-    const opengl_vtable_t *vt = &vgl->api.vt;
+    const struct vlc_gl_api *api = &vgl->api;
+    const opengl_vtable_t *vt = &api->vt;
 
     const char *extensions = (const char *) vt->GetString(GL_EXTENSIONS);
     assert(extensions);
@@ -139,7 +140,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         (GLint)fmt->i_height > max_tex_size)
         ResizeFormatToGLMaxTexSize(fmt, max_tex_size);
 
-    vgl->interop = vlc_gl_interop_New(gl, &vgl->api, context, fmt, false);
+    vgl->interop = vlc_gl_interop_New(gl, api, context, fmt, false);
     if (!vgl->interop)
     {
         msg_Err(gl, "Could not create interop");
@@ -154,7 +155,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
 
     struct vlc_gl_renderer *renderer = vgl->renderer =
-        vlc_gl_renderer_New(gl, &vgl->api, vgl->sampler);
+        vlc_gl_renderer_New(gl, api, vgl->sampler);
     if (!vgl->renderer)
     {
         msg_Warn(gl, "Could not create renderer for %4.4s",
@@ -164,7 +165,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
 
     GL_ASSERT_NOERROR();
 
-    vgl->sub_interop = vlc_gl_interop_New(gl, &vgl->api, NULL, fmt, true);
+    vgl->sub_interop = vlc_gl_interop_New(gl, api, NULL, fmt, true);
     if (!vgl->sub_interop)
     {
         msg_Err(gl, "Could not create sub interop");
@@ -172,7 +173,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     }
 
     vgl->sub_renderer =
-        vlc_gl_sub_renderer_New(gl, &vgl->api, vgl->sub_interop);
+        vlc_gl_sub_renderer_New(gl, api, vgl->sub_interop);
     if (!vgl->sub_renderer)
     {
         msg_Err(gl, "Could not create sub renderer");
