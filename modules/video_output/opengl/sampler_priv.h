@@ -23,6 +23,7 @@
 
 #include <vlc_common.h>
 
+#include "gl_api.h"
 #include "sampler.h"
 
 struct vlc_gl_interop;
@@ -33,7 +34,11 @@ struct vlc_gl_interop;
  * \param interop the interop
  */
 struct vlc_gl_sampler *
-vlc_gl_sampler_New(struct vlc_gl_interop *interop);
+vlc_gl_sampler_NewFromInterop(struct vlc_gl_interop *interop);
+
+struct vlc_gl_sampler *
+vlc_gl_sampler_NewDirect(struct vlc_gl_t *gl, const struct vlc_gl_api *api,
+                         const video_format_t *fmt);
 
 /**
  * Delete a sampler
@@ -48,10 +53,27 @@ vlc_gl_sampler_Delete(struct vlc_gl_sampler *sampler);
  *
  * This changes the current input picture, available from the fragment shader.
  *
+ * Warning: only call on sampler created by vlc_gl_sampler_NewFromInterop().
+ *
  * \param sampler the sampler
  * \param picture the new current picture
  */
 int
-vlc_gl_sampler_Update(struct vlc_gl_sampler *sampler, picture_t *picture);
+vlc_gl_sampler_UpdatePicture(struct vlc_gl_sampler *sampler,
+                             picture_t *picture);
+
+/**
+ * Update the input texture
+ *
+ * Warning: only call on sampler created by vlc_gl_sampler_NewDirect().
+ *
+ * \param sampler the sampler
+ * \param texture the new current texture
+ * \param tex_width the texture width
+ * \param tex_height the texture height
+ */
+int
+vlc_gl_sampler_UpdateTexture(struct vlc_gl_sampler *sampler, GLuint texture,
+                             GLsizei tex_width, GLsizei tex_height);
 
 #endif
