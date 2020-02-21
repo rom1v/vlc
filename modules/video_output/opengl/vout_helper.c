@@ -56,7 +56,6 @@ struct vout_display_opengl_t {
     struct vlc_gl_api api;
 
     struct vlc_gl_interop *interop;
-    struct vlc_gl_sampler *sampler;
     struct vlc_gl_renderer *renderer; /**< weak reference */
 
     struct vlc_gl_filters filters;
@@ -151,23 +150,16 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         goto error1;
     }
 
-    vgl->sampler = vlc_gl_sampler_NewFromInterop(vgl->interop);
-    if (!vgl->sampler)
-    {
-        msg_Err(gl, "Could not create sampler");
-        goto error2;
-    }
-
-    vlc_gl_filters_Init(&vgl->filters, gl, api);
+    vlc_gl_filters_Init(&vgl->filters, gl, api, vgl->interop);
 
     /* The renderer is the only filter, for now */
     struct vlc_gl_filter *renderer_filter =
-        vlc_gl_filters_Append(&vgl->filters, "renderer", NULL, vgl->sampler);
+        vlc_gl_filters_Append(&vgl->filters, "renderer", NULL);
     if (!renderer_filter)
     {
         msg_Warn(gl, "Could not create renderer for %4.4s",
                  (const char *) &fmt->i_chroma);
-        goto error3;
+        goto error2;
     }
 
     /* The renderer is a special filter: we need its concrete instance to
@@ -178,7 +170,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     if (!vgl->sub_interop)
     {
         msg_Err(gl, "Could not create sub interop");
-        goto error4;
+        goto error3;
     }
 
     vgl->sub_renderer =
@@ -186,14 +178,14 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     if (!vgl->sub_renderer)
     {
         msg_Err(gl, "Could not create sub renderer");
-        goto error5;
+        goto error4;
     }
 
     GL_ASSERT_NOERROR(vt);
 
     if (fmt->projection_mode != PROJECTION_MODE_RECTANGULAR
      && vout_display_opengl_SetViewpoint(vgl, viewpoint) != VLC_SUCCESS)
-        goto error6;
+        goto error5;
 
     if (subpicture_chromas) {
         *subpicture_chromas = gl_subpicture_chromas;
@@ -202,14 +194,12 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     GL_ASSERT_NOERROR(vt);
     return vgl;
 
-error6:
-    vlc_gl_sub_renderer_Delete(vgl->sub_renderer);
 error5:
-    vlc_gl_interop_Delete(vgl->sub_interop);
+    vlc_gl_sub_renderer_Delete(vgl->sub_renderer);
 error4:
-    vlc_gl_filters_Destroy(&vgl->filters);
+    vlc_gl_interop_Delete(vgl->sub_interop);
 error3:
-    vlc_gl_sampler_Delete(vgl->sampler);
+    vlc_gl_filters_Destroy(&vgl->filters);
 error2:
     vlc_gl_interop_Delete(vgl->interop);
 error1:
@@ -232,7 +222,6 @@ void vout_display_opengl_Delete(vout_display_opengl_t *vgl)
     vlc_gl_interop_Delete(vgl->sub_interop);
 
     vlc_gl_filters_Destroy(&vgl->filters);
-    vlc_gl_sampler_Delete(vgl->sampler);
     vlc_gl_interop_Delete(vgl->interop);
 
     GL_ASSERT_NOERROR(vt);
@@ -264,7 +253,7 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
 {
     GL_ASSERT_NOERROR(&vgl->api.vt);
 
-    int ret = vlc_gl_sampler_UpdatePicture(vgl->sampler, picture);
+    int ret = vlc_gl_filters_UpdatePicture(&vgl->filters, picture);
     if (ret != VLC_SUCCESS)
         return ret;
 
