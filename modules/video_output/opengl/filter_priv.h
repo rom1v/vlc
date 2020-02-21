@@ -31,6 +31,9 @@ struct vlc_gl_filter_priv {
     struct vlc_gl_filter filter;
     struct vlc_gl_sampler *sampler; /* owned */
 
+    GLuint framebuffer_in; /* weak ref to the output of the previous filter */
+    GLuint framebuffer_out; /* owned (this filter must delete it) */
+
     struct vlc_list node; /**< node of vlc_gl_filters.list */
 };
 

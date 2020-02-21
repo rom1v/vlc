@@ -51,8 +51,10 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
 
     struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
 
-    bool first_filter = vlc_list_is_empty(&filters->list);
-    if (first_filter)
+    struct vlc_gl_filter_priv *prev_filter =
+        vlc_list_last_entry_or_null(&filters->list, struct vlc_gl_filter_priv,
+                                    node);
+    if (!prev_filter)
         priv->sampler = vlc_gl_sampler_NewFromInterop(filters->interop);
     else
     {
@@ -75,6 +77,18 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
         vlc_gl_sampler_Delete(priv->sampler);
         vlc_gl_filter_Delete(filter);
         return NULL;
+    }
+
+    if (prev_filter)
+    {
+        /* It was the last filter before we append this one */
+        assert(!prev_filter->framebuffer_out);
+
+        const opengl_vtable_t *vt = &filters->api->vt;
+        /* Every non-last filter needs its own framebuffer */
+        vt->GenFramebuffers(1, &prev_filter->framebuffer_out);
+
+        priv->framebuffer_in = prev_filter->framebuffer_out;
     }
 
     vlc_list_append(&priv->node, &filters->list);
@@ -100,9 +114,14 @@ vlc_gl_filters_UpdatePicture(struct vlc_gl_filters *filters,
 int
 vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
 {
+    const opengl_vtable_t *vt = &filters->api->vt;
+
     struct vlc_gl_filter_priv *priv;
     vlc_list_foreach(priv, &filters->list, node)
     {
+        vt->BindFramebuffer(GL_READ_FRAMEBUFFER, priv->framebuffer_in);
+        vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, priv->framebuffer_out);
+
         struct vlc_gl_filter *filter = &priv->filter;
         int ret = filter->ops->draw(filter);
         if (ret != VLC_SUCCESS)
