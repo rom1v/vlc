@@ -33,6 +33,12 @@ struct vlc_gl_filters {
     struct vlc_gl_t *gl;
     const struct vlc_gl_api *api;
 
+    /**
+     * Interop to use for the sampler of the first filter of the chain,
+     * the one which uses the picture_t as input.
+     */
+    struct vlc_gl_interop *interop;
+
     struct vlc_list list; /**< list of vlc_gl_filter.node */
 };
 
@@ -42,10 +48,12 @@ struct vlc_gl_filters {
  * \param filters the filters list
  * \param gl the OpenGL context
  * \param api the OpenGL api
+ * \param interop the interop to use for the sampler of the first filter
  */
 void
 vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
-                    const struct vlc_gl_api *api);
+                    const struct vlc_gl_api *api,
+                    struct vlc_gl_interop *interop);
 
 /**
  * Create and append a filter loaded from a module to the filters list
@@ -55,13 +63,21 @@ vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
  * \param filters the filters list
  * \param name the module name
  * \param config the module configuration
- * \param sampler the OpenGL sampler to use from the filter
  * \return a weak reference to the filter (NULL on error)
  */
 struct vlc_gl_filter *
 vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
-                      const config_chain_t *config,
-                      struct vlc_gl_sampler *sampler);
+                      const config_chain_t *config);
+
+/**
+ * Update the input picture to pass to the first filter
+ *
+ * \param filters the filters list
+ * \param picture the new input picture
+ */
+int
+vlc_gl_filters_UpdatePicture(struct vlc_gl_filters *filters,
+                             picture_t *picture);
 
 /**
  * Draw by executing all the filters
