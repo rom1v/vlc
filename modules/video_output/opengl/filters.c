@@ -28,37 +28,73 @@
 
 #include "filter_priv.h"
 #include "renderer.h"
+#include "sampler_priv.h"
 
 void
 vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
-                    const struct vlc_gl_api *api)
+                    const struct vlc_gl_api *api,
+                    struct vlc_gl_interop *interop)
 {
     filters->gl = gl;
     filters->api = api;
+    filters->interop = interop;
     vlc_list_init(&filters->list);
 }
 
 struct vlc_gl_filter *
 vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
-                      const config_chain_t *config,
-                      struct vlc_gl_sampler *sampler)
+                      const config_chain_t *config)
 {
     struct vlc_gl_filter *filter = vlc_gl_filter_New(filters->gl, filters->api);
     if (!filter)
         return NULL;
 
-    int ret =
-        vlc_gl_filter_LoadModule(filters->gl, name, filter, config, sampler);
-    if (ret != VLC_SUCCESS)
+    struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
+
+    bool first_filter = vlc_list_is_empty(&filters->list);
+    if (first_filter)
+        priv->sampler = vlc_gl_sampler_NewFromInterop(filters->interop);
+    else
+    {
+        // XXX the format is used only for the width/height
+        const video_format_t *fmt = &filters->interop->fmt;
+        priv->sampler =
+            vlc_gl_sampler_NewDirect(filters->gl, filters->api, fmt);
+    }
+
+    if (!priv->sampler)
     {
         vlc_gl_filter_Delete(filter);
         return NULL;
     }
 
-    struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
+    int ret = vlc_gl_filter_LoadModule(filters->gl, name, filter, config,
+                                       priv->sampler);
+    if (ret != VLC_SUCCESS)
+    {
+        vlc_gl_sampler_Delete(priv->sampler);
+        vlc_gl_filter_Delete(filter);
+        return NULL;
+    }
+
     vlc_list_append(&priv->node, &filters->list);
 
     return filter;
+}
+
+int
+vlc_gl_filters_UpdatePicture(struct vlc_gl_filters *filters,
+                             picture_t *picture)
+{
+    assert(!vlc_list_is_empty(&filters->list));
+
+    struct vlc_gl_filter_priv *first_filter =
+        vlc_list_first_entry_or_null(&filters->list, struct vlc_gl_filter_priv,
+                                     node);
+
+    assert(first_filter);
+
+    return vlc_gl_sampler_UpdatePicture(first_filter->sampler, picture);
 }
 
 int
