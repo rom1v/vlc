@@ -121,10 +121,16 @@ libglfilter_triangle_plugin_la_SOURCES = video_output/opengl/filters/triangle.c 
 libglfilter_triangle_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
 libglfilter_triangle_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
 
+libglfilter_triangle_mask_plugin_la_SOURCES = video_output/opengl/filters/triangle_mask.c \
+										 $(OPENGL_COMMONSOURCES)
+libglfilter_triangle_mask_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCFLAGS)
+libglfilter_triangle_mask_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS)
+
 if HAVE_GL
 vout_LTLIBRARIES += \
 	libgl_plugin.la \
-	libglfilter_triangle_plugin.la
+	libglfilter_triangle_plugin.la \
+	libglfilter_triangle_mask_plugin.la
 
 if HAVE_EGL
 if HAVE_VAAPI
