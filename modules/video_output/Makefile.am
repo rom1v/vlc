@@ -43,7 +43,8 @@ OPENGL_COMMONCFLAGS = $(LIBPLACEBO_CFLAGS)
 OPENGL_COMMONLIBS = $(LIBPLACEBO_LIBS)
 
 OPENGL_FILTERS = \
-    libglfilter_triangle_plugin.la
+    libglfilter_triangle_plugin.la \
+    libglfilter_triangle_mask_plugin.la
 
 OPENGL_FILTERS_CFLAGS =
 if HAVE_ANDROID
@@ -152,6 +153,11 @@ libglfilter_triangle_plugin_la_SOURCES = $(OPENGL_FILTER_API) \
     video_output/opengl/filters/triangle.c
 libglfilter_triangle_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_FILTERS_CFLAGS)
 libglfilter_triangle_plugin_la_LIBADD = $(LIBM)
+
+libglfilter_triangle_mask_plugin_la_SOURCES = $(OPENGL_FILTER_API) \
+    video_output/opengl/filters/triangle_mask.c
+libglfilter_triangle_mask_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_FILTERS_CFLAGS)
+libglfilter_triangle_mask_plugin_la_LIBADD = $(LIBM)
 
 if HAVE_GL
 vout_LTLIBRARIES += libgl_plugin.la $(OPENGL_FILTERS)
