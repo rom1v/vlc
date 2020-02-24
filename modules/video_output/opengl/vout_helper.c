@@ -152,7 +152,11 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
 
     vlc_gl_filters_Init(&vgl->filters, gl, api, vgl->interop);
 
-    /* The renderer is the only filter, for now */
+    struct vlc_gl_filter *filter =
+        vlc_gl_filters_Append(&vgl->filters, "triangle_mask", NULL);
+    if (!filter)
+        fprintf(stderr, "OOPS NO FILTER\n");
+
     struct vlc_gl_filter *renderer_filter =
         vlc_gl_filters_Append(&vgl->filters, "renderer", NULL);
     if (!renderer_filter)
@@ -165,11 +169,6 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     /* The renderer is a special filter: we need its concrete instance to
      * forward SetViewpoint() */
     struct vlc_gl_renderer *renderer = vgl->renderer = renderer_filter->sys;
-
-    struct vlc_gl_filter *filter =
-        vlc_gl_filters_Append(&vgl->filters, "triangle", NULL);
-    if (!filter)
-        fprintf(stderr, "OOPS NO FILTER\n");
 
     vgl->sub_interop = vlc_gl_interop_New(gl, api, NULL, fmt, true);
     if (!vgl->sub_interop)
