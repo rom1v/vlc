@@ -321,9 +321,13 @@ Draw(struct vlc_gl_filter *filter);
 int
 vlc_gl_renderer_Open(struct vlc_gl_filter *filter,
                      const config_chain_t *config,
+                     const struct vlc_gl_tex_size *size_in,
+                     struct vlc_gl_tex_size *size_out,
                      struct vlc_gl_sampler *sampler)
 {
     (void) config;
+    (void) size_in;
+    (void) size_out;
 
     const opengl_vtable_t *vt = &filter->api->vt;
     const video_format_t *fmt = sampler->fmt;
