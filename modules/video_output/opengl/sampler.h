@@ -82,9 +82,8 @@ struct vlc_gl_sampler {
  *
  * \param sampler the sampler
  * \param program linked program that will be used by this sampler
- * \return VLC_SUCCESS or a VLC error
  */
-int
+void
 vlc_gl_sampler_FetchLocations(struct vlc_gl_sampler *sampler, GLuint program);
 
 /**
