@@ -417,14 +417,12 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const opengl_vtable_t *vt,
         return NULL;
     }
 
+    /* The interop may have changed the orientation info in its fmt */
     getOrientationTransformMatrix(interop->fmt.orientation,
                                   renderer->var.OrientationMatrix);
     getViewpointMatrixes(renderer, interop->fmt.projection_mode);
 
-    /* Update the fmt to main program one */
-    renderer->fmt = interop->fmt;
-    /* The orientation is handled by the orientation matrix */
-    renderer->fmt.orientation = fmt->orientation;
+    renderer->fmt = *fmt;
 
     /* Texture size */
     for (unsigned j = 0; j < interop->tex_count; j++) {

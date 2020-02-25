@@ -272,7 +272,6 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         return NULL;
     }
 
-    *fmt = renderer->fmt;
     if (subpicture_chromas) {
         *subpicture_chromas = gl_subpicture_chromas;
     }
