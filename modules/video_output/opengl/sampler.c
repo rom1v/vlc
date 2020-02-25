@@ -100,9 +100,8 @@ struct vlc_gl_sampler_priv {
      *
      * \param sampler the sampler
      * \param program linked program that will be used by this sampler
-     * \return VLC_SUCCESS or a VLC error
      */
-    int (*pf_fetch_locations)(struct vlc_gl_sampler *sampler, GLuint program);
+    void (*pf_fetch_locations)(struct vlc_gl_sampler *sampler, GLuint program);
 
     /**
      * Callback to prepare the fragment shader
@@ -283,7 +282,7 @@ sampler_yuv_base_init(struct vlc_gl_sampler *sampler, vlc_fourcc_t chroma,
     return VLC_SUCCESS;
 }
 
-static int
+static void
 sampler_base_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
 {
     struct vlc_gl_sampler_priv *priv = PRIV(sampler);
@@ -295,19 +294,16 @@ sampler_base_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
     {
         priv->uloc.ConvMatrix = vt->GetUniformLocation(program,
                                                           "ConvMatrix");
-        if (priv->uloc.ConvMatrix == -1)
-            return VLC_EGENERIC;
+        assert(priv->uloc.ConvMatrix != -1);
     }
 
     priv->uloc.TransformMatrix =
         vt->GetUniformLocation(program, "TransformMatrix");
-    if (priv->uloc.TransformMatrix == -1)
-        return VLC_EGENERIC;
+    assert(priv->uloc.TransformMatrix != -1);
 
     priv->uloc.OrientationMatrix =
         vt->GetUniformLocation(program, "OrientationMatrix");
-    if (priv->uloc.OrientationMatrix == -1)
-        return VLC_EGENERIC;
+    assert(priv->uloc.OrientationMatrix != -1);
 
     for (unsigned int i = 0; i < interop->tex_count; ++i)
     {
@@ -315,20 +311,17 @@ sampler_base_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
 
         snprintf(name, sizeof(name), "Texture%1u", i);
         priv->uloc.Texture[i] = vt->GetUniformLocation(program, name);
-        if (priv->uloc.Texture[i] == -1)
-            return VLC_EGENERIC;
+        assert(priv->uloc.Texture[i] != -1);
 
         snprintf(name, sizeof(name), "TexCoordsMap%1u", i);
         priv->uloc.TexCoordsMap[i] = vt->GetUniformLocation(program, name);
-        if (priv->uloc.TexCoordsMap[i] == -1)
-            return VLC_EGENERIC;
+        assert(priv->uloc.TexCoordsMap[i] != -1);
 
         if (interop->tex_target == GL_TEXTURE_RECTANGLE)
         {
             snprintf(name, sizeof(name), "TexSize%1u", i);
             priv->uloc.TexSize[i] = vt->GetUniformLocation(program, name);
-            if (priv->uloc.TexSize[i] == -1)
-                return VLC_EGENERIC;
+            assert(priv->uloc.TexSize[i] != -1);
         }
     }
 
@@ -339,8 +332,6 @@ sampler_base_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
         priv->uloc.pl_vars[i] = vt->GetUniformLocation(program, sv.var.name);
     }
 #endif
-
-    return VLC_SUCCESS;
 }
 
 static void
@@ -439,14 +430,14 @@ sampler_base_prepare_shader(const struct vlc_gl_sampler *sampler)
 #endif
 }
 
-static int
+static void
 sampler_xyz12_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
 {
     struct vlc_gl_sampler_priv *priv = PRIV(sampler);
     const opengl_vtable_t *vt = priv->vt;
 
     priv->uloc.Texture[0] = vt->GetUniformLocation(program, "Texture0");
-    return priv->uloc.Texture[0] != -1 ? VLC_SUCCESS : VLC_EGENERIC;
+    assert(priv->uloc.Texture[0] != -1);
 }
 
 static void
@@ -1002,7 +993,7 @@ vlc_gl_sampler_NewFromInterop(struct vlc_gl_interop *interop)
 }
 
 
-static int
+static void
 sampler_direct_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
 {
     struct vlc_gl_sampler_priv *priv = PRIV(sampler);
@@ -1010,10 +1001,7 @@ sampler_direct_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
 
     priv->uloc.Texture[0] =
         vt->GetUniformLocation(program, "vlc_input_texture");
-    if (priv->uloc.Texture[0] == -1)
-        return VLC_EGENERIC;
-
-    return VLC_SUCCESS;
+    assert(priv->uloc.Texture[0] != -1);
 }
 
 static void
@@ -1207,12 +1195,12 @@ vlc_gl_sampler_UpdateTexture(struct vlc_gl_sampler *sampler, GLuint texture,
     return VLC_SUCCESS;
 }
 
-int
+void
 vlc_gl_sampler_FetchLocations(struct vlc_gl_sampler *sampler, GLuint program)
 {
     struct vlc_gl_sampler_priv *priv = PRIV(sampler);
 
-    return priv->pf_fetch_locations(sampler, program);
+    priv->pf_fetch_locations(sampler, program);
 }
 
 void
