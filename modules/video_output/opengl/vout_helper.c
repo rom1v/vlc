@@ -240,7 +240,7 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
 
     bool b_dump_shaders = var_InheritInteger(gl, "verbose") >= 4;
 
-    struct vlc_gl_renderer *renderer = vgl->renderer =
+    vgl->renderer =
         vlc_gl_renderer_New(gl, &vgl->vt, context, fmt, supports_npot,
                             b_dump_shaders);
     if (!vgl->renderer)
@@ -265,14 +265,13 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
 
     GL_ASSERT_NOERROR();
 
-    if (renderer->fmt.projection_mode != PROJECTION_MODE_RECTANGULAR
+    if (fmt->projection_mode != PROJECTION_MODE_RECTANGULAR
      && vout_display_opengl_SetViewpoint(vgl, viewpoint) != VLC_SUCCESS)
     {
         vout_display_opengl_Delete(vgl);
         return NULL;
     }
 
-    *fmt = renderer->fmt;
     if (subpicture_chromas) {
         *subpicture_chromas = gl_subpicture_chromas;
     }
