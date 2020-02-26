@@ -306,11 +306,31 @@ sampler_base_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
 static const GLfloat *
 GetTransformMatrix(const struct vlc_gl_interop *interop)
 {
+    /* In column-major order */
+    static const float MATRIX4_VFLIP[4*4] = {
+        1,  0,  0,  0,
+        0, -1,  0 , 0,
+        0,  0,  1,  0,
+        0,  1,  0,  1,
+    };
+
     const GLfloat *tm = NULL;
     if (interop->ops && interop->ops->get_transform_matrix)
         tm = interop->ops->get_transform_matrix(interop);
     if (!tm)
-        tm = MATRIX4_IDENTITY;
+        /*
+         * Due to the way texture coordinates are expressed, the interpretation
+         * of the video orientation is flipped vertically in the OpenGL world.
+         *
+         * For example, a video stored from top-left to bottom-right is
+         * considered in its natural orientation (ORIENT_NORMAL) in VLC, but
+         * flipped vertically (ORIENT_VFLIPPED) in OpenGL, since the origin of
+         * coordinates (0, 0) is at the bottom-right.
+         *
+         * Unless a specific matrix is specified by get_transform_matrix(),
+         * flip vertically by default.
+         */
+        tm = MATRIX4_VFLIP;
     return tm;
 }
 
