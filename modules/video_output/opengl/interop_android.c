@@ -30,12 +30,13 @@
 #include <vlc_plugin.h>
 #include "interop.h"
 #include "../android/utils.h"
+#include "gl_util.h"
 
 struct priv
 {
     android_video_context_t *avctx;
     AWindowHandler *awh;
-    const float *transform_mtx;
+    float transform_mtx[16];
     bool stex_attached;
 };
 
@@ -72,11 +73,39 @@ tc_anop_update(const struct vlc_gl_interop *interop, GLuint *textures,
     if (!priv->avctx->render(pic->context))
         return VLC_SUCCESS; /* already rendered */
 
-    if (SurfaceTexture_waitAndUpdateTexImage(priv->awh, &priv->transform_mtx)
+    const float *mtx;
+    if (SurfaceTexture_waitAndUpdateTexImage(priv->awh, &mtx)
         != VLC_SUCCESS)
-    {
-        priv->transform_mtx = NULL;
         return VLC_EGENERIC;
+
+    if (!mtx)
+        memcpy(priv->transform_mtx, MATRIX4_IDENTITY, sizeof(MATRIX4_IDENTITY));
+    else
+    {
+        /* The transform matrix given by the SurfaceTexture is not using the
+         * same origin than us. Apply an additional vertical flip. */
+        for (int row = 0; row < 4; ++row)
+        {
+            /* Multiply mtx by a vertical flip:
+             *
+             *          / 1  0  0  0 \
+             *  VFlip = | 0 -1  0  1 |
+             *          | 0  0  1  0 |
+             *          \ 0  0  0  1 /
+             *
+             * This negates the second column, and adds the second and the
+             * fourth into the fourth:
+             *
+             *                 / mtx_00 -mtx_01  mtx_02  mtx_01+mtx_03 \
+             * transform_mtx = | mtx_10 -mtx_11  mtx_12  mtx_11+mtx_13 |
+             *                 | mtx_20 -mtx_21  mtx_22  mtx_21+mtx_23 |
+             *                 \ mtx_30 -mtx_31  mtx_32  mtx_31+mtx_33 /
+             */
+            priv->transform_mtx[0*4 + row] = mtx[0*4 + row];
+            priv->transform_mtx[1*4 + row] = -mtx[1*4 + row];
+            priv->transform_mtx[2*4 + row] = mtx[2*4 + row];
+            priv->transform_mtx[3*4 + row] = mtx[1*4 + row] + mtx[3*4 + row];
+        }
     }
 
     interop->vt->ActiveTexture(GL_TEXTURE0);
@@ -126,7 +155,7 @@ Open(vlc_object_t *obj)
     struct priv *priv = interop->priv;
     priv->avctx = avctx;
     priv->awh = interop->gl->surface->handle.anativewindow;
-    priv->transform_mtx = NULL;
+    memcpy(priv->transform_mtx, MATRIX4_IDENTITY, sizeof(MATRIX4_IDENTITY));
     priv->stex_attached = false;
 
     static const struct vlc_gl_interop_ops ops = {
@@ -136,37 +165,6 @@ Open(vlc_object_t *obj)
         .close = Close,
     };
     interop->ops = &ops;
-
-    /* The transform Matrix (uSTMatrix) given by the SurfaceTexture is not
-     * using the same origin than us. Ask the caller to rotate textures
-     * coordinates, via the vertex shader, by forcing an orientation. */
-    switch (interop->fmt.orientation)
-    {
-        case ORIENT_TOP_LEFT:
-            interop->fmt.orientation = ORIENT_BOTTOM_LEFT;
-            break;
-        case ORIENT_TOP_RIGHT:
-            interop->fmt.orientation = ORIENT_BOTTOM_RIGHT;
-            break;
-        case ORIENT_BOTTOM_LEFT:
-            interop->fmt.orientation = ORIENT_TOP_LEFT;
-            break;
-        case ORIENT_BOTTOM_RIGHT:
-            interop->fmt.orientation = ORIENT_TOP_RIGHT;
-            break;
-        case ORIENT_LEFT_TOP:
-            interop->fmt.orientation = ORIENT_RIGHT_TOP;
-            break;
-        case ORIENT_LEFT_BOTTOM:
-            interop->fmt.orientation = ORIENT_RIGHT_BOTTOM;
-            break;
-        case ORIENT_RIGHT_TOP:
-            interop->fmt.orientation = ORIENT_LEFT_TOP;
-            break;
-        case ORIENT_RIGHT_BOTTOM:
-            interop->fmt.orientation = ORIENT_LEFT_BOTTOM;
-            break;
-    }
 
     int ret = opengl_interop_init(interop, GL_TEXTURE_EXTERNAL_OES,
                                   VLC_CODEC_RGB32,
