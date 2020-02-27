@@ -150,6 +150,18 @@
 # define GL_COLOR_ATTACHMENT7 0x8CE7
 #endif
 
+#if !defined(GL_PIXEL_PACK_BUFFER)
+# define GL_PIXEL_PACK_BUFFER 0x88EB
+#endif
+
+#if !defined(GL_PACK_ROW_LENGTH)
+# define GL_PACK_ROW_LENGTH 0x0D02
+#endif
+
+#if !defined(GL_STREAM_READ)
+# define GL_STREAM_READ 0x88E1
+#endif
+
 #ifndef APIENTRY
 # define APIENTRY
 #endif
