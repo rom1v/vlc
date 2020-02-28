@@ -57,6 +57,7 @@ vlc_module_begin()
     set_category(CAT_VIDEO)
     set_subcategory(SUBCAT_VIDEO_VOUT)
     set_callback_display(Open, 0)
+    add_opengl_param_gl_filters()
 
     add_opengl_submodule_renderer()
 vlc_module_end()
@@ -183,8 +184,11 @@ static int Open (vout_display_t *vd, const vout_display_cfg_t *cfg,
 
         const vlc_fourcc_t *subpicture_chromas;
         if (!OpenglLock(sys->gl)) {
+            char *glfilters_config = var_InheritString(vd, "gl-filters");
             sys->vgl = vout_display_opengl_New(fmt, &subpicture_chromas,
-                                               sys->gl, &cfg->viewpoint, context);
+                                               sys->gl, &cfg->viewpoint,
+                                               context, glfilters_config);
+            free(glfilters_config);
             OpenglUnlock(sys->gl);
         } else
             sys->vgl = NULL;
