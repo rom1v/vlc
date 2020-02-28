@@ -54,6 +54,7 @@ vlc_module_begin()
     add_shortcut("glwin32", "opengl")
     set_callback_display(Open, 275)
     add_glopts()
+    add_opengl_param_gl_filters()
 
     add_opengl_submodule_renderer()
 vlc_module_end()
@@ -153,8 +154,11 @@ static int Open(vout_display_t *vd, const vout_display_cfg_t *cfg,
     const vlc_fourcc_t *subpicture_chromas;
     if (vlc_gl_MakeCurrent (sys->gl))
         goto error;
+    char *glfilters_config = var_InheritString(vd, "gl-filters");
     sys->vgl = vout_display_opengl_New(&fmt, &subpicture_chromas, sys->gl,
-                                       &cfg->viewpoint, context);
+                                       &cfg->viewpoint, context,
+                                       glfilters_config);
+    free(glfilters_config);
     vlc_gl_ReleaseCurrent (sys->gl);
     if (!sys->vgl)
         goto error;
