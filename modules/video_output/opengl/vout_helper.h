@@ -84,13 +84,17 @@
     add_module("glinterop", "glinterop", NULL, GLINTEROP_TEXT, GLINTEROP_LONGTEXT) \
     add_glopts_placebo ()
 
+#define add_opengl_param_gl_filters() \
+    add_module_list("gl-filters", "opengl filter", NULL, "GL filters", "GL filters")
+
 typedef struct vout_display_opengl_t vout_display_opengl_t;
 
 vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
                                                const vlc_fourcc_t **subpicture_chromas,
                                                vlc_gl_t *gl,
                                                const vlc_viewpoint_t *viewpoint,
-                                               vlc_video_context *context);
+                                               vlc_video_context *context,
+                                               const char *glfilters_config);
 void vout_display_opengl_Delete(vout_display_opengl_t *vgl);
 
 int vout_display_opengl_SetViewpoint(vout_display_opengl_t *vgl, const vlc_viewpoint_t*);
