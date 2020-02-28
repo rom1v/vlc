@@ -98,11 +98,72 @@ ResizeFormatToGLMaxTexSize(video_format_t *fmt, unsigned int max_tex_size)
     }
 }
 
+static int
+LoadFilters(vlc_gl_t *gl, struct vlc_gl_filters *filters,
+            const char *glfilters_config, struct vlc_gl_renderer **out_renderer)
+{
+    struct vlc_gl_filter *renderer_filter = NULL;
+
+    if (glfilters_config)
+    {
+        const char *string = glfilters_config;
+        char *next_module = NULL;
+        do
+        {
+            char *name;
+            config_chain_t *config = NULL;
+            char *leftover = config_ChainCreate(&name, &config, string);
+
+            free(next_module);
+            next_module = leftover;
+            string = next_module; /* const view of next_module */
+
+            if (name)
+            {
+                struct vlc_gl_filter *filter =
+                    vlc_gl_filters_Append(filters, name, config);
+                config_ChainDestroy(config);
+                if (!filter)
+                {
+                    msg_Err(gl, "Could not load GL filter: %s", name);
+                    free(name);
+                    return VLC_EGENERIC;
+                }
+
+                if (!strcmp("renderer", name))
+                    renderer_filter = filter;
+
+                free(name);
+            }
+        } while (string);
+    }
+
+    if (!renderer_filter)
+    {
+        /* Append a renderer at the end if it was not provided in the glfilters
+         * list */
+        renderer_filter =
+            vlc_gl_filters_Append(filters, "renderer", NULL);
+        if (!renderer_filter)
+        {
+            msg_Err(gl, "Could not load GL renderer");
+            return VLC_EGENERIC;
+        }
+    }
+
+    /* The renderer is a special filter: we need its concrete instance to
+     * forward SetViewpoint() */
+    *out_renderer = renderer_filter->sys;
+
+    return VLC_SUCCESS;
+}
+
 vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
                                                const vlc_fourcc_t **subpicture_chromas,
                                                vlc_gl_t *gl,
                                                const vlc_viewpoint_t *viewpoint,
-                                               vlc_video_context *context)
+                                               vlc_video_context *context,
+                                               const char *glfilters_config)
 {
     vout_display_opengl_t *vgl = calloc(1, sizeof(*vgl));
     if (!vgl)
@@ -150,19 +211,12 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         goto delete_interop;
     }
 
-    /* The renderer is the only filter, for now */
-    struct vlc_gl_filter *renderer_filter =
-        vlc_gl_filters_Append(vgl->filters, "renderer", NULL);
-    if (!renderer_filter)
+    ret = LoadFilters(gl, vgl->filters, glfilters_config, &vgl->renderer);
+    if (ret != VLC_SUCCESS)
     {
-        msg_Warn(gl, "Could not create renderer for %4.4s",
-                 (const char *) &fmt->i_chroma);
+        msg_Err(gl, "Could not load filters: %s", glfilters_config);
         goto delete_filters;
     }
-
-    /* The renderer is a special filter: we need its concrete instance to
-     * forward SetViewpoint() */
-    vgl->renderer = renderer_filter->sys;
 
     vgl->sub_interop = vlc_gl_interop_NewForSubpictures(gl, api);
     if (!vgl->sub_interop)
