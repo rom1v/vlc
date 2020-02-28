@@ -67,6 +67,7 @@ vlc_module_begin ()
     add_shortcut ("opengl", "gl")
     add_module("gl", "opengl", NULL, GL_TEXT, PROVIDER_LONGTEXT)
 #endif
+    add_module_list("gl-filters", "opengl filter", NULL, "GL filters", "GL filters")
     add_glopts ()
 
     add_submodule()
@@ -142,8 +143,11 @@ static int Open(vout_display_t *vd, const vout_display_cfg_t *cfg,
     if (vlc_gl_MakeCurrent (sys->gl))
         goto error;
 
-    sys->vgl = vout_display_opengl_New (fmt, &spu_chromas, sys->gl,
-                                        &cfg->viewpoint, context);
+    char *glfilters_config = var_InheritString(vd, "gl-filters");
+    sys->vgl = vout_display_opengl_New(fmt, &spu_chromas, sys->gl,
+                                       &cfg->viewpoint, context,
+                                       glfilters_config);
+    free(glfilters_config);
     vlc_gl_ReleaseCurrent (sys->gl);
 
     if (sys->vgl == NULL)

@@ -90,7 +90,8 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
                                                const vlc_fourcc_t **subpicture_chromas,
                                                vlc_gl_t *gl,
                                                const vlc_viewpoint_t *viewpoint,
-                                               vlc_video_context *context);
+                                               vlc_video_context *context,
+                                               const char *glfilters_config);
 void vout_display_opengl_Delete(vout_display_opengl_t *vgl);
 
 int vout_display_opengl_SetViewpoint(vout_display_opengl_t *vgl, const vlc_viewpoint_t*);
