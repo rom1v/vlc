@@ -29,11 +29,17 @@
 
 struct vlc_gl_filter_priv {
     struct vlc_gl_filter filter;
+
+    /* For a blend filter, must be the same as the size_out of the previous
+     * filter */
     struct vlc_gl_tex_size size_out;
+
+    /* Only meaningful for non-blend filters { */
     struct vlc_gl_sampler *sampler; /* owned */
 
     GLuint framebuffer_out; /* owned (this filter must delete it) */
     GLuint texture_out; /* owned (attached to the framebuffer_out) */
+    /* } */
 
     struct vlc_list node; /**< node of vlc_gl_filters.list */
 };

@@ -77,6 +77,20 @@ InitFramebufferOut(struct vlc_gl_filter_priv *priv)
     return VLC_SUCCESS;
 }
 
+static struct vlc_gl_filter_priv *
+FindLastNonBlend(struct vlc_gl_filters *filters)
+{
+    struct vlc_gl_filter_priv *last =
+        vlc_list_last_entry_or_null(&filters->list, struct vlc_gl_filter_priv,
+                                    node);
+    while (last && last->filter.config.blend)
+    {
+        last = vlc_list_prev_entry_or_null(&filters->list, last,
+                                           struct vlc_gl_filter_priv, node);
+    }
+    return last;
+}
+
 struct vlc_gl_filter *
 vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
                       const config_chain_t *config)
@@ -89,9 +103,7 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
 
     struct vlc_gl_tex_size size_in;
 
-    struct vlc_gl_filter_priv *prev_filter =
-        vlc_list_last_entry_or_null(&filters->list, struct vlc_gl_filter_priv,
-                                    node);
+    struct vlc_gl_filter_priv *prev_filter = FindLastNonBlend(filters);
     if (!prev_filter)
     {
         size_in.width = filters->interop->fmt.i_visible_width;
@@ -129,12 +141,30 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
         return NULL;
     }
 
-    if (prev_filter)
+    /* A blend filter may not change its output size. */
+    assert(!filter->config.blend
+           || (priv->size_out.width == size_in.width
+            && priv->size_out.height == size_in.height));
+
+    if (filter->config.blend && !prev_filter)
     {
-        /* It was the last filter before we append this one */
+        /* We cannot blend with nothing, so insert a "draw" filter to draw the
+         * input picture to blend with. */
+        struct vlc_gl_filter *draw =
+            vlc_gl_filters_Append(filters, "draw", NULL);
+        if (!draw)
+        {
+            vlc_gl_filter_Delete(filter);
+            return NULL;
+        }
+    }
+    else if (!filter->config.blend && prev_filter)
+    {
+        /* It was the last non-blend filter before we append this one */
         assert(prev_filter->framebuffer_out == filters->draw_framebuffer);
 
-        /* Every non-last filter needs its own framebuffer */
+        /* Every non-blend filter needs its own framebuffer, except the last
+         * one */
         ret = InitFramebufferOut(prev_filter);
         if (ret != VLC_SUCCESS)
         {
@@ -169,37 +199,45 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
 {
     const opengl_vtable_t *vt = &filters->api->vt;
 
+    /* Previous filter which is not a blend filter */
+    struct vlc_gl_filter_priv *previous = NULL;
+
     struct vlc_gl_filter_priv *priv;
     vlc_list_foreach(priv, &filters->list, node)
     {
-        struct vlc_gl_filter_priv *previous =
-            vlc_list_prev_entry_or_null(&filters->list, priv,
-                                        struct vlc_gl_filter_priv, node);
-        if (!previous)
+        struct vlc_gl_filter *filter = &priv->filter;
+        if (!filter->config.blend)
         {
-            /* We don't use it */
-            vt->BindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-        }
-        else
-        {
-            /* Read from the output of the previous filter */
-            vt->BindFramebuffer(GL_READ_FRAMEBUFFER, previous->framebuffer_out);
-            int ret = vlc_gl_sampler_UpdateTexture(priv->sampler,
-                                                   previous->texture_out,
-                                                   previous->size_out.width,
-                                                   previous->size_out.height);
-            if (ret != VLC_SUCCESS)
+            if (!previous)
             {
-                msg_Err(filters->gl, "Could not update sampler texture");
-                return ret;
+                /* We don't use it */
+                vt->BindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+            }
+            else
+            {
+                /* Read from the output of the previous filter */
+                vt->BindFramebuffer(GL_READ_FRAMEBUFFER,
+                                    previous->framebuffer_out);
+                int ret =
+                    vlc_gl_sampler_UpdateTexture(priv->sampler,
+                                                 previous->texture_out,
+                                                 previous->size_out.width,
+                                                 previous->size_out.height);
+                if (ret != VLC_SUCCESS)
+                {
+                    msg_Err(filters->gl, "Could not update sampler texture");
+                    return ret;
+                }
+
+                vlc_gl_sampler_PrepareShader(priv->sampler);
             }
 
-            vlc_gl_sampler_PrepareShader(priv->sampler);
+            vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, priv->framebuffer_out);
+
+            /* This is the last non-blend filter so far */
+            previous = priv;
         }
 
-        vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, priv->framebuffer_out);
-
-        struct vlc_gl_filter *filter = &priv->filter;
         int ret = filter->ops->draw(filter);
         if (ret != VLC_SUCCESS)
             return ret;
