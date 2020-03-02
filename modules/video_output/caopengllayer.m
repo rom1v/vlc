@@ -40,6 +40,7 @@
 #import <OpenGL/OpenGL.h>
 #import <dlfcn.h>               /* dlsym */
 
+#include "opengl/filter_draw.h"
 #include "opengl/renderer.h"
 #include "opengl/vout_helper.h"
 
@@ -60,6 +61,7 @@ vlc_module_begin()
     add_opengl_param_gl_filters()
 
     add_opengl_submodule_renderer()
+    add_opengl_submodule_draw()
 vlc_module_end()
 
 static void PictureRender   (vout_display_t *vd, picture_t *pic, subpicture_t *subpicture,
