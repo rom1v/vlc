@@ -36,7 +36,6 @@
 
 struct sys {
     GLuint program_id;
-    struct vlc_gl_sampler *sampler;
 
     GLuint vbo;
 
@@ -54,7 +53,8 @@ Draw(struct vlc_gl_filter *filter)
 
     vt->UseProgram(sys->program_id);
 
-    vlc_gl_sampler_PrepareShader(sys->sampler);
+    struct vlc_gl_sampler *sampler = vlc_gl_filter_GetSampler(filter);
+    vlc_gl_sampler_PrepareShader(sampler);
 
     vt->BindBuffer(GL_ARRAY_BUFFER, sys->vbo);
     vt->EnableVertexAttribArray(sys->loc.vertex_pos);
@@ -83,8 +83,7 @@ int
 vlc_gl_filter_draw_Open(struct vlc_gl_filter *filter,
                         const config_chain_t *config,
                         const struct vlc_gl_tex_size *size_in,
-                        struct vlc_gl_tex_size *size_out,
-                        struct vlc_gl_sampler *sampler)
+                        struct vlc_gl_tex_size *size_out)
 {
     (void) config;
     (void) size_in;
@@ -96,7 +95,7 @@ vlc_gl_filter_draw_Open(struct vlc_gl_filter *filter,
     if (!sys)
         return VLC_EGENERIC;
 
-    sys->sampler = sampler;
+    struct vlc_gl_sampler *sampler = vlc_gl_filter_GetSampler(filter);
 
     static const char *const VERTEX_SHADER =
         "#version 100\n"

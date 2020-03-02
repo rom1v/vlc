@@ -38,6 +38,14 @@ struct vlc_gl_filter_priv {
     GLuint texture_out; /* owned (attached to the framebuffer_out) */
     /* } */
 
+    /* For lazy-loading sampler */
+    struct vlc_gl_filters *filters; /* weak reference to the container */
+
+    /* Previous filter to construct the expected sampler. It is necessary
+     * because owner_ops->get_sampler() may be called during the Open(), while
+     * the filter is not added to the filters list yet. */
+    struct vlc_gl_filter_priv *prev_filter;
+
     struct vlc_list node; /**< node of vlc_gl_filters.list */
 };
 
@@ -53,10 +61,9 @@ vlc_gl_filter_LoadModule(vlc_object_t *parent, const char *name,
                          struct vlc_gl_filter *filter,
                          const config_chain_t *config,
                          const struct vlc_gl_tex_size *size_in,
-                         struct vlc_gl_tex_size *size_out,
-                         struct vlc_gl_sampler *sampler);
-#define vlc_gl_filter_LoadModule(o, a, b, c, d, e, f) \
-    vlc_gl_filter_LoadModule(VLC_OBJECT(o), a, b, c, d, e, f)
+                         struct vlc_gl_tex_size *size_out);
+#define vlc_gl_filter_LoadModule(o, a, b, c, d, e) \
+    vlc_gl_filter_LoadModule(VLC_OBJECT(o), a, b, c, d, e)
 
 void
 vlc_gl_filter_Delete(struct vlc_gl_filter *filter);

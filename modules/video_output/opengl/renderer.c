@@ -316,15 +316,13 @@ int
 vlc_gl_renderer_Open(struct vlc_gl_filter *filter,
                      const config_chain_t *config,
                      const struct vlc_gl_tex_size *size_in,
-                     struct vlc_gl_tex_size *size_out,
-                     struct vlc_gl_sampler *sampler)
+                     struct vlc_gl_tex_size *size_out)
 {
     (void) config;
     (void) size_in;
     (void) size_out;
 
     const opengl_vtable_t *vt = &filter->api->vt;
-    const video_format_t *fmt = sampler->fmt;
 
     struct vlc_gl_renderer *renderer = calloc(1, sizeof(*renderer));
     if (!renderer)
@@ -337,6 +335,7 @@ vlc_gl_renderer_Open(struct vlc_gl_filter *filter,
     filter->ops = &filter_ops;
     filter->sys = renderer;
 
+    struct vlc_gl_sampler *sampler = vlc_gl_filter_GetSampler(filter);
     renderer->sampler = sampler;
 
     renderer->api = filter->api;
@@ -357,6 +356,7 @@ vlc_gl_renderer_Open(struct vlc_gl_filter *filter,
         return ret;
     }
 
+    const video_format_t *fmt = sampler->fmt;
     InitStereoMatrix(renderer->var.StereoMatrix, fmt->multiview_mode);
 
     getViewpointMatrixes(renderer, fmt->projection_mode);
@@ -756,7 +756,8 @@ Draw(struct vlc_gl_filter *filter)
 
     vt->UseProgram(renderer->program_id);
 
-    vlc_gl_sampler_PrepareShader(renderer->sampler);
+    struct vlc_gl_sampler *sampler = vlc_gl_filter_GetSampler(filter);
+    vlc_gl_sampler_PrepareShader(sampler);
 
     vt->BindBuffer(GL_ARRAY_BUFFER, renderer->texture_buffer_object);
     assert(renderer->aloc.PicCoordsIn != -1);

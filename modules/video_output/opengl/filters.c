@@ -87,6 +87,35 @@ FindLastNonBlend(struct vlc_gl_filters *filters)
     return last;
 }
 
+static struct vlc_gl_sampler *
+GetSampler(struct vlc_gl_filter *filter)
+{
+    struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
+    if (priv->sampler)
+        /* already initialized */
+        return priv->sampler;
+
+    struct vlc_gl_filters *filters = priv->filters;
+    struct vlc_gl_filter_priv *prev_filter = priv->prev_filter;
+
+    struct vlc_gl_sampler *sampler;
+    if (!priv->prev_filter)
+        sampler = vlc_gl_sampler_NewFromInterop(filters->interop);
+    else
+    {
+        video_format_t fmt;
+        video_format_Init(&fmt, VLC_CODEC_RGBA);
+        fmt.i_width = fmt.i_visible_width = prev_filter->size_out.width;
+        fmt.i_height = fmt.i_visible_height = prev_filter->size_out.height;
+
+        sampler = vlc_gl_sampler_NewDirect(filters->gl, filters->api, &fmt);
+    }
+
+    priv->sampler = sampler;
+
+    return sampler;
+}
+
 struct vlc_gl_filter *
 vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
                       const config_chain_t *config)
@@ -104,34 +133,26 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
     {
         size_in.width = filters->interop->fmt.i_visible_width;
         size_in.height = filters->interop->fmt.i_visible_height;
-        priv->sampler = vlc_gl_sampler_NewFromInterop(filters->interop);
     }
     else
     {
         size_in = prev_filter->size_out;
-
-        video_format_t fmt;
-        video_format_Init(&fmt, VLC_CODEC_RGBA);
-        fmt.i_width = fmt.i_visible_width = size_in.width;
-        fmt.i_height = fmt.i_visible_height = size_in.height;
-
-        priv->sampler =
-            vlc_gl_sampler_NewDirect(filters->gl, filters->api, &fmt);
     }
 
-    if (!priv->sampler)
-    {
-        vlc_gl_filter_Delete(filter);
-        return NULL;
-    }
+    priv->filters = filters;
+    priv->prev_filter = prev_filter;
+
+    static const struct vlc_gl_filter_owner_ops owner_ops = {
+        .get_sampler = GetSampler,
+    };
+    filter->owner_ops = &owner_ops;
 
     /* By default, the output size is the same as the input size. The filter
      * may change it during its Open(). */
     priv->size_out = size_in;
 
     int ret = vlc_gl_filter_LoadModule(filters->gl, name, filter, config,
-                                       &size_in, &priv->size_out,
-                                       priv->sampler);
+                                       &size_in, &priv->size_out);
     if (ret != VLC_SUCCESS)
     {
         vlc_gl_filter_Delete(filter);
