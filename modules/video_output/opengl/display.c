@@ -33,6 +33,7 @@
 #include <vlc_opengl.h>
 #include "vout_helper.h"
 
+#include "filter_draw.h"
 #include "renderer.h"
 
 /* Plugin callbacks */
