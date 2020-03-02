@@ -33,6 +33,7 @@
 #include <vlc_opengl.h>
 #include "vout_helper.h"
 
+#include "filter_draw.h"
 #include "renderer.h"
 
 /* Plugin callbacks */
@@ -75,6 +76,12 @@ vlc_module_begin ()
     set_shortname("renderer")
     set_capability("opengl filter", 0)
     set_callback(vlc_gl_renderer_Open)
+
+    add_submodule()
+    add_shortcut("draw")
+    set_shortname("draw")
+    set_capability("opengl filter", 0)
+    set_callback(vlc_gl_filter_draw_Open)
 vlc_module_end ()
 
 struct vout_display_sys_t
