@@ -581,7 +581,6 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
     struct vlc_gl_sampler_priv *priv = PRIV(sampler);
 
     struct vlc_gl_interop *interop = priv->interop;
-    const opengl_vtable_t *vt = priv->vt;
 
     const char *swizzle_per_tex[PICTURE_PLANE_MAX] = { NULL, };
     const bool is_yuv = vlc_fourcc_IsYUV(chroma);
@@ -674,6 +673,7 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
             {
                 GLint fb_depth = 0;
 #if !defined(USE_OPENGL_ES2)
+                const opengl_vtable_t *vt = priv->vt;
                 /* fetch framebuffer depth (we are already bound to the default one). */
                 if (vt->GetFramebufferAttachmentParameteriv != NULL)
                     vt->GetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_BACK_LEFT,
