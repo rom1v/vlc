@@ -45,6 +45,13 @@ struct vlc_gl_filters {
     struct vlc_gl_interop *interop;
 
     struct vlc_list list; /**< list of vlc_gl_filter.node */
+
+    struct vlc_gl_filters_viewport {
+        int x;
+        int y;
+        unsigned width;
+        unsigned height;
+    } viewport;
 };
 
 /**
@@ -101,5 +108,12 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters);
  */
 void
 vlc_gl_filters_Destroy(struct vlc_gl_filters *filters);
+
+/**
+ * Set the viewport.
+ */
+void
+vlc_gl_filters_SetViewport(struct vlc_gl_filters *filters, int x, int y,
+                           unsigned width, unsigned height);
 
 #endif

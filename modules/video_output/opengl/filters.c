@@ -40,6 +40,7 @@ vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
     filters->api = api;
     filters->interop = interop;
     vlc_list_init(&filters->list);
+    memset(&filters->viewport, 0, sizeof(filters->viewport));
 
     GLint value;
 
@@ -270,6 +271,15 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
         vt->BindFramebuffer(GL_READ_FRAMEBUFFER, read_fb);
         vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb);
 
+        if (vlc_list_is_last(&priv->node, &filters->list))
+        {
+            /* The output viewport must be applied on the last filter */
+            struct vlc_gl_filters_viewport *vp = &filters->viewport;
+            vt->Viewport(vp->x, vp->y, vp->width, vp->height);
+        }
+        else
+            vt->Viewport(0, 0, priv->size_out.width, priv->size_out.height);
+
         struct vlc_gl_filter *filter = &priv->filter;
         int ret = filter->ops->draw(filter);
         if (ret != VLC_SUCCESS)
@@ -302,4 +312,14 @@ vlc_gl_filters_Destroy(struct vlc_gl_filters *filters)
         struct vlc_gl_filter *filter = &priv->filter;
         vlc_gl_filter_Delete(filter);
     }
+}
+
+void
+vlc_gl_filters_SetViewport(struct vlc_gl_filters *filters, int x, int y,
+                           unsigned width, unsigned height)
+{
+    filters->viewport.x = x;
+    filters->viewport.y = y;
+    filters->viewport.width = width;
+    filters->viewport.height = height;
 }
