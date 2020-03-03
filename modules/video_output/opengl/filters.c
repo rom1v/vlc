@@ -39,6 +39,7 @@ vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
     filters->api = api;
     filters->interop = interop;
     vlc_list_init(&filters->list);
+    memset(&filters->viewport, 0, sizeof(filters->viewport));
 
     GLint value;
     api->vt.GetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &value);
@@ -230,6 +231,9 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
 {
     const opengl_vtable_t *vt = &filters->api->vt;
 
+    struct vlc_gl_filter_priv *last_non_blend = FindLastNonBlend(filters);
+    bool apply_viewport = false;
+
     /* Previous filter which is not a blend filter */
     struct vlc_gl_filter_priv *previous = NULL;
 
@@ -269,6 +273,19 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
             previous = priv;
         }
 
+        /* The output viewport must be applied on the last non-blend filter and
+         * all the following blend filters. */
+        if (priv == last_non_blend)
+            apply_viewport = true;
+
+        if (apply_viewport)
+        {
+            struct vlc_gl_filters_viewport *vp = &filters->viewport;
+            vt->Viewport(vp->x, vp->y, vp->width, vp->height);
+        }
+        else
+            vt->Viewport(0, 0, priv->size_out.width, priv->size_out.height);
+
         int ret = filter->ops->draw(filter);
         if (ret != VLC_SUCCESS)
             return ret;
@@ -286,4 +303,14 @@ vlc_gl_filters_Destroy(struct vlc_gl_filters *filters)
         struct vlc_gl_filter *filter = &priv->filter;
         vlc_gl_filter_Delete(filter);
     }
+}
+
+void
+vlc_gl_filters_SetViewport(struct vlc_gl_filters *filters, int x, int y,
+                           unsigned width, unsigned height)
+{
+    filters->viewport.x = x;
+    filters->viewport.y = y;
+    filters->viewport.width = width;
+    filters->viewport.height = height;
 }
