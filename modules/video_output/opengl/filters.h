@@ -34,6 +34,9 @@ struct vlc_gl_filters {
     struct vlc_gl_t *gl;
     const struct vlc_gl_api *api;
 
+    /* The default draw framebuffer (might be != 0 on some platforms */
+    GLuint draw_framebuffer;
+
     /**
      * Interop to use for the sampler of the first filter of the chain,
      * the one which uses the picture_t as input.
