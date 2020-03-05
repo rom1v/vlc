@@ -352,8 +352,6 @@ vlc_gl_renderer_New(vlc_gl_t *gl, const struct vlc_gl_api *api,
 
     getViewpointMatrixes(renderer, fmt->projection_mode);
 
-    renderer->fmt = *fmt;
-
     /* */
     vt->Disable(GL_BLEND);
     vt->Disable(GL_DEPTH_TEST);
@@ -426,7 +424,8 @@ vlc_gl_renderer_SetViewpoint(struct vlc_gl_renderer *renderer,
         UpdateFOVy(renderer);
         UpdateZ(renderer);
     }
-    getViewpointMatrixes(renderer, renderer->fmt.projection_mode);
+    const video_format_t *fmt = renderer->sampler->fmt;
+    getViewpointMatrixes(renderer, fmt->projection_mode);
 
     return VLC_SUCCESS;
 }
@@ -441,7 +440,9 @@ vlc_gl_renderer_SetWindowAspectRatio(struct vlc_gl_renderer *renderer,
     renderer->f_sar = f_sar;
     UpdateFOVy(renderer);
     UpdateZ(renderer);
-    getViewpointMatrixes(renderer, renderer->fmt.projection_mode);
+
+    const video_format_t *fmt = renderer->sampler->fmt;
+    getViewpointMatrixes(renderer, fmt->projection_mode);
 }
 
 static int BuildSphere(GLfloat **vertexCoord, GLfloat **textureCoord, unsigned *nbVertices,
@@ -685,13 +686,14 @@ static int BuildRectangle(GLfloat **vertexCoord, GLfloat **textureCoord, unsigne
 static int SetupCoords(struct vlc_gl_renderer *renderer)
 {
     const opengl_vtable_t *vt = renderer->vt;
+    const video_format_t *fmt = renderer->sampler->fmt;
 
     GLfloat *vertexCoord, *textureCoord;
     GLushort *indices;
     unsigned nbVertices, nbIndices;
 
     int i_ret;
-    switch (renderer->fmt.projection_mode)
+    switch (fmt->projection_mode)
     {
     case PROJECTION_MODE_RECTANGULAR:
         i_ret = BuildRectangle(&vertexCoord, &textureCoord, &nbVertices,
@@ -702,8 +704,8 @@ static int SetupCoords(struct vlc_gl_renderer *renderer)
                             &indices, &nbIndices);
         break;
     case PROJECTION_MODE_CUBEMAP_LAYOUT_STANDARD:
-        i_ret = BuildCube((float)renderer->fmt.i_cubemap_padding / renderer->fmt.i_width,
-                          (float)renderer->fmt.i_cubemap_padding / renderer->fmt.i_height,
+        i_ret = BuildCube((float)fmt->i_cubemap_padding / fmt->i_width,
+                          (float)fmt->i_cubemap_padding / fmt->i_height,
                           &vertexCoord, &textureCoord, &nbVertices,
                           &indices, &nbIndices);
         break;
