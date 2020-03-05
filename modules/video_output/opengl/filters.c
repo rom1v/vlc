@@ -40,6 +40,14 @@ vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
     filters->api = api;
     filters->interop = interop;
     vlc_list_init(&filters->list);
+
+    GLint value;
+
+    api->vt.GetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &value);
+    filters->read_framebuffer = value; /* as GLuint */
+
+    api->vt.GetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &value);
+    filters->draw_framebuffer = value; /* as GLuint */
 }
 
 static int
@@ -86,6 +94,9 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
         return NULL;
 
     struct vlc_gl_filter_priv *priv = vlc_gl_filter_PRIV(filter);
+
+    /* Assign the default draw framebuffer to the filter */
+    priv->framebuffer_out = filters->draw_framebuffer;
 
     struct vlc_gl_tex_size size_in;
 
@@ -173,7 +184,7 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
     struct vlc_gl_filter_priv *priv;
     vlc_list_foreach(priv, &filters->list, node)
     {
-        GLuint read_fb = 0;
+        GLuint read_fb = filters->read_framebuffer;
 
         struct vlc_gl_filter_priv *previous =
             vlc_list_prev_entry_or_null(&filters->list, priv,
@@ -193,7 +204,8 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
             }
         }
 
-        GLuint draw_fb = priv->has_framebuffer_out ? priv->framebuffer_out : 0;
+        GLuint draw_fb = priv->has_framebuffer_out ? priv->framebuffer_out
+                                                   : filters->draw_framebuffer;
 
         vt->BindFramebuffer(GL_READ_FRAMEBUFFER, read_fb);
         vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb);
