@@ -24,6 +24,7 @@
 #include <vlc_common.h>
 #include <vlc_list.h>
 #include <vlc_opengl.h>
+#include <vlc_tick.h>
 
 #include "filter.h"
 #include "gl_api.h"
@@ -50,6 +51,9 @@ struct vlc_gl_filters {
         unsigned width;
         unsigned height;
     } viewport;
+
+    /** Last updated picture PTS */
+    vlc_tick_t pts;
 };
 
 /**

@@ -21,6 +21,8 @@
 #ifndef VLC_GL_FILTER_H
 #define VLC_GL_FILTER_H
 
+#include <vlc_tick.h>
+
 #include "sampler.h"
 
 struct vlc_gl_filter;
@@ -28,6 +30,10 @@ struct vlc_gl_filter;
 struct vlc_gl_tex_size {
     unsigned width;
     unsigned height;
+};
+
+struct vlc_gl_input_meta {
+    vlc_tick_t pts;
 };
 
 typedef int
@@ -39,7 +45,8 @@ struct vlc_gl_filter_ops {
     /**
      * Draw the result of the filter to the current framebuffer
      */
-    int (*draw)(struct vlc_gl_filter *filter);
+    int (*draw)(struct vlc_gl_filter *filter,
+                const struct vlc_gl_input_meta *meta);
 
     /**
      * Free filter resources

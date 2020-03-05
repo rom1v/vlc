@@ -40,6 +40,7 @@ vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
     filters->interop = interop;
     vlc_list_init(&filters->list);
     memset(&filters->viewport, 0, sizeof(filters->viewport));
+    filters->pts = 0;
 
     GLint value;
     api->vt.GetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &value);
@@ -223,6 +224,8 @@ vlc_gl_filters_UpdatePicture(struct vlc_gl_filters *filters,
 
     assert(first_filter);
 
+    filters->pts = picture->date;
+
     return vlc_gl_sampler_UpdatePicture(first_filter->sampler, picture);
 }
 
@@ -230,6 +233,10 @@ int
 vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
 {
     const opengl_vtable_t *vt = &filters->api->vt;
+
+    struct vlc_gl_input_meta meta = {
+        .pts = filters->pts,
+    };
 
     struct vlc_gl_filter_priv *last_non_blend = FindLastNonBlend(filters);
     bool apply_viewport = false;
@@ -286,7 +293,7 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
         else
             vt->Viewport(0, 0, priv->size_out.width, priv->size_out.height);
 
-        int ret = filter->ops->draw(filter);
+        int ret = filter->ops->draw(filter, &meta);
         if (ret != VLC_SUCCESS)
             return ret;
     }
