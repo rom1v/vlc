@@ -41,6 +41,7 @@ vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
     filters->interop = interop;
     vlc_list_init(&filters->list);
     memset(&filters->viewport, 0, sizeof(filters->viewport));
+    filters->pts = 0;
 
     GLint value;
 
@@ -234,6 +235,8 @@ vlc_gl_filters_UpdatePicture(struct vlc_gl_filters *filters,
 
     assert(first_filter);
 
+    filters->pts = picture->date;
+
     return vlc_gl_sampler_UpdatePicture(first_filter->sampler, picture);
 }
 
@@ -241,6 +244,10 @@ int
 vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
 {
     const opengl_vtable_t *vt = &filters->api->vt;
+
+    struct vlc_gl_input_meta meta = {
+        .pts = filters->pts,
+    };
 
     struct vlc_gl_filter_priv *priv;
     vlc_list_foreach(priv, &filters->list, node)
@@ -281,7 +288,7 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
             vt->Viewport(0, 0, priv->size_out.width, priv->size_out.height);
 
         struct vlc_gl_filter *filter = &priv->filter;
-        int ret = filter->ops->draw(filter);
+        int ret = filter->ops->draw(filter, &meta);
         if (ret != VLC_SUCCESS)
             return ret;
 
@@ -294,7 +301,7 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
             vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb);
 
             struct vlc_gl_filter *subfilter = &subfilter_priv->filter;
-            ret = subfilter->ops->draw(subfilter);
+            ret = subfilter->ops->draw(subfilter, &meta);
             if (ret != VLC_SUCCESS)
                 return ret;
         }
