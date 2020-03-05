@@ -139,12 +139,18 @@ libglfilter_triangle_rotate_plugin_la_SOURCES = $(OPENGL_FILTER_API) \
 libglfilter_triangle_rotate_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS)
 libglfilter_triangle_rotate_plugin_la_LIBADD = $(LIBM)
 
+libglfilter_triangle_clock_plugin_la_SOURCES = $(OPENGL_FILTER_API) \
+    video_output/opengl/filters/triangle_clock.c
+libglfilter_triangle_clock_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS)
+libglfilter_triangle_clock_plugin_la_LIBADD = $(LIBM)
+
 if HAVE_GL
 vout_LTLIBRARIES += \
 	libgl_plugin.la \
 	libglfilter_triangle_plugin.la \
 	libglfilter_triangle_mask_plugin.la \
-	libglfilter_triangle_rotate_plugin.la
+	libglfilter_triangle_rotate_plugin.la \
+	libglfilter_triangle_clock_plugin.la
 
 if HAVE_EGL
 if HAVE_VAAPI
