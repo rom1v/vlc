@@ -39,6 +39,10 @@ vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
     filters->api = api;
     filters->interop = interop;
     vlc_list_init(&filters->list);
+
+    GLint value;
+    api->vt.GetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &value);
+    filters->draw_framebuffer = value; /* as GLuint */
 }
 
 static int
@@ -128,7 +132,7 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
     if (prev_filter)
     {
         /* It was the last filter before we append this one */
-        assert(!prev_filter->framebuffer_out);
+        assert(prev_filter->framebuffer_out == filters->draw_framebuffer);
 
         /* Every non-last filter needs its own framebuffer */
         ret = InitFramebufferOut(prev_filter);
