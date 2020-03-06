@@ -76,6 +76,9 @@
 #ifndef GL_RG16
 # define GL_RG16 0x822C
 #endif
+#ifndef GL_RGBA8
+# define GL_RGBA8 0x8058
+#endif
 #ifndef GL_LUMINANCE16
 # define GL_LUMINANCE16 0x8042
 #endif
@@ -218,6 +221,14 @@ typedef void (APIENTRY *PFNGLBINDFRAMEBUFFER) (GLenum target, GLuint framebuffer
 typedef void (APIENTRY *PFNGLFRAMEBUFFERTEXTURE2D) (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
 typedef GLenum (APIENTRY *PFNGLCHECKFRAMEBUFFERSTATUS) (GLenum target);
 typedef void (APIENTRY *PFNGLDRAWBUFFERS) (GLsizei n, const GLenum *bufs);
+typedef void (APIENTRY *PFNGLGENRENDERBUFFERS) (GLuint count, GLuint *renderbuffers);
+typedef void (APIENTRY *PFNGLDELETERENDERBUFFERS) (GLsizei n, const GLuint *renderbuffers);
+typedef void (APIENTRY *PFNGLBINDRENDERBUFFER) (GLenum target, GLuint renderbuffer);
+typedef void (APIENTRY *PFNGLRENDERBUFFERSTORAGEMULTISAMPLE) (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height);
+typedef void (APIENTRY *PFNGLFRAMEBUFFERRENDERBUFFER) (GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
+typedef void (APIENTRY *PFNGLBLITFRAMEBUFFER) (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
+                                               GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
+                                               GLbitfield mask, GLenum filter);
 
 /* The following are defined in glext.h but not for GLES2 or on Apple systems */
 #if defined(USE_OPENGL_ES2) || defined(__APPLE__)
@@ -359,6 +370,12 @@ typedef struct {
     PFNGLFRAMEBUFFERTEXTURE2D       FramebufferTexture2D;
     PFNGLCHECKFRAMEBUFFERSTATUS     CheckFramebufferStatus;
     PFNGLDRAWBUFFERS                DrawBuffers;
+    PFNGLGENRENDERBUFFERS           GenRenderbuffers;
+    PFNGLDELETERENDERBUFFERS        DeleteRenderbuffers;
+    PFNGLBINDRENDERBUFFER           BindRenderbuffer;
+    PFNGLRENDERBUFFERSTORAGEMULTISAMPLE RenderbufferStorageMultisample;
+    PFNGLFRAMEBUFFERRENDERBUFFER    FramebufferRenderbuffer;
+    PFNGLBLITFRAMEBUFFER            BlitFramebuffer;
 
     /* Commands used for PBO and/or Persistent mapping */
     PFNGLBUFFERSUBDATAPROC          BufferSubData; /* can be NULL */
