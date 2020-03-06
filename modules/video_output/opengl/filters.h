@@ -38,6 +38,9 @@ struct vlc_gl_filters {
     /* The default draw framebuffer (might be != 0 on some platforms */
     GLuint draw_framebuffer;
 
+    /* Number of samples for multisampling (0 to disable multisampling) */
+    int msaa_level;
+
     /**
      * Interop to use for the sampler of the first filter of the chain,
      * the one which uses the picture_t as input.

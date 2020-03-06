@@ -40,6 +40,10 @@ struct vlc_gl_filter_priv {
 
     GLuint framebuffer_out; /* owned (this filter must delete it) */
     GLuint texture_out; /* owned (attached to framebuffer_out) */
+
+    /* Use when multisampling is enabled */
+    GLuint framebuffer_msaa; /* owned */
+    GLuint renderbuffer_msaa; /* owned (attached to framebuffer_msaa) */
     /* } */
 
     /* For lazy-loading sampler */

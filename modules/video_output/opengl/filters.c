@@ -43,13 +43,16 @@ vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
     memset(&filters->viewport, 0, sizeof(filters->viewport));
     filters->pts = 0;
 
+    /* Always enable multisampling */
+    filters->msaa_level = 4;
+
     GLint value;
     api->vt.GetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &value);
     filters->draw_framebuffer = value; /* as GLuint */
 }
 
 static int
-InitFramebufferOut(struct vlc_gl_filter_priv *priv)
+InitFramebufferOut(struct vlc_gl_filter_priv *priv, unsigned msaa_level)
 {
     assert(priv->size_out.width > 0 && priv->size_out.height > 0);
 
@@ -79,6 +82,25 @@ InitFramebufferOut(struct vlc_gl_filter_priv *priv)
     GLenum status = vt->CheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE)
         return VLC_EGENERIC;
+
+    if (msaa_level)
+    {
+        vt->GenRenderbuffers(1, &priv->renderbuffer_msaa);
+        vt->BindRenderbuffer(GL_RENDERBUFFER, priv->renderbuffer_msaa);
+        vt->RenderbufferStorageMultisample(GL_RENDERBUFFER, msaa_level,
+                                           GL_RGBA8,
+                                           priv->size_out.width,
+                                           priv->size_out.height);
+
+        vt->GenFramebuffers(1, &priv->framebuffer_msaa);
+        vt->BindFramebuffer(GL_FRAMEBUFFER, priv->framebuffer_msaa);
+        vt->FramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                    GL_RENDERBUFFER, priv->renderbuffer_msaa);
+
+        status = vt->CheckFramebufferStatus(GL_FRAMEBUFFER);
+        if (status != GL_FRAMEBUFFER_COMPLETE)
+            return VLC_EGENERIC;
+    }
 
     vt->BindFramebuffer(GL_FRAMEBUFFER, 0);
     return VLC_SUCCESS;
@@ -191,7 +213,7 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
 
         /* Every non-blend filter needs its own framebuffer, except the last
          * one */
-        ret = InitFramebufferOut(prev_filter);
+        ret = InitFramebufferOut(prev_filter, filters->msaa_level);
         if (ret != VLC_SUCCESS)
         {
             vlc_gl_filter_Delete(filter);
@@ -269,7 +291,9 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
             vlc_gl_sampler_PrepareShader(priv->sampler);
         }
 
-        vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, priv->framebuffer_out);
+        GLuint draw_fb = filters->msaa_level ? priv->framebuffer_msaa
+                                             : priv->framebuffer_out;
+        vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb);
 
         if (vlc_list_is_last(&priv->node, &filters->list))
         {
@@ -293,6 +317,19 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
             ret = subfilter->ops->draw(subfilter, &meta);
             if (ret != VLC_SUCCESS)
                 return ret;
+        }
+
+        if (!filter->config.blend && filters->msaa_level)
+        {
+            /* Resolve the MSAA into the target framebuffer */
+            vt->BindFramebuffer(GL_READ_FRAMEBUFFER, priv->framebuffer_msaa);
+            vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, priv->framebuffer_out);
+
+            GLint width = priv->size_out.width;
+            GLint height = priv->size_out.height;
+            vt->BlitFramebuffer(0, 0, width, height,
+                                0, 0, width, height,
+                                GL_COLOR_BUFFER_BIT, GL_NEAREST);
         }
     }
 
