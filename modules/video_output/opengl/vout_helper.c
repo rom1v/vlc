@@ -218,6 +218,13 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
         goto delete_filters;
     }
 
+    ret = vlc_gl_filters_InitFramebuffers(vgl->filters);
+    if (ret != VLC_SUCCESS)
+    {
+        msg_Err(gl, "Could not init filters framebuffers");
+        goto delete_filters;
+    }
+
     vgl->sub_interop = vlc_gl_interop_NewForSubpictures(gl, api);
     if (!vgl->sub_interop)
     {
