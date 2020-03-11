@@ -42,6 +42,8 @@ endif
 OPENGL_COMMONCFLAGS = $(LIBPLACEBO_CFLAGS)
 OPENGL_COMMONLIBS = $(LIBPLACEBO_LIBS)
 
+OPENGL_FILTERS =
+
 if HAVE_DECKLINK
 libdecklinkoutput_plugin_la_SOURCES = video_output/decklink.cpp \
                                       stream_out/sdi/Ancillary.cpp \
@@ -78,7 +80,7 @@ libglinterop_cvpx_plugin_la_SOURCES += codec/vt_utils.c codec/vt_utils.h
 libglinterop_cvpx_plugin_la_LDFLAGS += -Wl,-framework,IOSurface \
 	-Wl,-framework,Foundation,-framework,CoreVideo,-framework,OpenGL
 vout_LTLIBRARIES += libvout_macosx_plugin.la libcaopengllayer_plugin.la \
-	libglinterop_cvpx_plugin.la
+	libglinterop_cvpx_plugin.la $(OPENGL_FILTERS)
 endif
 if HAVE_IOS
 libglinterop_cvpx_plugin_la_CFLAGS = $(AM_CFLAGS) -DUSE_OPENGL_ES2
@@ -90,7 +92,8 @@ libvout_ios_plugin_la_LIBADD = $(OPENGL_COMMONLIBS)
 libvout_ios_plugin_la_LDFLAGS = $(AM_LDFLAGS) -rpath '$(voutdir)' \
 	-Wl,-framework,OpenGLES,-framework,QuartzCore,-framework,UIKit
 if HAVE_IOS
-vout_LTLIBRARIES += libvout_ios_plugin.la libglinterop_cvpx_plugin.la
+vout_LTLIBRARIES += libvout_ios_plugin.la libglinterop_cvpx_plugin.la \
+    $(OPENGL_FILTERS)
 endif
 if HAVE_TVOS
 vout_LTLIBRARIES += libvout_ios_plugin.la libglinterop_cvpx_plugin.la
@@ -125,7 +128,7 @@ libglinterop_vdpau_plugin_la_CFLAGS = $(AM_CFLAGS) $(VDPAU_CFLAGS)
 libglinterop_vdpau_plugin_la_LIBADD = $(LIBDL) libvlc_vdpau.la $(X_LIBS) $(X_PRE_LIBS) -lX11
 
 if HAVE_GL
-vout_LTLIBRARIES += libgl_plugin.la
+vout_LTLIBRARIES += libgl_plugin.la $(OPENGL_FILTERS)
 if HAVE_EGL
 if HAVE_VAAPI
 vout_LTLIBRARIES += libglinterop_vaapi_plugin.la
@@ -322,7 +325,8 @@ libglinterop_android_plugin_la_CFLAGS = $(AM_CFLAGS) -DUSE_OPENGL_ES2
 if HAVE_ANDROID
 vout_LTLIBRARIES += libandroid_window_plugin.la libandroid_display_plugin.la
 if HAVE_EGL
-vout_LTLIBRARIES += libegl_android_plugin.la libglinterop_android_plugin.la
+vout_LTLIBRARIES += libegl_android_plugin.la libglinterop_android_plugin.la \
+    $(OPENGL_FILTERS)
 endif
 endif
 
