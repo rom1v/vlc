@@ -151,6 +151,22 @@ vlc_gl_api_Init(struct vlc_gl_api *api, vlc_gl_t *gl)
         return VLC_EGENERIC;
     }
 
+    const char *version = (const char *) api->vt.GetString(GL_VERSION);
+#ifdef USE_OPENGL_ES2
+#   define PREFIX "OpenGL ES "
+    /* starts with "OpenGL ES " */
+    assert(!strncmp(version, PREFIX, sizeof(PREFIX) - 1));
+    /* skip the prefix */
+    version += sizeof(PREFIX) - 1;
+#endif
+
+    /* OpenGL >= 3.0:
+     *     https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glRenderbufferStorageMultisample.xhtml
+     * OpenGL ES >= 3.0:
+     *     https://www.khronos.org/registry/OpenGL-Refpages/es3.1/html/glRenderbufferStorageMultisample.xhtml
+     */
+    api->supports_multisample = strverscmp(version, "3.0") >= 0;
+
 #ifdef USE_OPENGL_ES2
     api->is_gles = true;
     /* OpenGL ES 2 includes support for non-power of 2 textures by specification
