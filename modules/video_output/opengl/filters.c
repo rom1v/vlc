@@ -31,6 +31,84 @@
 #include "renderer.h"
 #include "sampler_priv.h"
 
+/* The filter chain contains the sequential list of filters, typically given
+ * via command-line arguments "--gl-filters=filter1:filter2:...:filtern".
+ *
+ * There are two types of filters:
+ *  - blend filters just draw over the provided framebuffer (containing the
+ *    result of the previous filter), without reading the input picture.
+ *  - non-blend filters read their input picture and draw whatever they want to
+ *    their own output framebuffer.
+ *
+ * For convenience, the filter chain does not store the filters as a single
+ * sequential list, but as a list of non-blend filters, each containing the
+ * list of their associated blend filters.
+ *
+ * For example, given:
+ *
+ *    --gl-filters=draw:triangle:triangle_mask:triangle_clock:triangle:renderer
+ *
+ * the filters chain stores the filters as follow:
+ *
+ *     +- draw               (non-blend)
+ *     |  +- triangle        (blend)
+ *     +- triangle_mask      (non-blend)
+ *     |  +- triangle_clock  (blend)
+ *     |  +- triangle        (blend)
+ *     +- renderer           (non-blend)
+ *
+ * An output framebuffer is created for each non-blend filters. It is used as
+ * draw framebuffer for that filter and all its associated blend filters.
+ *
+ * If the first filter is a blend filter, then a "draw" filter is automatically
+ * inserted. If the renderer does not appear in the filter list, it is
+ * automatically added at the end.
+ *
+ *
+ * ## Multisample anti-aliasing (MSAA)
+ *
+ * Each filter may also request multisample anti-aliasing, by providing a MSAA
+ * level during its Open(), for example:
+ *
+ *     filter->config.msaa_level = 4;
+ *
+ * For example:
+ *
+ *     +- draw               msaa_level=0
+ *     |  +- triangle        msaa_level=4
+ *     |  +- triangle_clock  msaa_level=2
+ *     +- renderer           msaa_level=0
+ *
+ * Among a "group" of one non-blend filter and its associated blend filters,
+ * the highest MSAA level (or 0 if multisampling is not supported) is assigned
+ * both to the non-blend filter, to configure its MSAA framebuffer, and to the
+ * blend filters, just for information and consistency:
+ *
+ *     +- draw               msaa_level=4
+ *     |  +- triangle        msaa_level=4
+ *     |  +- triangle_clock  msaa_level=4
+ *     +- renderer           msaa_level=0
+ *
+ * Some platforms (Android) do not support resolving multisample to the default
+ * framebuffer. Therefore, the msaa_level must always be 0 on the last filter.
+ * If this is not the case, a "draw" filter is automatically appended.
+ *
+ * For example:
+ *
+ *     +- draw               msaa_level=0
+ *     |  +- triangle        msaa_level=4
+ *     +- renderer           msaa_level=0
+ *        +- triangle_clock  msaa_level=2
+ *
+ * will become:
+ *
+ *     +- draw               msaa_level=4
+ *     |  +- triangle        msaa_level=4
+ *     +- renderer           msaa_level=2
+ *     |  +- triangle_clock  msaa_level=2
+ *     +- draw               msaa_level=0
+ */
+
 void
 vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
                     const struct vlc_gl_api *api,
