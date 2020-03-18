@@ -44,6 +44,14 @@ OPENGL_COMMONLIBS = $(LIBPLACEBO_LIBS)
 
 OPENGL_FILTERS =
 
+OPENGL_FILTERS_CFLAGS =
+if HAVE_ANDROID
+OPENGL_FILTERS_CFLAGS += -DUSE_OPENGL_ES2
+endif
+if HAVE_IOS
+OPENGL_FILTERS_CFLAGS += -DUSE_OPENGL_ES2
+endif
+
 if HAVE_DECKLINK
 libdecklinkoutput_plugin_la_SOURCES = video_output/decklink.cpp \
                                       stream_out/sdi/Ancillary.cpp \
