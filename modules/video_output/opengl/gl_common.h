@@ -220,6 +220,7 @@ typedef void (APIENTRY *PFNGLFRAMEBUFFERRENDERBUFFERPROC) (GLenum target, GLenum
 typedef void (APIENTRY *PFNGLBLITFRAMEBUFFERPROC) (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
                                                    GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
                                                    GLbitfield mask, GLenum filter);
+typedef void (APIENTRY *PFNGLREADPIXELSPROC) (GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void *);
 
 /* The following are defined in glext.h but not for GLES2 or on Apple systems */
 #if defined(USE_OPENGL_ES2) || defined(__APPLE__)
@@ -275,6 +276,7 @@ typedef GLboolean (APIENTRY *PFNGLUNMAPBUFFERPROC) (GLenum target);
 typedef GLsync (APIENTRY *PFNGLFENCESYNCPROC) (GLenum condition, GLbitfield flags);
 typedef void (APIENTRY *PFNGLDELETESYNCPROC) (GLsync sync);
 typedef GLenum (APIENTRY *PFNGLCLIENTWAITSYNCPROC) (GLsync sync, GLbitfield flags, GLuint64 timeout);
+typedef void *(APIENTRY *PFNGLMAPBUFFERPROC)(GLenum, GLbitfield);
 #endif
 
 /**
@@ -372,11 +374,14 @@ typedef struct {
     PFNGLFRAMEBUFFERRENDERBUFFERPROC FramebufferRenderbuffer;
     PFNGLBLITFRAMEBUFFERPROC        BlitFramebuffer;
 
+    PFNGLREADPIXELSPROC             ReadPixels;
+
     /* Commands used for PBO and/or Persistent mapping */
     PFNGLBUFFERSUBDATAPROC          BufferSubData; /* can be NULL */
     PFNGLBUFFERSTORAGEPROC          BufferStorage; /* can be NULL */
     PFNGLMAPBUFFERRANGEPROC         MapBufferRange; /* can be NULL */
     PFNGLFLUSHMAPPEDBUFFERRANGEPROC FlushMappedBufferRange; /* can be NULL */
+    PFNGLMAPBUFFERPROC              MapBuffer;
     PFNGLUNMAPBUFFERPROC            UnmapBuffer; /* can be NULL */
     PFNGLFENCESYNCPROC              FenceSync; /* can be NULL */
     PFNGLDELETESYNCPROC             DeleteSync; /* can be NULL */
