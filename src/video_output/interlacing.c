@@ -38,7 +38,7 @@
  * You can use the non vout filter if and only if the video properties stay the
  * same (width/height/chroma/fps), at least for now.
  */
-static const char deinterlace_modes[][9]= {
+static const char *const deinterlace_modes[] = {
     "auto",
     "discard",
     "blend",
@@ -50,6 +50,7 @@ static const char deinterlace_modes[][9]= {
     "yadif2x",
     "phosphor",
     "ivtc",
+    "framerate-doubler",
 };
 
 static bool DeinterlaceIsModeValid(const char *mode)
@@ -73,6 +74,7 @@ static int DeinterlaceCallback(vlc_object_t *object, char const *cmd,
     const bool is_needed         = var_GetBool(vout,    "deinterlace-needed");
     if (!mode || !DeinterlaceIsModeValid(mode))
     {
+        msg_Err(vout, "unknown deinterlace mode %s", mode);
         free(mode);
         return VLC_EGENERIC;
     }
