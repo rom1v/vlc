@@ -152,6 +152,8 @@ struct picture_t
     picture_context_t *context;      /**< video format-specific data pointer */
     /**@}*/
 
+    unsigned duplicate;
+
     /** Private data - the video output plugin might want to put stuff here to
      * keep track of the picture */
     void           *p_sys;

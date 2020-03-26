@@ -97,6 +97,7 @@ void picture_Reset( picture_t *p_picture )
     p_picture->b_progressive = false;
     p_picture->i_nb_fields = 2;
     p_picture->b_top_field_first = false;
+    p_picture->duplicate = 0;
     PictureDestroyContext( p_picture );
 }
 
@@ -204,6 +205,7 @@ static bool picture_InitPrivate(const video_format_t *restrict p_fmt,
 
     memset( p_picture, 0, sizeof( *p_picture ) );
     p_picture->date = VLC_TICK_INVALID;
+    p_picture->duplicate = 0;
 
     p_picture->format = *p_fmt;
     /* Make sure the real dimensions are a multiple of 16 */
