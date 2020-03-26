@@ -41,12 +41,16 @@ Filter(filter_t *filter, picture_t *pic)
 
     sys->last_pts = pic->date;
 
+    assert(!pic->duplicate);
+
     picture_t *dup = picture_Clone(pic);
     if (!dup)
     {
         picture_Release(pic);
         return NULL;
     }
+
+    dup->duplicate = 1;
 
     picture_CopyProperties(dup, pic);
 
