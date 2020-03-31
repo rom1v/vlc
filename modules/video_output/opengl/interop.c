@@ -194,14 +194,6 @@ static int GetTexFormatSize(const opengl_vtable_t *vt, int target,
     return size > 0 ? size * mul : size;
 }
 
-static inline void
-DivideRationalByTwo(vlc_rational_t *r) {
-    if (r->num % 2 == 0)
-        r->num /= 2;
-    else
-        r->den *= 2;
-}
-
 static int
 interop_yuv_base_init(struct vlc_gl_interop *interop, GLenum tex_target,
                       vlc_fourcc_t chroma,
@@ -258,8 +250,6 @@ interop_yuv_base_init(struct vlc_gl_interop *interop, GLenum tex_target,
         for (unsigned i = 0; i < interop->tex_count; ++i )
         {
             interop->texs[i] = (struct vlc_gl_tex_cfg) {
-                { desc->p[i].w.num, desc->p[i].w.den },
-                { desc->p[i].h.num, desc->p[i].h.den },
                 internal, oneplane_texfmt, type
             };
         }
@@ -271,13 +261,9 @@ interop_yuv_base_init(struct vlc_gl_interop *interop, GLenum tex_target,
         if (desc->pixel_size == 1)
         {
             interop->texs[0] = (struct vlc_gl_tex_cfg) {
-                { desc->p[0].w.num, desc->p[0].w.den },
-                { desc->p[0].h.num, desc->p[0].h.den },
                 oneplane_texfmt, oneplane_texfmt, GL_UNSIGNED_BYTE
             };
             interop->texs[1] = (struct vlc_gl_tex_cfg) {
-                { desc->p[1].w.num, desc->p[1].w.den },
-                { desc->p[1].h.num, desc->p[1].h.den },
                 twoplanes_texfmt, twoplanes_texfmt, GL_UNSIGNED_BYTE
             };
         }
@@ -288,31 +274,14 @@ interop_yuv_base_init(struct vlc_gl_interop *interop, GLenum tex_target,
                                  twoplanes16_texfmt, GL_UNSIGNED_SHORT) != 16)
                 return VLC_EGENERIC;
             interop->texs[0] = (struct vlc_gl_tex_cfg) {
-                { desc->p[0].w.num, desc->p[0].w.den },
-                { desc->p[0].h.num, desc->p[0].h.den },
                 oneplane16_texfmt, oneplane_texfmt, GL_UNSIGNED_SHORT
             };
             interop->texs[1] = (struct vlc_gl_tex_cfg) {
-                { desc->p[1].w.num, desc->p[1].w.den },
-                { desc->p[1].h.num, desc->p[1].h.den },
                 twoplanes16_texfmt, twoplanes_texfmt, GL_UNSIGNED_SHORT
             };
         }
         else
             return VLC_EGENERIC;
-
-        /*
-         * If plane_count == 2, then the chroma is semiplanar: the U and V
-         * planes are packed in the second plane. As a consequence, the
-         * horizontal scaling, as reported in the vlc_chroma_description_t, is
-         * doubled.
-         *
-         * But once imported as an OpenGL texture, both components are stored
-         * in a single texel (the two first components of the vec4).
-         * Therefore, from OpenGL, the width is not doubled, so the horizontal
-         * scaling must be divided by 2 to compensate.
-         */
-         DivideRationalByTwo(&interop->texs[1].w);
     }
     else if (desc->plane_count == 1)
     {
@@ -320,17 +289,8 @@ interop_yuv_base_init(struct vlc_gl_interop *interop, GLenum tex_target,
         /* Y1 U Y2 V fits in R G B A */
         interop->tex_count = 1;
         interop->texs[0] = (struct vlc_gl_tex_cfg) {
-            { desc->p[0].w.num, desc->p[0].w.den },
-            { desc->p[0].h.num, desc->p[0].h.den },
             GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE
         };
-
-        /*
-         * Currently, Y2 is ignored, so the texture is stored at chroma
-         * resolution. In other words, half the horizontal resolution is lost,
-         * so we must adapt the horizontal scaling.
-         */
-        DivideRationalByTwo(&interop->texs[0].w);
     }
     else
         return VLC_EGENERIC;
@@ -349,7 +309,7 @@ interop_rgb_base_init(struct vlc_gl_interop *interop, GLenum tex_target,
         case VLC_CODEC_RGB32:
         case VLC_CODEC_RGBA:
             interop->texs[0] = (struct vlc_gl_tex_cfg) {
-                { 1, 1 }, { 1, 1 }, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE
+                GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE
             };
             break;
         case VLC_CODEC_BGRA: {
@@ -357,7 +317,7 @@ interop_rgb_base_init(struct vlc_gl_interop *interop, GLenum tex_target,
                                  GL_UNSIGNED_BYTE) != 32)
                 return VLC_EGENERIC;
             interop->texs[0] = (struct vlc_gl_tex_cfg) {
-                { 1, 1 }, { 1, 1 }, GL_RGBA, GL_BGRA, GL_UNSIGNED_BYTE
+                GL_RGBA, GL_BGRA, GL_UNSIGNED_BYTE
             };
             break;
         }
@@ -374,7 +334,7 @@ interop_xyz12_init(struct vlc_gl_interop *interop)
     interop->tex_count = 1;
     interop->tex_target = GL_TEXTURE_2D;
     interop->texs[0] = (struct vlc_gl_tex_cfg) {
-        { 1, 1 }, { 1, 1 }, GL_RGB, GL_RGB, GL_UNSIGNED_SHORT
+        GL_RGB, GL_RGB, GL_UNSIGNED_SHORT
     };
 }
 
