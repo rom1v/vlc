@@ -127,13 +127,6 @@ struct vlc_gl_interop {
 
     /* Initialized by the interop */
     struct vlc_gl_tex_cfg {
-        /*
-         * Texture scale factor, cannot be 0.
-         * In 4:2:0, 1/1 for the Y texture and 1/2 for the UV texture(s)
-         */
-        vlc_rational_t w;
-        vlc_rational_t h;
-
         GLint internal;
         GLenum format;
         GLenum type;

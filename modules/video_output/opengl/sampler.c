@@ -74,6 +74,15 @@ struct vlc_gl_sampler_priv {
 
     GLuint textures[PICTURE_PLANE_MAX];
 
+    struct vlc_gl_tex_scale {
+        /*
+         * Texture scale factor, cannot be 0.
+         * In 4:2:0, 1/1 for the Y texture and 1/2 for the UV texture(s)
+         */
+        vlc_rational_t w;
+        vlc_rational_t h;
+    } tex_scales[PICTURE_PLANE_MAX];
+
     struct {
         unsigned int i_x_offset;
         unsigned int i_y_offset;
@@ -703,6 +712,53 @@ InitOrientationMatrix(GLfloat matrix[static 4*4],
     }
 }
 
+static inline void
+DivideRationalByTwo(vlc_rational_t *r) {
+    if (r->num % 2 == 0)
+        r->num /= 2;
+    else
+        r->den *= 2;
+}
+
+static void
+InitTexScales(struct vlc_gl_tex_scale tex_scales[],
+              const vlc_chroma_description_t *desc, bool is_yuv)
+{
+    for (unsigned i = 0; i < desc->plane_count; ++i)
+    {
+        tex_scales[i].w = desc->p[i].w;
+        tex_scales[i].h = desc->p[i].h;
+    }
+
+    if (is_yuv)
+    {
+        if (desc->plane_count == 2)
+        {
+            /*
+             * If plane_count == 2, then the chroma is semiplanar: the U and V
+             * planes are packed in the second plane. As a consequence, the
+             * horizontal scaling, as reported in the vlc_chroma_description_t,
+             * is doubled.
+             *
+             * But once imported as an OpenGL texture, both components are
+             * stored in a single texel (the two first components of the vec4).
+             * Therefore, from OpenGL, the width is not doubled, so the
+             * horizontal scaling must be divided by 2 to compensate.
+             */
+             DivideRationalByTwo(&tex_scales[1].w);
+        }
+        else if (desc->plane_count == 1)
+        {
+            /*
+             * Currently, Y2 is ignored, so the texture is stored at chroma
+             * resolution. In other words, half the horizontal resolution is lost,
+             * so we must adapt the horizontal scaling.
+             */
+            DivideRationalByTwo(&tex_scales[0].w);
+        }
+    }
+}
+
 static int
 opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
                             vlc_fourcc_t chroma, video_color_space_t yuv_space,
@@ -721,6 +777,8 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
         return VLC_EGENERIC;
 
     InitOrientationMatrix(priv->var.OrientationMatrix, orientation);
+
+    InitTexScales(priv->tex_scales, desc, is_yuv);
 
     if (chroma == VLC_CODEC_XYZ12)
         return xyz12_shader_init(sampler);
@@ -984,10 +1042,11 @@ vlc_gl_sampler_NewFromInterop(struct vlc_gl_interop *interop)
 
     /* Texture size */
     for (unsigned j = 0; j < interop->tex_count; j++) {
-        const GLsizei w = interop->fmt.i_visible_width  * interop->texs[j].w.num
-                        / interop->texs[j].w.den;
-        const GLsizei h = interop->fmt.i_visible_height * interop->texs[j].h.num
-                        / interop->texs[j].h.den;
+        struct vlc_gl_tex_scale *scale = &priv->tex_scales[j];
+        const GLsizei w = interop->fmt.i_visible_width  * scale->w.num
+                        / scale->w.den;
+        const GLsizei h = interop->fmt.i_visible_height * scale->h.num
+                        / scale->h.den;
         if (interop->api->supports_npot) {
             priv->tex_width[j]  = w;
             priv->tex_height[j] = h;
@@ -1123,9 +1182,10 @@ vlc_gl_sampler_UpdatePicture(struct vlc_gl_sampler *sampler, picture_t *picture)
                sizeof(priv->var.TexCoordsMap));
         for (unsigned j = 0; j < interop->tex_count; j++)
         {
-            float scale_w = (float)interop->texs[j].w.num / interop->texs[j].w.den
+            struct vlc_gl_tex_scale *scale = &priv->tex_scales[j];
+            float scale_w = (float) scale->w.num / scale->w.den
                           / priv->tex_width[j];
-            float scale_h = (float)interop->texs[j].h.num / interop->texs[j].h.den
+            float scale_h = (float) scale->h.num / scale->h.den
                           / priv->tex_height[j];
 
             /* Warning: if NPOT is not supported a larger texture is
