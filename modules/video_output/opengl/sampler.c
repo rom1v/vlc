@@ -938,7 +938,9 @@ vlc_gl_sampler_New(struct vlc_gl_interop *interop)
     priv->gl = interop->gl;
     priv->vt = interop->vt;
 
-    sampler->fmt = &interop->sw_fmt;
+    sampler->fmt = interop->sw_fmt;
+    /* this is the only allocated field, and we don't need it */
+    sampler->fmt.p_palette = NULL;
 
     sampler->shader.extensions = NULL;
     sampler->shader.body = NULL;
