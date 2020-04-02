@@ -49,17 +49,17 @@ struct vlc_gl_sampler_priv {
 
     struct {
         GLfloat OrientationMatrix[4*4];
-        GLfloat TexCoordsMap[PICTURE_PLANE_MAX][3*3];
+        GLfloat TexCoordsMaps[PICTURE_PLANE_MAX][3*3];
     } var;
     struct {
-        GLint Texture[PICTURE_PLANE_MAX];
-        GLint TexSize[PICTURE_PLANE_MAX]; /* for GL_TEXTURE_RECTANGLE */
+        GLint Textures[PICTURE_PLANE_MAX];
+        GLint TexSizes[PICTURE_PLANE_MAX]; /* for GL_TEXTURE_RECTANGLE */
         GLint ConvMatrix;
         GLint *pl_vars; /* for pl_sh_res */
 
         GLint TransformMatrix;
         GLint OrientationMatrix;
-        GLint TexCoordsMap[PICTURE_PLANE_MAX];
+        GLint TexCoordsMaps[PICTURE_PLANE_MAX];
     } uloc;
 
     bool yuv_color;
@@ -297,21 +297,21 @@ sampler_base_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
 
     for (unsigned int i = 0; i < priv->tex_count; ++i)
     {
-        char name[sizeof("TexCoordsMapX")];
+        char name[sizeof("TexCoordsMaps[X]")];
 
-        snprintf(name, sizeof(name), "Texture%1u", i);
-        priv->uloc.Texture[i] = vt->GetUniformLocation(program, name);
-        assert(priv->uloc.Texture[i] != -1);
+        snprintf(name, sizeof(name), "Textures[%1u]", i);
+        priv->uloc.Textures[i] = vt->GetUniformLocation(program, name);
+        assert(priv->uloc.Textures[i] != -1);
 
-        snprintf(name, sizeof(name), "TexCoordsMap%1u", i);
-        priv->uloc.TexCoordsMap[i] = vt->GetUniformLocation(program, name);
-        assert(priv->uloc.TexCoordsMap[i] != -1);
+        snprintf(name, sizeof(name), "TexCoordsMaps[%1u]", i);
+        priv->uloc.TexCoordsMaps[i] = vt->GetUniformLocation(program, name);
+        assert(priv->uloc.TexCoordsMaps[i] != -1);
 
         if (priv->tex_target == GL_TEXTURE_RECTANGLE)
         {
-            snprintf(name, sizeof(name), "TexSize%1u", i);
-            priv->uloc.TexSize[i] = vt->GetUniformLocation(program, name);
-            assert(priv->uloc.TexSize[i] != -1);
+            snprintf(name, sizeof(name), "TexSizes[%1u]", i);
+            priv->uloc.TexSizes[i] = vt->GetUniformLocation(program, name);
+            assert(priv->uloc.TexSizes[i] != -1);
         }
     }
 
@@ -372,14 +372,14 @@ sampler_base_load(const struct vlc_gl_sampler *sampler)
 
     for (unsigned i = 0; i < priv->tex_count; ++i)
     {
-        vt->Uniform1i(priv->uloc.Texture[i], i);
+        vt->Uniform1i(priv->uloc.Textures[i], i);
 
         assert(priv->textures[i] != 0);
         vt->ActiveTexture(GL_TEXTURE0 + i);
         vt->BindTexture(priv->tex_target, priv->textures[i]);
 
-        vt->UniformMatrix3fv(priv->uloc.TexCoordsMap[i], 1, GL_FALSE,
-                             priv->var.TexCoordsMap[i]);
+        vt->UniformMatrix3fv(priv->uloc.TexCoordsMaps[i], 1, GL_FALSE,
+                             priv->var.TexCoordsMaps[i]);
     }
 
     /* Return the expected transform matrix if interop == NULL */
@@ -392,7 +392,7 @@ sampler_base_load(const struct vlc_gl_sampler *sampler)
     if (priv->tex_target == GL_TEXTURE_RECTANGLE)
     {
         for (unsigned i = 0; i < priv->tex_count; ++i)
-            vt->Uniform2f(priv->uloc.TexSize[i], priv->tex_width[i],
+            vt->Uniform2f(priv->uloc.TexSizes[i], priv->tex_width[i],
                           priv->tex_height[i]);
     }
 
@@ -436,8 +436,8 @@ sampler_xyz12_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
     struct vlc_gl_sampler_priv *priv = PRIV(sampler);
     const opengl_vtable_t *vt = priv->vt;
 
-    priv->uloc.Texture[0] = vt->GetUniformLocation(program, "Texture0");
-    assert(priv->uloc.Texture[0] != -1);
+    priv->uloc.Textures[0] = vt->GetUniformLocation(program, "Textures[0]");
+    assert(priv->uloc.Textures[0] != -1);
 
     priv->uloc.TransformMatrix =
         vt->GetUniformLocation(program, "TransformMatrix");
@@ -447,9 +447,9 @@ sampler_xyz12_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
         vt->GetUniformLocation(program, "OrientationMatrix");
     assert(priv->uloc.OrientationMatrix != -1);
 
-    priv->uloc.TexCoordsMap[0] =
-        vt->GetUniformLocation(program, "TexCoordsMap0");
-    assert(priv->uloc.TexCoordsMap[0] != -1);
+    priv->uloc.TexCoordsMaps[0] =
+        vt->GetUniformLocation(program, "TexCoordsMaps[0]");
+    assert(priv->uloc.TexCoordsMaps[0] != -1);
 }
 
 static void
@@ -459,14 +459,14 @@ sampler_xyz12_load(const struct vlc_gl_sampler *sampler)
     const struct vlc_gl_interop *interop = priv->interop;
     const opengl_vtable_t *vt = priv->vt;
 
-    vt->Uniform1i(priv->uloc.Texture[0], 0);
+    vt->Uniform1i(priv->uloc.Textures[0], 0);
 
     assert(priv->textures[0] != 0);
     vt->ActiveTexture(GL_TEXTURE0);
     vt->BindTexture(interop->tex_target, priv->textures[0]);
 
-    vt->UniformMatrix3fv(priv->uloc.TexCoordsMap[0], 1, GL_FALSE,
-                         priv->var.TexCoordsMap[0]);
+    vt->UniformMatrix3fv(priv->uloc.TexCoordsMaps[0], 1, GL_FALSE,
+                         priv->var.TexCoordsMaps[0]);
 
     const GLfloat *tm = GetTransformMatrix(interop);
     vt->UniformMatrix4fv(priv->uloc.TransformMatrix, 1, GL_FALSE, tm);
@@ -491,7 +491,7 @@ xyz12_shader_init(struct vlc_gl_sampler *sampler)
      *  - reverse RGB gamma correction
      */
     static const char *template =
-        "uniform sampler2D Texture0;"
+        "uniform sampler2D Textures[1];"
         "uniform vec4 xyz_gamma = vec4(2.6);"
         "uniform vec4 rgb_gamma = vec4(1.0/2.2);"
         /* WARN: matrix Is filled column by column (not row !) */
@@ -504,14 +504,14 @@ xyz12_shader_init(struct vlc_gl_sampler *sampler)
 
         "uniform mat4 TransformMatrix;\n"
         "uniform mat4 OrientationMatrix;\n"
-        "uniform mat3 TexCoordsMap0;\n"
+        "uniform mat3 TexCoordsMaps[1];\n"
         "vec4 vlc_texture(vec2 pic_coords)\n"
         "{ "
         " vec4 v_in, v_out;"
         /* Homogeneous (oriented) coordinates */
         " vec3 pic_hcoords = vec3((TransformMatrix * OrientationMatrix * vec4(pic_coords, 0.0, 1.0)).st, 1.0);\n"
-        " vec2 tex_coords = (TexCoordsMap0 * pic_hcoords).st;\n"
-        " v_in  = texture2D(Texture0, tex_coords);\n"
+        " vec2 tex_coords = (TexCoordsMaps[0] * pic_hcoords).st;\n"
+        " v_in  = texture2D(Textures[0], tex_coords);\n"
         " v_in = pow(v_in, xyz_gamma);"
         " v_out = matrix_xyz_rgb * v_in ;"
         " v_out = pow(v_out, rgb_gamma) ;"
@@ -836,9 +836,8 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
 
     ADD("uniform mat4 TransformMatrix;\n"
         "uniform mat4 OrientationMatrix;\n");
-    for (unsigned i = 0; i < tex_count; ++i)
-        ADDF("uniform %s Texture%u;\n"
-             "uniform mat3 TexCoordsMap%u;\n", sampler_name, i, i);
+    ADDF("uniform %s Textures[%u];\n", sampler_name, tex_count);
+    ADDF("uniform mat3 TexCoordsMaps[%u];\n", tex_count);
 
 #ifdef HAVE_LIBPLACEBO
     if (priv->pl_sh) {
@@ -922,10 +921,7 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
 #endif
 
     if (tex_target == GL_TEXTURE_RECTANGLE)
-    {
-        for (unsigned i = 0; i < tex_count; ++i)
-            ADDF("uniform vec2 TexSize%u;\n", i);
-    }
+        ADDF("uniform vec2 TexSizes[%u];\n", tex_count);
 
     if (is_yuv)
         ADD("uniform mat4 ConvMatrix;\n");
@@ -945,14 +941,14 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
             const char *swizzle = swizzle_per_tex[i];
             assert(swizzle);
             size_t swizzle_count = strlen(swizzle);
-            ADDF(" tex_coords = (TexCoordsMap%u * pic_hcoords).st;\n", i);
+            ADDF(" tex_coords = (TexCoordsMaps[%u] * pic_hcoords).st;\n", i);
             if (tex_target == GL_TEXTURE_RECTANGLE)
             {
                 /* The coordinates are in texels values, not normalized */
-                ADDF(" tex_coords = vec2(tex_coords.x * TexSize%u.x,\n"
-                     "                   tex_coords.y * TexSize%u.y);\n", i, i);
+                ADDF(" tex_coords = vec2(tex_coords.x * TexSizes[%u].x,\n"
+                     "                   tex_coords.y * TexSizes[%u].y);\n", i, i);
             }
-            ADDF(" texel = %s(Texture%u, tex_coords);\n", lookup, i);
+            ADDF(" texel = %s(Textures[%u], tex_coords);\n", lookup, i);
             for (unsigned j = 0; j < swizzle_count; ++j)
             {
                 ADDF(" pixel[%u] = texel.%c;\n", color_idx, swizzle[j]);
@@ -965,8 +961,8 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
     }
     else
     {
-        ADD(" tex_coords = (TexCoordsMap0 * pic_hcoords).st;\n");
-        ADDF(" vec4 result = %s(Texture0, tex_coords);\n", lookup);
+        ADD(" tex_coords = (TexCoordsMaps[0] * pic_hcoords).st;\n");
+        ADDF(" vec4 result = %s(Textures[0], tex_coords);\n", lookup);
         color_count = 1;
     }
     assert(yuv_space == COLOR_SPACE_UNDEF || color_count == 3);
@@ -1060,7 +1056,7 @@ CreateSampler(struct vlc_gl_interop *interop, struct vlc_gl_t *gl,
     for (unsigned i = 0; i < tex_count; ++i)
     {
         /* This might be updated in UpdatePicture for non-direct samplers */
-        memcpy(&priv->var.TexCoordsMap[i], MATRIX3_IDENTITY,
+        memcpy(&priv->var.TexCoordsMaps[i], MATRIX3_IDENTITY,
                sizeof(MATRIX3_IDENTITY));
     }
 
@@ -1151,8 +1147,8 @@ vlc_gl_sampler_UpdatePicture(struct vlc_gl_sampler *sampler, picture_t *picture)
      || source->i_visible_width != priv->last_source.i_visible_width
      || source->i_visible_height != priv->last_source.i_visible_height)
     {
-        memset(priv->var.TexCoordsMap, 0,
-               sizeof(priv->var.TexCoordsMap));
+        memset(priv->var.TexCoordsMaps, 0,
+               sizeof(priv->var.TexCoordsMaps));
         for (unsigned j = 0; j < interop->tex_count; j++)
         {
             struct vlc_gl_tex_scale *scale = &priv->tex_scales[j];
@@ -1210,7 +1206,7 @@ vlc_gl_sampler_UpdatePicture(struct vlc_gl_sampler *sampler, picture_t *picture)
              *
              * It is stored in column-major order.
              */
-            GLfloat *matrix = priv->var.TexCoordsMap[j];
+            GLfloat *matrix = priv->var.TexCoordsMaps[j];
 #define COL(x) (x*3)
 #define ROW(x) (x)
             matrix[COL(0) + ROW(0)] = right - left;
