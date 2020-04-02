@@ -837,6 +837,19 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, unsigned tex_count,
     ADDF("uniform %s Textures[%u];\n", sampler_name, tex_count);
     ADDF("uniform mat3 TexCoordsMaps[%u];\n", tex_count);
 
+    ADD("vec4 vlc_plane_texture(vec2 pic_coords, int plane) {\n"
+        /* Homogeneous (oriented) coordinates */
+        " vec3 pic_hcoords = vec3((TransformMatrix * OrientationMatrix * vec4(pic_coords, 0.0, 1.0)).st, 1.0);\n"
+        " vec2 tex_coords = (TexCoordsMaps[plane] * pic_hcoords).st;\n");
+        if (tex_target == GL_TEXTURE_RECTANGLE)
+        {
+            /* The coordinates are in texels values, not normalized */
+            ADD(" tex_coords = vec2(tex_coords.x * TexSizes[plane].x,\n"
+                "                   tex_coords.y * TexSizes[plane].y);\n");
+        }
+    ADDF(" return %s(Textures[plane], tex_coords);\n"
+         "}\n\n", lookup);
+
 #ifdef HAVE_LIBPLACEBO
     if (priv->pl_sh) {
         struct pl_shader *sh = priv->pl_sh;
@@ -924,10 +937,7 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, unsigned tex_count,
     if (is_yuv)
         ADD("uniform mat4 ConvMatrix;\n");
 
-    ADD("vec4 vlc_texture(vec2 pic_coords) {\n"
-        /* Homogeneous (oriented) coordinates */
-        " vec3 pic_hcoords = vec3((TransformMatrix * OrientationMatrix * vec4(pic_coords, 0.0, 1.0)).st, 1.0);\n"
-        " vec2 tex_coords;\n");
+    ADD("vec4 vlc_texture(vec2 pic_coords) {\n");
 
     unsigned color_count;
     if (is_yuv) {
@@ -939,14 +949,7 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, unsigned tex_count,
             const char *swizzle = swizzle_per_tex[i];
             assert(swizzle);
             size_t swizzle_count = strlen(swizzle);
-            ADDF(" tex_coords = (TexCoordsMaps[%u] * pic_hcoords).st;\n", i);
-            if (tex_target == GL_TEXTURE_RECTANGLE)
-            {
-                /* The coordinates are in texels values, not normalized */
-                ADDF(" tex_coords = vec2(tex_coords.x * TexSizes[%u].x,\n"
-                     "                   tex_coords.y * TexSizes[%u].y);\n", i, i);
-            }
-            ADDF(" texel = %s(Textures[%u], tex_coords);\n", lookup, i);
+            ADDF(" texel = vlc_plane_texture(pic_coords, %d);\n", i);
             for (unsigned j = 0; j < swizzle_count; ++j)
             {
                 ADDF(" pixel[%u] = texel.%c;\n", color_idx, swizzle[j]);
@@ -959,8 +962,7 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, unsigned tex_count,
     }
     else
     {
-        ADD(" tex_coords = (TexCoordsMaps[0] * pic_hcoords).st;\n");
-        ADDF(" vec4 result = %s(Textures[0], tex_coords);\n", lookup);
+        ADD(" vec4 result = vlc_plane_texture(pic_coords, 0);\n");
         color_count = 1;
     }
     assert(yuv_space == COLOR_SPACE_UNDEF || color_count == 3);
