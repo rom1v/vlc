@@ -1024,6 +1024,8 @@ CreateSampler(struct vlc_gl_interop *interop, struct vlc_gl_t *gl,
     /* this is the only allocated field, and we don't need it */
     sampler->fmt.p_palette = NULL;
 
+    sampler->tex_count = tex_count;
+
     sampler->shader.extensions = NULL;
     sampler->shader.body = NULL;
 
