@@ -68,12 +68,12 @@ vlc_gl_sampler_UpdatePicture(struct vlc_gl_sampler *sampler,
  * Warning: only call on sampler created by vlc_gl_sampler_NewDirect().
  *
  * \param sampler the sampler
- * \param texture the new current texture
- * \param tex_width the texture width
- * \param tex_height the texture height
+ * \param textures the new current textures
+ * \param tex_widths the textures width
+ * \param tex_heights the textures height
  */
 int
-vlc_gl_sampler_UpdateTexture(struct vlc_gl_sampler *sampler, GLuint texture,
-                             GLsizei tex_width, GLsizei tex_height);
+vlc_gl_sampler_UpdateTexture(struct vlc_gl_sampler *sampler, GLuint textures[],
+                             GLsizei tex_widths[], GLsizei tex_heights[]);
 
 #endif

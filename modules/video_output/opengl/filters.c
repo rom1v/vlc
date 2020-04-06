@@ -154,16 +154,58 @@ InitFramebufferOut(struct vlc_gl_filter_priv *priv)
 
     const opengl_vtable_t *vt = &priv->filter.api->vt;
 
-    /* Create a texture having the expected size */
-    vt->GenTextures(1, &priv->texture_out);
-    InitTexture(priv, priv->texture_out, priv->size_out.width,
-                priv->size_out.height);
+    struct vlc_gl_filter *filter = &priv->filter;
+    if (filter->config.filter_planes)
+    {
+        struct vlc_gl_sampler *sampler = vlc_gl_filter_GetSampler(filter);
+        if (!sampler)
+            return VLC_EGENERIC;
+
+        const vlc_chroma_description_t *desc =
+            vlc_fourcc_GetChromaDescription(priv->sampler->fmt.i_chroma);
+        if (!desc)
+            return VLC_EGENERIC;
+
+        priv->tex_count = desc->plane_count;
+        vt->GenTextures(priv->tex_count, priv->textures_out);
+
+        /* Size of the first plane */
+        struct vlc_gl_tex_size *main_size = &priv->size_out;
+
+        for (unsigned i = 0; i < desc->plane_count; ++i)
+        {
+            const vlc_rational_t *scale_w = &desc->p[i].w;
+            const vlc_rational_t *scale_h = &desc->p[i].h;
+            priv->tex_widths[i] =
+                main_size->width * scale_w->num / scale_w->den;
+            priv->tex_heights[i] =
+                main_size->height * scale_h->num / scale_h->den;
+            /* Init one texture for each plane */
+            InitTexture(priv, priv->textures_out[i], priv->tex_widths[i],
+                        priv->tex_heights[i]);
+        }
+    }
+    else
+    {
+        /* Create a texture having the expected size */
+        vt->GenTextures(1, &priv->textures_out[0]);
+        priv->tex_widths[0] = priv->size_out.width;
+        priv->tex_heights[0] = priv->size_out.height;
+        InitTexture(priv, priv->textures_out[0], priv->tex_widths[0],
+                    priv->tex_heights[0]);
+        priv->tex_count = 1;
+    }
 
     /* Create a framebuffer and attach the texture */
     vt->GenFramebuffers(1, &priv->framebuffer_out);
     vt->BindFramebuffer(GL_FRAMEBUFFER, priv->framebuffer_out);
-    vt->FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                             GL_TEXTURE_2D, priv->texture_out, 0);
+
+    for (unsigned i = 0; i < priv->tex_count; ++i)
+    {
+        vt->BindTexture(GL_TEXTURE_2D, priv->textures_out[i]);
+        vt->FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i,
+                                 GL_TEXTURE_2D, priv->textures_out[i], 0);
+    }
 
     priv->has_framebuffer_out = true;
 
@@ -287,6 +329,12 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
            || (priv->size_out.width == size_in.width
             && priv->size_out.height == size_in.height));
 
+    /* A filter operating on planes may not blend. */
+    assert(!filter->config.filter_planes || !filter->config.blend);
+
+    /* A filter operating on planes may not use anti-aliasing. */
+    assert(!filter->config.filter_planes || !filter->config.msaa_level);
+
     /* A blend filter may not read its input, so it is an error if a sampler
      * has been requested.
      *
@@ -298,7 +346,7 @@ vlc_gl_filters_Append(struct vlc_gl_filters *filters, const char *name,
 
     if (filter->config.blend)
     {
-        if (!prev_filter)
+        if (!prev_filter || prev_filter->filter.config.filter_planes)
         {
             /* We cannot blend with nothing, so insert a "draw" filter to draw
              * the input picture to blend with. */
@@ -417,6 +465,7 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
 
     struct vlc_gl_input_meta meta = {
         .pts = filters->pts,
+        .plane = 0,
     };
 
     struct vlc_gl_filter_priv *priv;
@@ -432,9 +481,9 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
             /* Read from the output of the previous filter */
             read_fb = previous->framebuffer_out;
             int ret = vlc_gl_sampler_UpdateTexture(priv->sampler,
-                                                   previous->texture_out,
-                                                   previous->size_out.width,
-                                                   previous->size_out.height);
+                                                   previous->textures_out,
+                                                   previous->tex_widths,
+                                                   previous->tex_heights);
             if (ret != VLC_SUCCESS)
             {
                 msg_Err(filters->gl, "Could not update sampler texture");
@@ -463,41 +512,64 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
             vt->Viewport(0, 0, priv->size_out.width, priv->size_out.height);
 
         struct vlc_gl_filter *filter = &priv->filter;
-        int ret = filter->ops->draw(filter, &meta);
-        if (ret != VLC_SUCCESS)
-            return ret;
 
-        /* Draw blend subfilters */
-        struct vlc_gl_filter_priv *subfilter_priv;
-        vlc_list_foreach(subfilter_priv, &priv->blend_subfilters, node)
+        if (filter->config.filter_planes)
         {
-            /* Reset the draw buffer, in case it has been changed from a filter
-             * draw() callback */
-            vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb);
-
-            struct vlc_gl_filter *subfilter = &subfilter_priv->filter;
-            ret = subfilter->ops->draw(subfilter, &meta);
+            for (unsigned i = 0; i < priv->tex_count; ++i)
+            {
+                meta.plane = i;
+                /* Select the output texture associated to this plane */
+                GLenum bufs[] = {GL_COLOR_ATTACHMENT0 + i};
+#ifdef USE_OPENGL_ES2
+                vt->DrawBuffers(1, &bufs);
+#else
+                vt->DrawBuffer(bufs[0]);
+#endif
+                int ret = filter->ops->draw(filter, &meta);
+                if (ret != VLC_SUCCESS)
+                    return ret;
+            }
+        }
+        else
+        {
+            meta.plane = 0;
+            int ret = filter->ops->draw(filter, &meta);
             if (ret != VLC_SUCCESS)
                 return ret;
-        }
 
-        if (filter->config.msaa_level)
-        {
-            /* Never resolve multisampling to the default framebuffer */
-            assert(priv->framebuffer_out != filters->draw_framebuffer);
+            /* Draw blend subfilters */
+            struct vlc_gl_filter_priv *subfilter_priv;
+            vlc_list_foreach(subfilter_priv, &priv->blend_subfilters, node)
+            {
+                /* Reset the draw buffer, in case it has been changed from a
+                 * filter draw() callback */
+                vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb);
 
-            draw_fb = priv->has_framebuffer_out ? priv->framebuffer_out
-                                                : filters->draw_framebuffer;
+                struct vlc_gl_filter *subfilter = &subfilter_priv->filter;
+                ret = subfilter->ops->draw(subfilter, &meta);
+                if (ret != VLC_SUCCESS)
+                    return ret;
+            }
 
-            /* Resolve the MSAA into the target framebuffer */
-            vt->BindFramebuffer(GL_READ_FRAMEBUFFER, priv->framebuffer_msaa);
-            vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb);
+            if (filter->config.msaa_level)
+            {
+                /* Never resolve multisampling to the default framebuffer */
+                assert(priv->framebuffer_out != filters->draw_framebuffer);
 
-            GLint width = priv->size_out.width;
-            GLint height = priv->size_out.height;
-            vt->BlitFramebuffer(0, 0, width, height,
-                                0, 0, width, height,
-                                GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                draw_fb = priv->has_framebuffer_out ? priv->framebuffer_out
+                                                    : filters->draw_framebuffer;
+
+                /* Resolve the MSAA into the target framebuffer */
+                vt->BindFramebuffer(GL_READ_FRAMEBUFFER,
+                                    priv->framebuffer_msaa);
+                vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb);
+
+                GLint width = priv->size_out.width;
+                GLint height = priv->size_out.height;
+                vt->BlitFramebuffer(0, 0, width, height,
+                                    0, 0, width, height,
+                                    GL_COLOR_BUFFER_BIT, GL_NEAREST);
+            }
         }
     }
 

@@ -115,7 +115,7 @@ vlc_gl_filter_Delete(struct vlc_gl_filter *filter)
     if (priv->has_framebuffer_out)
     {
         vt->DeleteFramebuffers(1, &priv->framebuffer_out);
-        vt->DeleteTextures(1, &priv->texture_out);
+        vt->DeleteTextures(priv->tex_count, priv->textures_out);
     }
 
     if (filter->config.msaa_level)
