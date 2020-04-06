@@ -130,6 +130,23 @@ vlc_gl_filters_Init(struct vlc_gl_filters *filters, struct vlc_gl_t *gl,
     filters->draw_framebuffer = value; /* as GLuint */
 }
 
+static void
+InitTexture(struct vlc_gl_filter_priv *priv, GLuint texture,
+            GLsizei width, GLsizei height)
+{
+    const opengl_vtable_t *vt = &priv->filter.api->vt;
+
+    vt->BindTexture(GL_TEXTURE_2D, texture);
+    vt->TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+                   GL_UNSIGNED_BYTE, NULL);
+    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    /* iOS needs GL_CLAMP_TO_EDGE or power-of-two textures */
+    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+}
+
 static int
 InitFramebufferOut(struct vlc_gl_filter_priv *priv)
 {
@@ -139,15 +156,8 @@ InitFramebufferOut(struct vlc_gl_filter_priv *priv)
 
     /* Create a texture having the expected size */
     vt->GenTextures(1, &priv->texture_out);
-    vt->BindTexture(GL_TEXTURE_2D, priv->texture_out);
-    vt->TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, priv->size_out.width,
-                   priv->size_out.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    /* iOS needs GL_CLAMP_TO_EDGE or power-of-two textures */
-    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    InitTexture(priv, priv->texture_out, priv->size_out.width,
+                priv->size_out.height);
 
     /* Create a framebuffer and attach the texture */
     vt->GenFramebuffers(1, &priv->framebuffer_out);
