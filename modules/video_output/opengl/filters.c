@@ -518,6 +518,8 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
             for (unsigned i = 0; i < priv->tex_count; ++i)
             {
                 meta.plane = i;
+                meta.width = priv->tex_widths[i];
+                meta.height = priv->tex_heights[i];
                 /* Select the output texture associated to this plane */
                 GLenum bufs[] = {GL_COLOR_ATTACHMENT0 + i};
 #ifdef USE_OPENGL_ES2
@@ -533,6 +535,8 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
         else
         {
             meta.plane = 0;
+            meta.width = priv->tex_widths[0];
+            meta.height = priv->tex_heights[0];
             int ret = filter->ops->draw(filter, &meta);
             if (ret != VLC_SUCCESS)
                 return ret;
