@@ -223,6 +223,8 @@ typedef void (APIENTRY *PFNGLTEXPARAMETERFPROC) (GLenum target, GLenum pname, GL
 typedef void (APIENTRY *PFNGLTEXPARAMETERIPROC) (GLenum target, GLenum pname, GLint param);
 typedef void (APIENTRY *PFNGLTEXSUBIMAGE2DPROC) (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels);
 typedef void (APIENTRY *PFNGLVIEWPORTPROC) (GLint x, GLint y, GLsizei width, GLsizei height);
+typedef void (APIENTRY *PFNGLDRAWBUFFERPROC) (GLenum buf);
+typedef void (APIENTRY *PFNGLDRAWBUFFERSPROC) (GLsizei n, const GLenum *bufs);
 typedef void (APIENTRY *PFNGLGENRENDERBUFFERSPROC) (GLsizei count, GLuint *renderbuffers);
 typedef void (APIENTRY *PFNGLDELETERENDERBUFFERSPROC) (GLsizei n, const GLuint *renderbuffers);
 typedef void (APIENTRY *PFNGLBINDRENDERBUFFERPROC) (GLenum target, GLuint renderbuffer);
@@ -266,6 +268,7 @@ typedef void (APIENTRY *PFNGLREADPIXELSPROC) (GLint, GLint, GLsizei, GLsizei, GL
 #   define PFNGLBUFFERDATAPROC               typeof(glBufferData)*
 #   define PFNGLBUFFERSUBDATAPROC            typeof(glBufferSubData)*
 #   define PFNGLDELETEBUFFERSPROC            typeof(glDeleteBuffers)*
+#   define PFNGLDRAWBUFFERSPROC              typeof(glDrawBuffers)*
 #   define PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC typeof(glGetFramebufferAttachmentParameteriv)*
 #   define PFNGLGENFRAMEBUFFERSPROC          typeof(glGenFramebuffers)*
 #   define PFNGLDELETEFRAMEBUFFERSPROC       typeof(glDeleteFramebuffers)*
@@ -384,6 +387,9 @@ typedef struct {
     PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC RenderbufferStorageMultisample;
     PFNGLFRAMEBUFFERRENDERBUFFERPROC FramebufferRenderbuffer;
     PFNGLBLITFRAMEBUFFERPROC        BlitFramebuffer;
+
+    PFNGLDRAWBUFFERPROC  DrawBuffer;
+    PFNGLDRAWBUFFERSPROC DrawBuffers;
 
     PFNGLREADPIXELSPROC             ReadPixels;
 
