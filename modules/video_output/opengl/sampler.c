@@ -284,7 +284,7 @@ sampler_base_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
     if (priv->yuv_color)
     {
         priv->uloc.ConvMatrix = vt->GetUniformLocation(program, "ConvMatrix");
-        assert(priv->uloc.ConvMatrix != -1);
+        //assert(priv->uloc.ConvMatrix != -1);
     }
 
     priv->uloc.TransformMatrix =

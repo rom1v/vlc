@@ -46,7 +46,12 @@ struct program_yadif {
     GLuint vbo;
 
     unsigned next; /* next texture index */
-    GLuint textures[3];
+
+    struct plane_data {
+        /* prev, cur and next */
+        GLuint textures[3];
+    } planes[PICTURE_PLANE_MAX];
+
     struct {
         GLint vertex_pos;
         GLint prev;
@@ -56,16 +61,17 @@ struct program_yadif {
 };
 
 struct sys {
-    struct program_copy program_copy;
+    struct program_copy programs_copy[PICTURE_PLANE_MAX];
     struct program_yadif program_yadif;
+    unsigned plane_count;
 };
 
 static void
-CopyInput(struct vlc_gl_filter *filter)
+CopyInput(struct vlc_gl_filter *filter, unsigned plane)
 {
     struct sys *sys = filter->sys;
     const opengl_vtable_t *vt = &filter->api->vt;
-    struct program_copy *prog = &sys->program_copy;
+    struct program_copy *prog = &sys->programs_copy[plane];
 
     vt->UseProgram(prog->id);
 
@@ -92,7 +98,8 @@ GetDrawFramebuffer(const opengl_vtable_t *vt)
 static int
 Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
 {
-    (void) meta;
+    printf("====== draw %u\n", meta->plane);
+    if (meta->plane) return VLC_SUCCESS;
 
     struct sys *sys = filter->sys;
     const opengl_vtable_t *vt = &filter->api->vt;
@@ -103,28 +110,35 @@ Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
     unsigned tex_cur = (tex_next + 2) % 3;
     prog->next = tex_prev; /* rotate */
 
+    struct plane_data *plane = &prog->planes[meta->plane];
+
     GLuint draw_fb = GetDrawFramebuffer(vt);
-    vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, sys->program_copy.framebuffer);
-    vt->FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                             GL_TEXTURE_2D, prog->textures[tex_next], 0);
 
-    CopyInput(filter);
+    for (unsigned i = 0; i < sys->plane_count; ++i)
+    {
+        vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, sys->programs_copy[i].framebuffer);
+        vt->FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                 GL_TEXTURE_2D, plane->textures[tex_next], 0);
 
-    vt->BindFramebuffer(GL_READ_FRAMEBUFFER, sys->program_copy.framebuffer);
+        CopyInput(filter, i);
+
+        vt->BindFramebuffer(GL_READ_FRAMEBUFFER, sys->programs_copy[i].framebuffer);
+    }
+
     vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb);
 
     vt->UseProgram(prog->id);
 
     vt->ActiveTexture(GL_TEXTURE0);
-    vt->BindTexture(GL_TEXTURE_2D, prog->textures[tex_prev]);
+    vt->BindTexture(GL_TEXTURE_2D, plane->textures[tex_prev]);
     vt->Uniform1i(prog->loc.prev, 0);
 
     vt->ActiveTexture(GL_TEXTURE1);
-    vt->BindTexture(GL_TEXTURE_2D, prog->textures[tex_cur]);
+    vt->BindTexture(GL_TEXTURE_2D, plane->textures[tex_cur]);
     vt->Uniform1i(prog->loc.cur, 1);
 
     vt->ActiveTexture(GL_TEXTURE2);
-    vt->BindTexture(GL_TEXTURE_2D, prog->textures[tex_next]);
+    vt->BindTexture(GL_TEXTURE_2D, plane->textures[tex_next]);
     vt->Uniform1i(prog->loc.next, 2);
 
     vt->BindBuffer(GL_ARRAY_BUFFER, prog->vbo);
@@ -147,7 +161,7 @@ Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
 #endif
 
 static int
-InitProgramCopy(struct vlc_gl_filter *filter)
+InitProgramCopy(struct vlc_gl_filter *filter, unsigned plane)
 {
     static const char *const VERTEX_SHADER =
         SHADER_VERSION
@@ -166,11 +180,12 @@ InitProgramCopy(struct vlc_gl_filter *filter)
         "%s\n" /* vlc_texture definition */
         "varying vec2 tex_coords;\n"
         "void main() {\n"
-        "  gl_FragColor = vlc_texture(tex_coords);\n"
+        "  gl_FragColor = vlc_plane_texture(tex_coords, %u);\n"
         "}\n";
 
     struct sys *sys = filter->sys;
-    struct program_copy *prog = &sys->program_copy;
+    struct program_copy *prog = &sys->programs_copy[plane];
+    printf("==== plane = %u\n", plane);
     const opengl_vtable_t *vt = &filter->api->vt;
 
     struct vlc_gl_sampler *sampler = vlc_gl_filter_GetSampler(filter);
@@ -180,7 +195,7 @@ InitProgramCopy(struct vlc_gl_filter *filter)
 
     char *fragment_shader;
     int ret = asprintf(&fragment_shader, FRAGMENT_SHADER_TEMPLATE, extensions,
-                       sampler->shader.body);
+                       sampler->shader.body, plane);
     if (ret < 0)
         return VLC_ENOMEM;
 
@@ -216,6 +231,25 @@ InitProgramCopy(struct vlc_gl_filter *filter)
 
     vt->BindBuffer(GL_ARRAY_BUFFER, 0);
 
+    return VLC_SUCCESS;
+}
+
+static void
+DestroyProgramCopy(struct vlc_gl_filter *filter, unsigned plane);
+static int
+InitProgramsCopy(struct vlc_gl_filter *filter)
+{
+    struct sys *sys = filter->sys;
+    for (unsigned i = 0; i < sys->plane_count; ++i)
+    {
+        int ret = InitProgramCopy(filter, i);
+        if (ret != VLC_SUCCESS)
+        {
+            while (i--)
+                DestroyProgramCopy(filter, i);
+            return ret;
+        }
+    }
     return VLC_SUCCESS;
 }
 
@@ -292,40 +326,64 @@ InitProgramYadif(struct vlc_gl_filter *filter)
 }
 
 static void
-InitTextures(struct vlc_gl_filter *filter)
+InitTexture(struct vlc_gl_filter *filter, GLuint texture, GLsizei width,
+            GLsizei height)
+{
+    const opengl_vtable_t *vt = &filter->api->vt;
+
+    vt->BindTexture(GL_TEXTURE_2D, texture);
+    vt->TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+                   GL_UNSIGNED_BYTE, NULL);
+    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+}
+
+static void
+InitTextures(struct vlc_gl_filter *filter,
+             const vlc_chroma_description_t *desc)
 {
     struct sys *sys = filter->sys;
     struct program_yadif *prog = &sys->program_yadif;
     const opengl_vtable_t *vt = &filter->api->vt;
 
     struct vlc_gl_sampler *sampler = vlc_gl_filter_GetSampler(filter);
-    unsigned width = sampler->fmt.i_visible_width;
-    unsigned height = sampler->fmt.i_visible_height;
+    unsigned main_width = sampler->fmt.i_visible_width;
+    unsigned main_height = sampler->fmt.i_visible_height;
 
-    vt->GenTextures(3, prog->textures);
-
-    for (int i = 0; i < 3; ++i)
+    for (unsigned i = 0; i < sys->plane_count; ++i)
     {
-        vt->BindTexture(GL_TEXTURE_2D, prog->textures[i]);
-        vt->TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
-                       GL_UNSIGNED_BYTE, NULL);
-        vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        vt->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        const vlc_rational_t *scale_w = &desc->p[i].w;
+        const vlc_rational_t *scale_h = &desc->p[i].h;
+        GLsizei width = main_width * scale_w->num / scale_w->den;
+        GLsizei height = main_height * scale_h->num / scale_h->den;
+
+        /* prev, cur and next */
+        vt->GenTextures(3, prog->planes[i].textures);
+        for (int j = 0; j < 3; ++j)
+            InitTexture(filter, prog->planes[i].textures[j], width, height);
     }
 }
 
 static void
-DestroyProgramCopy(struct vlc_gl_filter *filter)
+DestroyProgramCopy(struct vlc_gl_filter *filter, unsigned plane)
 {
     struct sys *sys = filter->sys;
-    struct program_copy *prog = &sys->program_copy;
+    struct program_copy *prog = &sys->programs_copy[plane];
     const opengl_vtable_t *vt = &filter->api->vt;
 
     vt->DeleteProgram(prog->id);
     vt->DeleteFramebuffers(1, &prog->framebuffer);
     vt->DeleteBuffers(1, &prog->vbo);
+}
+
+static void
+DestroyProgramsCopy(struct vlc_gl_filter *filter)
+{
+    struct sys *sys = filter->sys;
+    for (unsigned plane = 0; plane < sys->plane_count; ++plane)
+        DestroyProgramCopy(filter, plane);
 }
 
 static void
@@ -345,8 +403,9 @@ Close(struct vlc_gl_filter *filter)
     const opengl_vtable_t *vt = &filter->api->vt;
 
     DestroyProgramYadif(filter);
-    DestroyProgramCopy(filter);
-    vt->DeleteTextures(3, sys->program_yadif.textures);
+    DestroyProgramsCopy(filter);
+    for (unsigned i = 0; i < sys->plane_count; ++i)
+        vt->DeleteTextures(3, sys->program_yadif.planes[i].textures);
 
     free(sys);
 }
@@ -363,7 +422,15 @@ Open(struct vlc_gl_filter *filter, const config_chain_t *config,
     if (!sys)
         return VLC_EGENERIC;
 
-    int ret = InitProgramCopy(filter);
+    struct vlc_gl_sampler *sampler = vlc_gl_filter_GetSampler(filter);
+    assert(sampler);
+    const vlc_chroma_description_t *desc =
+        vlc_fourcc_GetChromaDescription(sampler->fmt.i_chroma);
+    assert(desc);
+
+    sys->plane_count = desc->plane_count;
+
+    int ret = InitProgramsCopy(filter);
     if (ret != VLC_SUCCESS)
         goto error1;
 
@@ -371,9 +438,10 @@ Open(struct vlc_gl_filter *filter, const config_chain_t *config,
     if (ret != VLC_SUCCESS)
         goto error2;
 
-    InitTextures(filter);
+    InitTextures(filter, desc);
 
-    filter->config.msaa_level = 4;
+    /* Deinterlace operate on individual planes */
+    filter->config.filter_planes = true;
 
     static const struct vlc_gl_filter_ops ops = {
         .draw = Draw,
@@ -384,7 +452,7 @@ Open(struct vlc_gl_filter *filter, const config_chain_t *config,
     return VLC_SUCCESS;
 
 error2:
-    DestroyProgramCopy(filter);
+    DestroyProgramsCopy(filter);
 error1:
     free(sys);
     return VLC_EGENERIC;
