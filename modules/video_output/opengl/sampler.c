@@ -97,7 +97,7 @@ struct vlc_gl_sampler_priv {
      *  - created with _NewFromInterop(), it receives input pictures from VLC
      *    (picture_t) via _UpdatePicture();
      *  - created with _NewDirect() (interop is NULL), it receives directly
-     *    OpenGL textures via _UpdateTexture().
+     *    OpenGL textures via _UpdateTextures().
      */
     struct vlc_gl_interop *interop;
 
@@ -1383,15 +1383,16 @@ vlc_gl_sampler_UpdatePicture(struct vlc_gl_sampler *sampler, picture_t *picture)
 }
 
 int
-vlc_gl_sampler_UpdateTexture(struct vlc_gl_sampler *sampler, GLuint texture,
-                             GLsizei tex_width, GLsizei tex_height)
+vlc_gl_sampler_UpdateTextures(struct vlc_gl_sampler *sampler, GLuint textures[],
+                              GLsizei tex_widths[], GLsizei tex_heights[])
 {
     struct vlc_gl_sampler_priv *priv = PRIV(sampler);
     assert(!priv->interop);
 
-    priv->textures[0] = texture;
-    priv->tex_width[0] = tex_width;
-    priv->tex_height[0] = tex_height;
+    unsigned tex_count = sampler->tex_count;
+    memcpy(priv->textures, textures, tex_count * sizeof(textures[0]));
+    memcpy(priv->tex_width, tex_widths, tex_count * sizeof(tex_widths[0]));
+    memcpy(priv->tex_height, tex_heights, tex_count * sizeof(tex_heights[0]));
 
     return VLC_SUCCESS;
 }
