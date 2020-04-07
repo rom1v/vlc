@@ -84,7 +84,6 @@ struct vlc_gl_sampler_priv {
         vlc_rational_t h;
     } tex_scales[PICTURE_PLANE_MAX];
 
-    unsigned tex_count;
     GLenum tex_target;
 
     struct {
@@ -295,7 +294,7 @@ sampler_base_fetch_locations(struct vlc_gl_sampler *sampler, GLuint program)
         vt->GetUniformLocation(program, "OrientationMatrix");
     assert(priv->uloc.OrientationMatrix != -1);
 
-    for (unsigned int i = 0; i < priv->tex_count; ++i)
+    for (unsigned int i = 0; i < sampler->tex_count; ++i)
     {
         char name[sizeof("TexCoordsMaps[X]")];
 
@@ -370,7 +369,7 @@ sampler_base_load(const struct vlc_gl_sampler *sampler)
         vt->UniformMatrix4fv(priv->uloc.ConvMatrix, 1, GL_FALSE,
                              priv->conv_matrix);
 
-    for (unsigned i = 0; i < priv->tex_count; ++i)
+    for (unsigned i = 0; i < sampler->tex_count; ++i)
     {
         vt->Uniform1i(priv->uloc.Textures[i], i);
 
@@ -391,7 +390,7 @@ sampler_base_load(const struct vlc_gl_sampler *sampler)
 
     if (priv->tex_target == GL_TEXTURE_RECTANGLE)
     {
-        for (unsigned i = 0; i < priv->tex_count; ++i)
+        for (unsigned i = 0; i < sampler->tex_count; ++i)
             vt->Uniform2f(priv->uloc.TexSizes[i], priv->tex_width[i],
                           priv->tex_height[i]);
     }
@@ -827,7 +826,7 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
         return VLC_EGENERIC;
 
     unsigned tex_count = desc->plane_count;
-    priv->tex_count = tex_count;
+    sampler->tex_count = tex_count;
 
     InitOrientationMatrix(priv->var.OrientationMatrix, orientation);
 
@@ -1068,7 +1067,7 @@ CreateSampler(struct vlc_gl_interop *interop, struct vlc_gl_t *gl,
         return NULL;
     }
 
-    unsigned tex_count = priv->tex_count;
+    unsigned tex_count = sampler->tex_count;
     assert(!interop || interop->tex_count == tex_count);
 
     for (unsigned i = 0; i < tex_count; ++i)

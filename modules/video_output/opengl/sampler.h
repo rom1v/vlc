@@ -53,6 +53,9 @@ struct vlc_gl_sampler {
     /* Input format */
     video_format_t fmt;
 
+    /* Number of input planes */
+    unsigned tex_count;
+
     struct {
         /* GLSL declaration for extensions.
          *
