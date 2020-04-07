@@ -791,6 +791,22 @@ GetNames(GLenum tex_target, const char **sampler, const char **texture)
 }
 
 static int
+InitShaderExtensions(struct vlc_gl_sampler *sampler, GLenum tex_target)
+{
+    if (tex_target == GL_TEXTURE_EXTERNAL_OES)
+    {
+        sampler->shader.extensions =
+            strdup("#extension GL_OES_EGL_image_external : require\n");
+        if (!sampler->shader.extensions)
+            return VLC_EGENERIC;
+    }
+    else
+        sampler->shader.extensions = NULL;
+
+    return VLC_SUCCESS;
+}
+
+static int
 opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
                             const video_format_t *fmt)
 {
@@ -991,15 +1007,11 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
     if (vlc_memstream_close(&ms) != 0)
         return VLC_EGENERIC;
 
-    if (tex_target == GL_TEXTURE_EXTERNAL_OES)
+    ret = InitShaderExtensions(sampler, tex_target);
+    if (ret != VLC_SUCCESS)
     {
-        sampler->shader.extensions =
-            strdup("#extension GL_OES_EGL_image_external : require\n");
-        if (!sampler->shader.extensions)
-        {
-            free(ms.ptr);
-            return VLC_EGENERIC;
-        }
+        free(ms.ptr);
+        return VLC_EGENERIC;
     }
     sampler->shader.body = ms.ptr;
 
