@@ -844,6 +844,7 @@ sampler_planes_load(const struct vlc_gl_sampler *sampler)
 {
     struct vlc_gl_sampler_priv *priv = PRIV(sampler);
     unsigned plane = priv->plane;
+    printf("sampler_planes_load(plane = %u)\n", plane);
 
     const opengl_vtable_t *vt = priv->vt;
 
@@ -1390,6 +1391,7 @@ vlc_gl_sampler_UpdateTextures(struct vlc_gl_sampler *sampler, GLuint textures[],
     assert(!priv->interop);
 
     unsigned tex_count = sampler->tex_count;
+    fprintf(stderr, "tex_count=%u\n", tex_count);
     memcpy(priv->textures, textures, tex_count * sizeof(textures[0]));
     memcpy(priv->tex_width, tex_widths, tex_count * sizeof(tex_widths[0]));
     memcpy(priv->tex_height, tex_heights, tex_count * sizeof(tex_heights[0]));

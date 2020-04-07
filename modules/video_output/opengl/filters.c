@@ -490,6 +490,7 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
         {
             /* Read from the output of the previous filter */
             read_fb = previous->framebuffer_out;
+            fprintf(stderr, "+++ %4.4s\n", (char *)&previous->sampler->fmt.i_chroma);
             int ret = vlc_gl_sampler_UpdateTextures(priv->sampler,
                                                     previous->textures_out,
                                                     previous->tex_widths,

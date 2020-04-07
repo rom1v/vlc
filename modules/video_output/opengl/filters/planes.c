@@ -46,7 +46,7 @@ struct sys {
 static int
 Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
 {
-    (void) meta;
+    printf("Draw %u\n", meta->plane);
 
     struct sys *sys = filter->sys;
 
@@ -160,7 +160,7 @@ Open(struct vlc_gl_filter *filter, const config_chain_t *config,
     static const GLfloat vertex_pos[] = {
         -1,  1,
         -1, -1,
-         1,  0.5,
+         1,  1,
          1, -1,
     };
 

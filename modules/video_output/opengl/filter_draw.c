@@ -140,6 +140,8 @@ vlc_gl_filter_draw_Open(struct vlc_gl_filter *filter,
                             1, (const char **) &VERTEX_SHADER,
                             1, (const char **) &fragment_shader);
 
+    printf("DRAW ==== \n%s\n", fragment_shader);
+
     free(fragment_shader);
     if (!program_id)
         goto error;
