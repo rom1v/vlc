@@ -768,6 +768,28 @@ InitTexScales(struct vlc_gl_tex_scale tex_scales[],
     }
 }
 
+static void
+GetNames(GLenum tex_target, const char **sampler, const char **texture)
+{
+    switch (tex_target)
+    {
+        case GL_TEXTURE_EXTERNAL_OES:
+            *sampler = "samplerExternalOES";
+            *texture = "texture2D";
+            break;
+        case GL_TEXTURE_2D:
+            *sampler = "sampler2D";
+            *texture = "texture2D";
+            break;
+        case GL_TEXTURE_RECTANGLE:
+            *sampler = "sampler2DRect";
+            *texture = "texture2DRect";
+            break;
+        default:
+            vlc_assert_unreachable();
+    }
+}
+
 static int
 opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
                             const video_format_t *fmt)
@@ -809,23 +831,7 @@ opengl_fragment_shader_init(struct vlc_gl_sampler *sampler, GLenum tex_target,
     }
 
     const char *sampler_name, *lookup;
-    switch (tex_target)
-    {
-        case GL_TEXTURE_EXTERNAL_OES:
-            sampler_name = "samplerExternalOES";
-            lookup = "texture2D";
-            break;
-        case GL_TEXTURE_2D:
-            sampler_name = "sampler2D";
-            lookup  = "texture2D";
-            break;
-        case GL_TEXTURE_RECTANGLE:
-            sampler_name = "sampler2DRect";
-            lookup  = "texture2DRect";
-            break;
-        default:
-            vlc_assert_unreachable();
-    }
+    GetNames(tex_target, &sampler_name, &lookup);
 
     struct vlc_memstream ms;
     if (vlc_memstream_open(&ms) != 0)
