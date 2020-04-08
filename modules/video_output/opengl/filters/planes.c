@@ -40,14 +40,13 @@ struct sys {
 
     struct {
         GLint vertex_pos;
+        GLint plane;
     } loc;
 };
 
 static int
 Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
 {
-    (void) meta;
-
     struct sys *sys = filter->sys;
 
     const opengl_vtable_t *vt = &filter->api->vt;
@@ -56,6 +55,8 @@ Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
 
     struct vlc_gl_sampler *sampler = vlc_gl_filter_GetSampler(filter);
     vlc_gl_sampler_Load(sampler);
+
+    vt->Uniform1i(sys->loc.plane, (int) meta->plane);
 
     vt->BindBuffer(GL_ARRAY_BUFFER, sys->vbo);
     vt->EnableVertexAttribArray(sys->loc.vertex_pos);
@@ -120,8 +121,10 @@ Open(struct vlc_gl_filter *filter, const config_chain_t *config,
         FRAGMENT_SHADER_PRECISION
         "%s\n" /* vlc_texture definition */
         "varying vec2 tex_coords;\n"
+        "uniform int plane;\n"
         "void main() {\n"
-        "  gl_FragColor = vlc_texture(tex_coords);\n"
+        "  vec2 offset = vec2(float(plane) * 0.01);\n"
+        "  gl_FragColor = vlc_texture(fract(tex_coords + offset));\n"
         "}\n";
 
     const char *extensions = sampler->shader.extensions
@@ -149,8 +152,10 @@ Open(struct vlc_gl_filter *filter, const config_chain_t *config,
     sys->program_id = program_id;
 
     sys->loc.vertex_pos = vt->GetAttribLocation(program_id, "vertex_pos");
-    if (sys->loc.vertex_pos == -1)
-        goto error;
+    assert(sys->loc.vertex_pos != -1);
+
+    sys->loc.plane = vt->GetUniformLocation(program_id, "plane");
+    assert(sys->loc.plane != -1);
 
     vt->GenBuffers(1, &sys->vbo);
 
