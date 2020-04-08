@@ -38,6 +38,9 @@ struct vout_display_cfg;
  */
 typedef struct vlc_gl_t vlc_gl_t;
 
+struct vlc_video_context;
+struct picture_t;
+
 struct vlc_gl_t
 {
     struct vlc_object_t obj;
@@ -46,10 +49,12 @@ struct vlc_gl_t
     module_t *module;
     void *sys;
 
+    struct vlc_video_context *vctx_out;
+
     int  (*makeCurrent)(vlc_gl_t *);
     void (*releaseCurrent)(vlc_gl_t *);
     void (*resize)(vlc_gl_t *, unsigned, unsigned);
-    void (*swap)(vlc_gl_t *);
+    picture_t* (*swap)(vlc_gl_t *);
     void*(*getProcAddress)(vlc_gl_t *, const char *);
     void (*destroy)(vlc_gl_t *);
 
@@ -115,9 +120,9 @@ static inline void vlc_gl_Resize(vlc_gl_t *gl, unsigned w, unsigned h)
         gl->resize(gl, w, h);
 }
 
-static inline void vlc_gl_Swap(vlc_gl_t *gl)
+static inline picture_t* vlc_gl_Swap(vlc_gl_t *gl)
 {
-    gl->swap(gl);
+    return gl->swap(gl);
 }
 
 static inline void *vlc_gl_GetProcAddress(vlc_gl_t *gl, const char *name)

@@ -62,11 +62,12 @@ static void ReleaseCurrent (vlc_gl_t *gl)
     glXMakeContextCurrent (sys->display, None, None, NULL);
 }
 
-static void SwapBuffers (vlc_gl_t *gl)
+static picture_t* SwapBuffers (vlc_gl_t *gl)
 {
     vlc_gl_sys_t *sys = gl->sys;
 
     glXSwapBuffers (sys->display, sys->win);
+    return NULL;
 }
 
 static void *GetSymbol(vlc_gl_t *gl, const char *procname)
