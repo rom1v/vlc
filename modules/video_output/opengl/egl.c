@@ -87,11 +87,12 @@ static void Resize (vlc_gl_t *gl, unsigned width, unsigned height)
 # define Resize (NULL)
 #endif
 
-static void SwapBuffers (vlc_gl_t *gl)
+static picture_t* SwapBuffers (vlc_gl_t *gl)
 {
     vlc_gl_sys_t *sys = gl->sys;
 
     eglSwapBuffers (sys->display, sys->surface);
+    return NULL;
 }
 
 static void *GetSymbol(vlc_gl_t *gl, const char *procname)

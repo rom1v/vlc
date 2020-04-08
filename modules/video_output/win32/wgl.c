@@ -72,7 +72,7 @@ struct vout_display_sys_t
     } exts;
 };
 
-static void          Swap(vlc_gl_t *);
+static picture_t*    Swap(vlc_gl_t *);
 static void          *OurGetProcAddress(vlc_gl_t *, const char *);
 static int           MakeCurrent(vlc_gl_t *gl);
 static void          ReleaseCurrent(vlc_gl_t *gl);
@@ -262,10 +262,11 @@ static void Close(vlc_gl_t *gl)
     free(sys);
 }
 
-static void Swap(vlc_gl_t *gl)
+static picture_t* Swap(vlc_gl_t *gl)
 {
     vout_display_sys_t *sys = gl->sys;
     SwapBuffers(sys->hGLDC);
+    return NULL;
 }
 
 static void *OurGetProcAddress(vlc_gl_t *gl, const char *name)
