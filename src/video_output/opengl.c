@@ -59,13 +59,15 @@ vlc_gl_t *vlc_gl_Create(const struct vout_display_cfg *restrict cfg,
     struct vlc_gl_priv_t *glpriv;
     const char *type;
 
-    switch (flags /*& VLC_OPENGL_API_MASK*/)
+    bool offscreen = (flags & VLC_OPENGL_OFFSCREEN) != 0;
+
+    switch (flags & VLC_OPENGL_API_MASK)
     {
         case VLC_OPENGL:
-            type = "opengl";
+            type = offscreen ? "opengl offscreen" : "opengl";
             break;
         case VLC_OPENGL_ES2:
-            type = "opengl es2";
+            type = offscreen ? "opengl es2 offscreen" : "opengl es2";
             break;
         default:
             return NULL;
