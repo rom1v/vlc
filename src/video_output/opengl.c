@@ -93,6 +93,49 @@ vlc_gl_t *vlc_gl_Create(const struct vout_display_cfg *restrict cfg,
     return &glpriv->gl;
 }
 
+vlc_gl_t *vlc_gl_CreateOffscreen(vlc_object_t *parent, vlc_fourcc_t chroma,
+                                 unsigned width, unsigned height,
+                                 unsigned flags, const char *name)
+{
+    struct vlc_gl_priv_t *glpriv;
+    const char *type;
+
+    switch (flags & VLC_OPENGL_API_MASK)
+    {
+        case VLC_OPENGL:
+            type = "opengl offscreen";
+            break;
+        case VLC_OPENGL_ES2:
+            type = "opengl es2 offscreen";
+            break;
+        default:
+            return NULL;
+    }
+
+    glpriv = vlc_custom_create(parent, sizeof (*glpriv), "gl");
+    if (unlikely(glpriv == NULL))
+        return NULL;
+
+    vlc_gl_t *gl = &glpriv->gl;
+    gl->surface = NULL;
+    gl->module = vlc_module_load(gl, type, name, true, vlc_gl_start, gl,
+                                 width, height);
+    if (gl->module == NULL)
+    {
+        vlc_object_delete(gl);
+        return NULL;
+    }
+
+    vlc_atomic_rc_init(&glpriv->rc);
+
+    assert(gl->makeCurrent);
+    assert(gl->releaseCurrent);
+    assert(gl->swap);
+    assert(gl->getProcAddress);
+
+    return &glpriv->gl;
+}
+
 void vlc_gl_Hold(vlc_gl_t *gl)
 {
     struct vlc_gl_priv_t *glpriv = (struct vlc_gl_priv_t *)gl;
