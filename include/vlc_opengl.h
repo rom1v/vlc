@@ -50,6 +50,7 @@ struct vlc_gl_t
     void *sys;
 
     struct vlc_video_context *vctx_out;
+    vlc_fourcc_t chroma_out;
 
     int  (*makeCurrent)(vlc_gl_t *);
     void (*releaseCurrent)(vlc_gl_t *);
@@ -84,10 +85,13 @@ struct vlc_gl_t
     };
 };
 
-enum {
-    VLC_OPENGL,
-    VLC_OPENGL_ES2,
-};
+#define VLC_OPENGL              0x01
+#define VLC_OPENGL_ES2          0x02
+#define VLC_OPENGL_OFFSCREEN    0x10
+
+#define VLC_OPENGL_API_MASK     (VLC_OPENGL | VLC_OPENGL_ES2)
+
+
 
 /**
  * Creates an OpenGL context (and its underlying surface).
