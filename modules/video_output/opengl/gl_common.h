@@ -171,7 +171,7 @@
  * glClear(GL_COLOR_BUFFER_BIT) throws a GL_INVALID_FRAMEBUFFER_OPERATION on macOS
  * assert fails on vout_display_opengl_Delete on iOS
  */
-#if 0
+#if 1
 # define HAVE_GL_ASSERT_NOERROR
 #endif
 
