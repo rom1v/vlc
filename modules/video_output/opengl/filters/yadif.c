@@ -52,6 +52,8 @@ struct program_yadif {
         GLint prev;
         GLint cur;
         GLint next;
+        GLint width;
+        GLint height;
     } loc;
 };
 
@@ -192,6 +194,8 @@ InitProgramYadif(struct vlc_gl_filter *filter)
         "uniform sampler2D prev;\n"
         "uniform sampler2D cur;\n"
         "uniform sampler2D next;\n"
+        "uniform float width;\n"
+        "uniform float height;\n"
         "void main() {\n"
         "  vec3 v = texture2D(prev, tex_coords).rgb;\n"
         "  v += texture2D(cur, tex_coords).rgb;\n"
@@ -224,6 +228,12 @@ InitProgramYadif(struct vlc_gl_filter *filter)
 
     prog->loc.next = vt->GetUniformLocation(program_id, "next");
     assert(prog->loc.next != -1);
+
+    prog->loc.width = vt->GetUniformLocation(program_id, "width");
+    //assert(prog->loc.pix_width != -1);
+
+    prog->loc.height = vt->GetUniformLocation(program_id, "width");
+    //assert(prog->loc.pix_height != -1);
 
     vt->GenBuffers(1, &prog->vbo);
 
@@ -357,6 +367,13 @@ Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
     vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb);
 
     vt->UseProgram(prog->id);
+
+    struct vlc_gl_sampler *sampler = sys->sampler;
+    GLsizei width = sampler->tex_widths[meta->plane];
+    GLsizei height = sampler->tex_heights[meta->plane];
+
+    vt->Uniform1f(prog->loc.width, width);
+    vt->Uniform1f(prog->loc.height, height);
 
     vt->ActiveTexture(GL_TEXTURE0);
     vt->BindTexture(GL_TEXTURE_2D, plane->textures[prev]);
