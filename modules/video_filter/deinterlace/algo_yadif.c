@@ -155,9 +155,9 @@ int RenderYadif( filter_t *p_filter, picture_t *p_dst, picture_t *p_src,
                             &prevp->p_pixels[y * prevp->i_pitch],
                             &curp->p_pixels[y * curp->i_pitch],
                             &nextp->p_pixels[y * nextp->i_pitch],
-                            dstp->i_visible_pitch,
-                            y < dstp->i_visible_lines - 2  ? curp->i_pitch : -curp->i_pitch,
-                            y  - 1  ?  -curp->i_pitch : curp->i_pitch,
+                            dstp->i_visible_pitch, /* w */
+                            y < dstp->i_visible_lines - 2  ? curp->i_pitch : -curp->i_pitch, /* prefs */
+                            y  - 1  ?  -curp->i_pitch : curp->i_pitch, /* mrefs */
                             yadif_parity,
                             mode );
                 }
