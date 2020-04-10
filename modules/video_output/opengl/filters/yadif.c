@@ -196,12 +196,28 @@ InitProgramYadif(struct vlc_gl_filter *filter)
         "uniform sampler2D next;\n"
         "uniform float width;\n"
         "uniform float height;\n"
+        "\n"
+        "vec3 filter(float x, float y) {\n"
+        "    vec3 v = texture2D(prev, tex_coords).rgb;\n"
+        "    v += texture2D(cur, tex_coords).rgb;\n"
+        "    v += texture2D(next, tex_coords).rgb;\n"
+        "    return 0.00001 * v + vec3(0.0);\n"
+        "}\n"
+        "\n"
         "void main() {\n"
-        "  vec3 v = texture2D(prev, tex_coords).rgb;\n"
-        "  v += texture2D(cur, tex_coords).rgb;\n"
-        "  v += texture2D(next, tex_coords).rgb;\n"
-        "  gl_FragColor = vec4(v / 3.0, 1.0);\n"
+        "  float x = floor(tex_coords.x * width);\n"
+        "  float y = floor(tex_coords.y * height);\n"
+        "\n"
+        "  vec3 result;\n"
+        "  if (mod(y, 2.0) == 0.0) {\n"
+        "    result = texture2D(cur, tex_coords).rgb;\n"
+        "  } else {\n"
+        "    result = filter(x, y);\n"
+        "  }\n"
+        "  gl_FragColor = vec4(result, 1.0);\n"
         "}\n";
+
+    printf("====\n%s\n====\n", FRAGMENT_SHADER);
 
     struct sys *sys = filter->sys;
     struct program_yadif *prog = &sys->program_yadif;
@@ -230,10 +246,10 @@ InitProgramYadif(struct vlc_gl_filter *filter)
     assert(prog->loc.next != -1);
 
     prog->loc.width = vt->GetUniformLocation(program_id, "width");
-    //assert(prog->loc.pix_width != -1);
+    //assert(prog->loc.width != -1);
 
-    prog->loc.height = vt->GetUniformLocation(program_id, "width");
-    //assert(prog->loc.pix_height != -1);
+    prog->loc.height = vt->GetUniformLocation(program_id, "height");
+    assert(prog->loc.height != -1);
 
     vt->GenBuffers(1, &prog->vbo);
 
