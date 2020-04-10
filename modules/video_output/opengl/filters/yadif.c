@@ -498,6 +498,11 @@ Open(struct vlc_gl_filter *filter, const config_chain_t *config,
     sys->sampler = vlc_gl_filter_GetSampler(filter);
     assert(sys->sampler);
 
+    if (sys->sampler->tex_count != 3) {
+        msg_Err(filter, "Deinterlace assumes 1 component per plane");
+        return false;
+    }
+
     int ret = InitProgramCopy(filter);
     if (ret != VLC_SUCCESS)
         goto error1;
