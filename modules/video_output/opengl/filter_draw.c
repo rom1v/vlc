@@ -73,8 +73,8 @@ Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
 
     static unsigned frame;
 
-#define CAPTURE_FRAME_NUMBER 50
-    if (frame++ == CAPTURE_FRAME_NUMBER) {
+#define CAPTURE_FRAMES 50
+    if (frame < CAPTURE_FRAMES) {
         GLint draw_fb;
         vt->GetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fb);
         /* capture the output */
@@ -86,11 +86,16 @@ Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
         unsigned char *data = malloc(size);
         assert(data);
         vt->ReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
-#define DEST_FRAME_FILE "/tmp/frame.raw"
-        int fd = open(DEST_FRAME_FILE, O_CREAT|O_WRONLY, 0644);
+#define DEST_FRAME_FILE "/tmp/capture/frame-%02u.raw"
+        char *dst;
+        int r = asprintf(&dst, DEST_FRAME_FILE, frame);
+        assert(r != -1);
+
+        int fd = open(dst, O_CREAT|O_WRONLY, 0644);
         if (fd == -1) {
             perror("open");
-            fprintf(stderr, "Failed to open " DEST_FRAME_FILE "\n");
+            fprintf(stderr, "Failed to open %s\n", dst);
+            free(dst);
             return VLC_SUCCESS; // whatever
         }
         unsigned char *p = data;
@@ -100,16 +105,21 @@ Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
                 perror("write");
                 fprintf(stderr, "write failed");
                 close(fd);
+                free(dst);
                 return VLC_SUCCESS; // whatever
             }
             p += written;
             size -= written;
         }
-        printf("Frame %d written to " DEST_FRAME_FILE "\n",
-               CAPTURE_FRAME_NUMBER);
+        printf("Frame %d written to %s\n", frame, dst);
         printf("Convert to png:\n"
-               "convert -size %dx%d -flip -depth 8 RGBA:" DEST_FRAME_FILE
-               " frame.png\n", w, h);
+               "convert -size %dx%d -flip -depth 8 RGBA:%s frame.png\n",
+               w, h, dst);
+        // for i in *.raw; do convert -size 1920x1080 -flip -depth 8 RGBA:$i ${i%.*}.png; done
+        // in parallel:
+        //     find -name '*.raw' | parallel -P8 convert -size 1920x1080 -flip -depth 8 RGBA:{} {.}.png
+        free(dst);
+        frame++;
     }
 
     return VLC_SUCCESS;
