@@ -35,6 +35,10 @@
 #include "gl_common.h"
 #include "gl_util.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 struct sys {
     GLuint program_id;
 
@@ -66,6 +70,47 @@ Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
 
     vt->Clear(GL_COLOR_BUFFER_BIT);
     vt->DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    static unsigned frame;
+
+#define CAPTURE_FRAME_NUMBER 50
+    if (frame++ == CAPTURE_FRAME_NUMBER) {
+        GLint draw_fb;
+        vt->GetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fb);
+        /* capture the output */
+        vt->BindFramebuffer(GL_READ_FRAMEBUFFER, draw_fb);
+
+        GLsizei w = sampler->tex_widths[0];
+        GLsizei h = sampler->tex_heights[0];
+        size_t size = w * h * 4;
+        unsigned char *data = malloc(size);
+        assert(data);
+        vt->ReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
+#define DEST_FRAME_FILE "/tmp/frame.raw"
+        int fd = open(DEST_FRAME_FILE, O_CREAT|O_WRONLY, 0644);
+        if (fd == -1) {
+            perror("open");
+            fprintf(stderr, "Failed to open " DEST_FRAME_FILE "\n");
+            return VLC_SUCCESS; // whatever
+        }
+        unsigned char *p = data;
+        while (size) {
+            ssize_t written = write(fd, p, size);
+            if (written == -1) {
+                perror("write");
+                fprintf(stderr, "write failed");
+                close(fd);
+                return VLC_SUCCESS; // whatever
+            }
+            p += written;
+            size -= written;
+        }
+        printf("Frame %d written to " DEST_FRAME_FILE "\n",
+               CAPTURE_FRAME_NUMBER);
+        printf("Convert to png:\n"
+               "convert -size %dx%d -flip -depth 8 RGBA:" DEST_FRAME_FILE
+               " frame.png\n", w, h);
+    }
 
     return VLC_SUCCESS;
 }
