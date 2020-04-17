@@ -142,6 +142,23 @@ libgl_plugin_la_CFLAGS += -DHAVE_GL_CORE_SYMBOLS
 libgl_plugin_la_LIBADD += $(GL_LIBS)
 endif
 
+libvlc_opengl_la_SOURCES = $(OPENGL_COMMONSOURCES)
+libvlc_opengl_la_LIBADD = $(LTLIBVLCCORE) ../compat/libcompat.la -lplacebo $(LIBM)
+libvlc_opengl_la_CFLAGS = -DVLC_DEFINE_MODULE_NAME
+libvlc_opengl_la_LDFLAGS = \
+	static \
+	export-symbols-regex "^vlc_gl_|^vout_display_opengl_"
+noinst_LTLIBRARIES += libvlc_opengl.la
+
+if HAVE_ANDROID
+libvlc_opengl_la_LIBADD += -lGLESv2
+libvlc_opengl_la_CFLAGS += -DUSE_OPENGL_ES2
+endif
+
+if HAVE_IOS
+libvlc_opengl_la_LDFLAGS += -Wl,-framework,OpenGLES
+endif
+
 libglinterop_vaapi_plugin_la_SOURCES = video_output/opengl/interop_vaapi.c \
 	video_output/opengl/interop.h \
 	hw/vaapi/vlc_vaapi.c hw/vaapi/vlc_vaapi.h
