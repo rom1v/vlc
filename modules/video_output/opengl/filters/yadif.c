@@ -61,6 +61,12 @@ struct plane {
     /* prev, current and next */
     GLuint textures[3];
     unsigned next; /* next texture index */
+
+    /* In theory, 3 frames are needed.
+     * If we only received the first frame, 2 are missing.
+     * If we only received the two first frames, 1 is missing.
+     */
+    unsigned missing_frames;
 };
 
 struct sys {
@@ -345,6 +351,10 @@ InitPlane(struct vlc_gl_filter *filter, unsigned plane_idx, GLsizei width,
 
     plane->next = 0;
 
+    /* The first call to Draw will provide the "next" frame. The "prev" and
+     * "cur" frames are missing. */
+    plane->missing_frames = 2;
+
     vt->GenTextures(3, plane->textures);
     for (int i = 0; i < 3; ++i)
     {
@@ -447,6 +457,16 @@ Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
 
     vt->BindFramebuffer(GL_READ_FRAMEBUFFER, sys->program_copy.framebuffer);
     vt->BindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb);
+
+    if (plane->missing_frames)
+    {
+        if (plane->missing_frames == 2)
+            /* cur is missing */
+            cur = next;
+        /* prev is missing */
+        prev = cur;
+        --plane->missing_frames;
+    }
 
     vt->UseProgram(prog->id);
 
