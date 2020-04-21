@@ -132,6 +132,11 @@ libopengl_filter_plugin_la_CFLAGS = $(OPENGL_FILTERS_CFLAGS)
 libopengl_filter_plugin_la_LIBADD = libvlc_opengl.la
 video_filter_LTLIBRARIES += libopengl_filter_plugin.la
 
+libopenglyadif_filter_plugin_la_SOURCES = video_filter/opengl_yadif.c
+libopenglyadif_filter_plugin_la_CFLAGS = $(OPENGL_FILTERS_CFLAGS)
+libopenglyadif_filter_plugin_la_LIBADD = libvlc_opengl.la
+video_filter_LTLIBRARIES += libopenglyadif_filter_plugin.la
+
 libdeinterlace_common_la_SOURCES = video_filter/deinterlace/common.c video_filter/deinterlace/common.h
 libdeinterlace_common_la_LDFLAGS = -static
 noinst_LTLIBRARIES += libdeinterlace_common.la
