@@ -631,6 +631,13 @@ void vout_UpdateDisplaySourceProperties(vout_display_t *vd, const video_format_t
         vout_display_Reset(vd);
 }
 
+int
+VoutChangeFormat(vout_display_t *vd, video_format_t *fmt,
+                 vlc_video_context *ctx)
+{
+    return vout_display_Control(vd, VOUT_DISPLAY_CHANGE_FORMAT, fmt, ctx);
+}
+
 void vout_display_SetSize(vout_display_t *vd, unsigned width, unsigned height)
 {
     vout_display_priv_t *osys = container_of(vd, vout_display_priv_t, display);
