@@ -219,6 +219,9 @@ enum vout_display_query {
      * Notifies a change of VR/360° viewpoint.
      */
     VOUT_DISPLAY_CHANGE_VIEWPOINT,   /* const vout_display_cfg_t *p_cfg */
+
+    VOUT_DISPLAY_CHANGE_FORMAT, /* const vout_display_cfg_t *,
+                                   video_format_t *fmt, vlc_video_context * */
 };
 
 /**
