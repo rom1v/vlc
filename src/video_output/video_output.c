@@ -852,13 +852,51 @@ static void ThreadChangeFilters(vout_thread_t *vout,
     }
 
     if (!es_format_IsSimilar(p_fmt_current, &fmt_target)) {
-        msg_Dbg(vout, "Adding a filter to compensate for format changes");
-        if (filter_chain_AppendConverter(vout->p->filter.chain_interactive,
-                                         &fmt_target) != 0) {
-            msg_Err(vout, "Failed to compensate for the format changes, removing all filters");
-            ThreadDelAllFilterCallbacks(vout);
-            filter_chain_Reset(vout->p->filter.chain_static,      &fmt_target, vctx_target, &fmt_target);
-            filter_chain_Reset(vout->p->filter.chain_interactive, &fmt_target, vctx_target, &fmt_target);
+        vout_thread_sys_t *sys = vout->p;
+        vout_display_t *vd = sys->display;
+        msg_Dbg(vout, "Changing vout format to %4.4s",
+                      (const char *) &p_fmt_current->video.i_chroma);
+
+        assert(!fmt_target.video.p_palette);
+        video_format_t vout_fmt = p_fmt_current->video;
+
+        vlc_mutex_lock(&sys->display_lock);
+        int ret = VoutChangeFormat(vd, &vout_fmt, vctx_current);
+        vlc_mutex_unlock(&sys->display_lock);
+        if (ret == VLC_SUCCESS)
+        {
+            /* assert that fmt is trivially movable */
+            assert(!fmt_target.video.p_palette);
+            assert(!vout_fmt.p_palette);
+
+            if (p_fmt_current->video.i_chroma == VLC_CODEC_RGBA
+                    && vout_fmt.i_chroma == VLC_CODEC_RGB32)
+            {
+                // FIXME the OpenGL vout changes any RGB input format to
+                // VLC_CODEC_RGB32 (while it obviously supports RGBA)
+                vout_fmt.i_chroma = VLC_CODEC_RGBA;
+            }
+
+            /* The new target format may have been changed by the vout */
+            fmt_target.video = vout_fmt;
+            fmt_target.i_codec = vout_fmt.i_chroma;
+        }
+        else
+        {
+            msg_Dbg(vout, "Changing vout format to %4.4s failed",
+                    (const char *) &p_fmt_current->video.i_chroma);
+        }
+
+        if (!es_format_IsSimilar(p_fmt_current, &fmt_target))
+        {
+            msg_Dbg(vout, "Adding a filter to compensate for format changes");
+            if (filter_chain_AppendConverter(vout->p->filter.chain_interactive,
+                                             &fmt_target) != 0) {
+                msg_Err(vout, "Failed to compensate for the format changes, removing all filters");
+                ThreadDelAllFilterCallbacks(vout);
+                filter_chain_Reset(vout->p->filter.chain_static,      &fmt_target, vctx_target, &fmt_target);
+                filter_chain_Reset(vout->p->filter.chain_interactive, &fmt_target, vctx_target, &fmt_target);
+            }
         }
     }
 
