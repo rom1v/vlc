@@ -166,6 +166,25 @@ error:
     return VLC_EGENERIC;
 }
 
+static int
+ChangeFormat(vout_display_t *vd, video_format_t *fmt, vlc_video_context *ctx)
+{
+    vout_display_sys_t *sys = vd->sys;
+
+    int ret = vlc_gl_MakeCurrent(sys->gl);
+    if (ret != VLC_SUCCESS)
+        return ret;
+
+    char *glfilters_config = var_InheritString(vd, "gl-filters");
+    ret = vout_display_opengl_ChangeFormat(sys->vgl, fmt, ctx,
+                                           glfilters_config);
+    free(glfilters_config);
+
+    vlc_gl_ReleaseCurrent(sys->gl);
+
+    return ret;
+}
+
 /**
  * Destroys the OpenGL context.
  */
@@ -266,6 +285,13 @@ static int Control (vout_display_t *vd, int query, va_list ap)
       case VOUT_DISPLAY_CHANGE_VIEWPOINT:
         return vout_display_opengl_SetViewpoint (sys->vgl,
             &va_arg (ap, const vout_display_cfg_t* )->viewpoint);
+      case VOUT_DISPLAY_CHANGE_FORMAT:
+      {
+            video_format_t *fmt = va_arg(ap, video_format_t *);
+            vlc_video_context *ctx = va_arg(ap, vlc_video_context *);
+
+            return ChangeFormat(vd, fmt, ctx);
+       }
       default:
         msg_Err (vd, "Unknown request %d", query);
     }

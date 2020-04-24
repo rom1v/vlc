@@ -109,4 +109,9 @@ int vout_display_opengl_Prepare(vout_display_opengl_t *vgl,
                                 picture_t *picture, subpicture_t *subpicture);
 int vout_display_opengl_Display(vout_display_opengl_t *vgl);
 
+int vout_display_opengl_ChangeFormat(vout_display_opengl_t *vgl,
+                                     video_format_t *fmt,
+                                     vlc_video_context *ctx,
+                                     const char *glfilters_config);
+
 #endif
