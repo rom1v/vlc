@@ -107,6 +107,14 @@ video_filter_LTLIBRARIES = \
 	libpuzzle_plugin.la \
 	librotate_plugin.la
 
+OPENGL_FILTERS_CFLAGS =
+if HAVE_ANDROID
+OPENGL_FILTERS_CFLAGS += -DUSE_OPENGL_ES2
+endif
+if HAVE_IOS
+OPENGL_FILTERS_CFLAGS += -DUSE_OPENGL_ES2
+endif
+
 # macOS / iOS hardware video filters
 libci_filters_plugin_la_SOURCES = video_filter/ci_filters.m codec/vt_utils.c codec/vt_utils.h
 if HAVE_OSX
