@@ -87,6 +87,14 @@ end:
     return output;
 }
 
+static void
+Flush(filter_t *filter)
+{
+    struct sys *sys = filter->p_sys;
+
+    vlc_gl_filters_Flush(sys->filters);
+}
+
 static int
 Open(vlc_object_t *obj)
 {
@@ -180,6 +188,7 @@ Open(vlc_object_t *obj)
     filter->vctx_out = sys->gl->vctx_out;
 
     filter->pf_video_filter = Filter;
+    filter->pf_flush = Flush;
     filter->p_sys = sys;
 
     return VLC_SUCCESS;
