@@ -125,6 +125,14 @@ LoadFilters(filter_sys_t *sys, const char *glfilters_config)
     return VLC_SUCCESS;
 }
 
+static void
+Flush(filter_t *filter)
+{
+    filter_sys_t *sys = filter->p_sys;
+
+    vlc_gl_filters_Flush(sys->filters);
+}
+
 static int Open( vlc_object_t *obj )
 {
     filter_t *filter = (filter_t *)obj;
@@ -220,6 +228,7 @@ static int Open( vlc_object_t *obj )
     vlc_gl_ReleaseCurrent(sys->gl);
 
     filter->pf_video_filter = Filter;
+    filter->pf_flush = Flush;
     filter->fmt_out.video.orientation = ORIENT_VFLIPPED;
 
     filter->fmt_out.video.i_chroma
