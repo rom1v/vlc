@@ -416,6 +416,21 @@ Close(struct vlc_gl_filter *filter)
     free(sys);
 }
 
+static void
+Flush(struct vlc_gl_filter *filter)
+{
+    struct sys *sys = filter->sys;
+    struct vlc_gl_sampler *sampler = sys->sampler;
+
+    for (unsigned i = 0; i < sampler->tex_count; ++i)
+    {
+        struct plane *plane = &sys->planes[i];
+        /* The next call to Draw will provide the "next" frame. The "prev" and
+         * "cur" frames are missing. */
+        plane->missing_frames = 2;
+    }
+}
+
 static inline GLuint
 GetDrawFramebuffer(const opengl_vtable_t *vt)
 {
@@ -493,6 +508,7 @@ Open(struct vlc_gl_filter *filter, const config_chain_t *config,
 
     static const struct vlc_gl_filter_ops ops = {
         .draw = Draw,
+        .flush = Flush,
         .close = Close,
     };
     filter->ops = &ops;
