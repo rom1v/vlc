@@ -100,6 +100,16 @@ int
 vlc_gl_filters_Draw(struct vlc_gl_filters *filters);
 
 /**
+ * Flush all filters
+ *
+ * Discard any internal filter state.
+ *
+ * \param filters the filter chain
+ */
+void
+vlc_gl_filters_Flush(struct vlc_gl_filters *filters);
+
+/**
  * Close all the filters and destroy the filter chain
  *
  * \param filters the filter chain
