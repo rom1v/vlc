@@ -212,10 +212,22 @@ Open(vlc_object_t *obj)
         goto delete_interop;
     }
 
+    config_chain_t *cfg = NULL;
+    if (sys->is_yadif2x)
+    {
+        char *name;
+        char *leftover =
+            config_ChainCreate(&name, &cfg, "yadif{double_rate=1}");
+        free(leftover);
+        free(name);
+    }
+
     /* The OpenGL filter will do the real job, this file is just a filter_t
      * wrapper */
     struct vlc_gl_filter *glfilter =
-        vlc_gl_filters_Append(sys->filters, "yadif", NULL);
+        vlc_gl_filters_Append(sys->filters, "yadif", cfg);
+    if (cfg)
+        config_ChainDestroy(cfg);
     if (!glfilter)
     {
         msg_Err(obj, "Could not create OpenGL yadif filter");
