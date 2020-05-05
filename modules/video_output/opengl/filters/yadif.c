@@ -33,6 +33,14 @@
 #include "../gl_common.h"
 #include "../gl_util.h"
 
+#define YADIF_DOUBLE_RATE_SHORTTEXT "Double the framerate"
+#define YADIF_DOUBLE_RATE_LONGTEXT \
+    "This parameter enabled yadif2x instead of yadif1x"
+
+#define YADIF_CFG_PREFIX "yadif-"
+
+static const char *const filter_options[] = { "double_rate", NULL };
+
 struct program_copy {
     GLuint id;
     GLuint vbo;
@@ -534,6 +542,11 @@ Open(struct vlc_gl_filter *filter, const config_chain_t *config,
     filter->ops = &ops;
     filter->config.filter_planes = true;
 
+    config_ChainParse(filter, YADIF_CFG_PREFIX, filter_options, config);
+
+    bool double_rate = var_InheritBool(filter, YADIF_CFG_PREFIX "double_rate");
+    // TODO
+
     sys->sampler = vlc_gl_filter_GetSampler(filter);
     assert(sys->sampler);
 
@@ -569,4 +582,8 @@ vlc_module_begin()
     set_capability("opengl filter", 0)
     set_callback(Open)
     add_shortcut("yadif")
+
+    add_bool(YADIF_CFG_PREFIX "double_rate", 0.f,
+             YADIF_DOUBLE_RATE_SHORTTEXT,
+             YADIF_DOUBLE_RATE_LONGTEXT, false)
 vlc_module_end()
