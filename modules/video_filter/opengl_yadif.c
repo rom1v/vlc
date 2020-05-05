@@ -26,6 +26,7 @@
 #include <vlc_plugin.h>
 #include <vlc_filter.h>
 #include <vlc_picture.h>
+#include <vlc_tick.h>
 
 #include "../video_output/opengl/filters.h"
 #include "../video_output/opengl/gl_api.h"
@@ -39,6 +40,11 @@ struct sys {
     struct vlc_gl_api api;
     struct vlc_gl_interop *interop;
     struct vlc_gl_filters *filters;
+
+    bool is_yadif2x;
+    struct {
+        vlc_tick_t last_pts;
+    } yadif2x;
 };
 
 static picture_t *
@@ -69,14 +75,54 @@ Filter(filter_t *filter, picture_t *pic)
     }
 
     picture_t *output = vlc_gl_Swap(sys->gl);
-
-    vlc_gl_ReleaseCurrent(sys->gl);
-
     if (!output)
     {
         assert(false);
+        vlc_gl_ReleaseCurrent(sys->gl);
         goto end;
     }
+
+    if (sys->is_yadif2x)
+    {
+        vlc_tick_t last_pts = sys->yadif2x.last_pts;
+        sys->yadif2x.last_pts = pic->date;
+
+        ret = vlc_gl_filters_Draw(sys->filters);
+        if (ret != VLC_SUCCESS)
+            goto end;
+
+        picture_t *second = vlc_gl_Swap(sys->gl);
+        if (second)
+        {
+            if (last_pts != VLC_TICK_INVALID)
+            {
+                /*
+                 *                       dup->date
+                 *                       v
+                 *        |----.----|----.----|
+                 *        ^         ^
+                 * last_pts       pic->date
+                 */
+                second->date = (3 * pic->date - last_pts) / 2;
+            }
+            else if (filter->fmt_in.video.i_frame_rate != 0)
+            {
+                video_format_t *fmt = &filter->fmt_in.video;
+                vlc_tick_t interval =
+                    vlc_tick_from_samples(fmt->i_frame_rate_base, fmt->i_frame_rate);
+                second->date = pic->date + interval;
+            }
+            else
+            {
+                /* What could we do? */
+                second->date = pic->date + 1;
+            }
+
+            output->p_next = second;
+        }
+    }
+
+    vlc_gl_ReleaseCurrent(sys->gl);
 
     output->date = pic->date;
     output->b_force = pic->b_force || true;
@@ -101,7 +147,9 @@ Open(vlc_object_t *obj)
     filter_t *filter = (filter_t *) obj;
 
     char *mode = var_InheritString(filter, FILTER_CFG_PREFIX "mode");
+    bool is_yadif2x = mode && !strcmp(mode, "gl_yadif2x");
     bool expected_mode = !mode
+                      || is_yadif2x
                       || !strcmp(mode, "auto")
                       || !strcmp(mode, "gl_yadif");
     free(mode);
@@ -111,6 +159,8 @@ Open(vlc_object_t *obj)
     struct sys *sys = malloc(sizeof(*sys));
     if (!sys)
         return VLC_ENOMEM;
+
+    sys->is_yadif2x = is_yadif2x;
 
     unsigned width
         = filter->fmt_out.video.i_visible_width
@@ -162,10 +212,22 @@ Open(vlc_object_t *obj)
         goto delete_interop;
     }
 
+    config_chain_t *cfg = NULL;
+    if (sys->is_yadif2x)
+    {
+        char *name;
+        char *leftover =
+            config_ChainCreate(&name, &cfg, "yadif{double_rate=1}");
+        free(leftover);
+        free(name);
+    }
+
     /* The OpenGL filter will do the real job, this file is just a filter_t
      * wrapper */
     struct vlc_gl_filter *glfilter =
-        vlc_gl_filters_Append(sys->filters, "yadif", NULL);
+        vlc_gl_filters_Append(sys->filters, "yadif", cfg);
+    if (cfg)
+        config_ChainDestroy(cfg);
     if (!glfilter)
     {
         msg_Err(obj, "Could not create OpenGL yadif filter");
@@ -186,6 +248,12 @@ Open(vlc_object_t *obj)
     filter->fmt_out.video.orientation = ORIENT_VFLIPPED;
     filter->fmt_out.video.i_chroma = filter->fmt_out.i_codec = VLC_CODEC_RGBA;
     filter->vctx_out = sys->gl->vctx_out;
+
+    if (sys->is_yadif2x)
+    {
+        sys->yadif2x.last_pts = VLC_TICK_INVALID;
+        filter->fmt_out.video.i_frame_rate *= 2;
+    }
 
     filter->pf_video_filter = Filter;
     filter->pf_flush = Flush;
