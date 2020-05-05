@@ -38,7 +38,7 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
-#define BUFFER_COUNT 3
+#define BUFFER_COUNT 5
 
 struct pbo_picture_context
 {
