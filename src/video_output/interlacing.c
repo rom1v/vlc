@@ -52,6 +52,7 @@ static const char *const deinterlace_modes[] = {
     "ivtc",
     "framerate-doubler",
     "gl_yadif",
+    "gl_yadif2x",
 };
 
 static bool DeinterlaceIsModeValid(const char *mode)
