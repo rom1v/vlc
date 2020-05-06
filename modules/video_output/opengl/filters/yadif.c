@@ -62,6 +62,7 @@ struct program_yadif {
         GLint next;
         GLint width;
         GLint height;
+        GLint order;
     } loc;
 };
 
@@ -75,6 +76,8 @@ struct plane {
      * If we only received the two first frames, 1 is missing.
      */
     unsigned missing_frames;
+
+    unsigned order;
 };
 
 struct sys {
@@ -84,6 +87,8 @@ struct sys {
     struct vlc_gl_sampler *sampler; /* weak reference */
 
     struct plane planes[PICTURE_PLANE_MAX];
+
+    bool is_yadif2x;
 };
 
 static void
@@ -210,6 +215,7 @@ InitProgramYadif(struct vlc_gl_filter *filter)
         "uniform sampler2D next;\n"
         "uniform float width;\n"
         "uniform float height;\n"
+        "uniform int order;\n"
         "\n"
         "float pix(sampler2D sampler, float x, float y) {\n"
         "  return texture2D(sampler, vec2(x / width, y / height)).x;\n"
@@ -225,15 +231,26 @@ InitProgramYadif(struct vlc_gl_filter *filter)
         "  return (pix(cur, x+j, y+1) + pix(cur, x-j, y-1)) / 2.0;"
         "}\n"
         "\n"
-        "float filter(float x, float y) {\n"
+        "float filter_internal(float x, float y,\n"
+        "                      sampler2D prev2, sampler2D next2) {\n"
         "  float prev_pix = pix(prev, x, y);\n"
         "  float cur_pix = pix(cur, x, y);\n"
         "  float next_pix = pix(next, x, y);\n"
         "\n"
+        "  float prev2_pix;\n"
+        "  float next2_pix;\n"
+        "  if (order == 0) {\n"
+        "    prev2_pix = prev_pix;\n"
+        "    next2_pix = cur_pix;\n"
+        "  } else {\n"
+        "    prev2_pix = cur_pix;\n"
+        "    next2_pix = next_pix;\n"
+        "  }\n"
+        "\n"
         "  float c = pix(cur, x, y+1);\n"
-        "  float d = (prev_pix + cur_pix) / 2.0;\n"
+        "  float d = (prev2_pix + next2_pix) / 2.0;\n"
         "  float e = pix(cur, x, y-1);\n"
-        "  float temporal_diff0 = abs(prev_pix - cur_pix) / 2.0;\n"
+        "  float temporal_diff0 = abs(prev2_pix - next2_pix) / 2.0;\n"
         "  float temporal_diff1 = (abs(pix(prev, x, y+1) - c)\n"
         "                        + abs(pix(prev, x, y-1) - e)) / 2.0;\n"
         "  float temporal_diff2 = (abs(pix(next, x, y+1) - c)\n"
@@ -266,8 +283,8 @@ InitProgramYadif(struct vlc_gl_filter *filter)
         "  }\n"
         "\n"
            // if mode < 2
-        "  float b = (pix(prev, x, y+2) + pix(cur, x, y+2)) / 2.0;\n"
-        "  float f = (pix(prev, x, y-2) + pix(cur, x, y-2)) / 2.0;\n"
+        "  float b = (pix(prev2, x, y+2) + pix(next2, x, y+2)) / 2.0;\n"
+        "  float f = (pix(prev2, x, y-2) + pix(next2, x, y-2)) / 2.0;\n"
         "  float vmax = max(max(d-e, d-c),\n"
         "                   min(b-c, f-e));\n"
         "  float vmin = min(min(d-e, d-c),\n"
@@ -278,6 +295,13 @@ InitProgramYadif(struct vlc_gl_filter *filter)
         "  spatial_pred = min(spatial_pred, d + diff);\n"
         "  spatial_pred = max(spatial_pred, d - diff);\n"
         "  return spatial_pred;\n"
+        "}\n"
+        "\n"
+        "float filter(float x, float y) {\n"
+        "  if (order == 0) {\n"
+        "    return filter_internal(x, y, prev, cur);\n"
+        "  }\n"
+        "  return filter_internal(x, y, cur, next);\n"
         "}\n"
         "\n"
         "void main() {\n"
@@ -331,6 +355,9 @@ InitProgramYadif(struct vlc_gl_filter *filter)
     prog->loc.height = vt->GetUniformLocation(program_id, "height");
     assert(prog->loc.height != -1);
 
+    prog->loc.order = vt->GetUniformLocation(program_id, "order");
+    assert(prog->loc.order != -1);
+
     vt->GenBuffers(1, &prog->vbo);
 
     static const GLfloat vertex_pos[] = {
@@ -362,6 +389,8 @@ InitPlane(struct vlc_gl_filter *filter, unsigned plane_idx, GLsizei width,
     /* The first call to Draw will provide the "next" frame. The "prev" and
      * "cur" frames are missing. */
     plane->missing_frames = 2;
+
+    plane->order = 0;
 
     vt->GenTextures(3, plane->textures);
     for (int i = 0; i < 3; ++i)
@@ -496,6 +525,13 @@ Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
     GLsizei width = sampler->tex_widths[meta->plane];
     GLsizei height = sampler->tex_heights[meta->plane];
 
+    assert(plane->order == 0 || plane->order == 1);
+    vt->Uniform1i(prog->loc.order, plane->order);
+    fprintf(stderr, "========= %u\n", plane->order);
+
+    if (sys->is_yadif2x)
+        plane->order ^= 1; /* alternate between 0 and 1 */
+
     vt->Uniform1f(prog->loc.width, width);
     vt->Uniform1f(prog->loc.height, height);
 
@@ -544,8 +580,7 @@ Open(struct vlc_gl_filter *filter, const config_chain_t *config,
 
     config_ChainParse(filter, YADIF_CFG_PREFIX, filter_options, config);
 
-    bool double_rate = var_InheritBool(filter, YADIF_CFG_PREFIX "double_rate");
-    // TODO
+    sys->is_yadif2x = var_InheritBool(filter, YADIF_CFG_PREFIX "double_rate");
 
     sys->sampler = vlc_gl_filter_GetSampler(filter);
     assert(sys->sampler);
