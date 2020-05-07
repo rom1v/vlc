@@ -132,6 +132,7 @@ struct vlc_gl_filters {
     struct {
         /** Last updated picture PTS */
         vlc_tick_t pts;
+        bool top_field_first;
     } pic;
 };
 
@@ -150,6 +151,7 @@ vlc_gl_filters_New(struct vlc_gl_t *gl, const struct vlc_gl_api *api,
 
     memset(&filters->viewport, 0, sizeof(filters->viewport));
     filters->pic.pts = 0;
+    filters->pic.top_field_first = false;
 
     return filters;
 }
@@ -496,6 +498,7 @@ vlc_gl_filters_UpdatePicture(struct vlc_gl_filters *filters,
     assert(first_filter);
 
     filters->pic.pts = picture->date;
+    filters->pic.top_field_first = picture->b_top_field_first;
 
     return vlc_gl_sampler_UpdatePicture(first_filter->sampler, picture);
 }
@@ -511,6 +514,7 @@ vlc_gl_filters_Draw(struct vlc_gl_filters *filters)
 
     struct vlc_gl_input_meta meta = {
         .pts = filters->pic.pts,
+        .top_field_first = filters->pic.top_field_first,
         .plane = 0,
     };
 
