@@ -63,6 +63,7 @@ struct program_yadif {
         GLint width;
         GLint height;
         GLint order;
+        GLint field;
     } loc;
 };
 
@@ -216,6 +217,7 @@ InitProgramYadif(struct vlc_gl_filter *filter)
         "uniform float width;\n"
         "uniform float height;\n"
         "uniform int order;\n"
+        "uniform int field;\n"
         "\n"
         "float pix(sampler2D sampler, float x, float y) {\n"
         "  return texture2D(sampler, vec2(x / width, y / height)).x;\n"
@@ -313,7 +315,7 @@ InitProgramYadif(struct vlc_gl_filter *filter)
         "  float line = floor(height - y);\n"
         "\n"
         "  float result;\n"
-        "  if (mod(line, 2.0) == 0.0) {\n"
+        "  if (int(mod(line, 2.0)) == field) {\n"
         "    result = pix(cur, x, y);\n"
         "  } else {\n"
         "    result = filter(x, y);\n"
@@ -357,6 +359,9 @@ InitProgramYadif(struct vlc_gl_filter *filter)
 
     prog->loc.order = vt->GetUniformLocation(program_id, "order");
     assert(prog->loc.order != -1);
+
+    prog->loc.field = vt->GetUniformLocation(program_id, "field");
+    assert(prog->loc.field != -1);
 
     vt->GenBuffers(1, &prog->vbo);
 
@@ -527,7 +532,19 @@ Draw(struct vlc_gl_filter *filter, const struct vlc_gl_input_meta *meta)
 
     assert(plane->order == 0 || plane->order == 1);
     vt->Uniform1i(prog->loc.order, plane->order);
-    fprintf(stderr, "========= %u\n", plane->order);
+
+    /**
+     * order == 0 &&  top_field_first  ==>  field = 0
+     * order == 0 && !top_field_first  ==>  field = 1
+     * order == 1 &&  top_field_first  ==>  field = 1
+     * order == 1 && !top_field_first  ==>  field = 0
+     */
+    unsigned field = plane->order ^ !meta->top_field_first;
+    assert(field == 0 || field == 1);
+    if (meta->plane == 0)
+    fprintf(stderr, "========= %u %d %u\n", plane->order, meta->top_field_first, field);
+
+    vt->Uniform1i(prog->loc.field, field);
 
     if (sys->is_yadif2x)
         plane->order ^= 1; /* alternate between 0 and 1 */

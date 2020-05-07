@@ -54,6 +54,7 @@ int RenderYadifSingle( filter_t *p_filter, picture_t *p_dst, picture_t *p_src )
 int RenderYadif( filter_t *p_filter, picture_t *p_dst, picture_t *p_src,
                  int i_order, int i_field )
 {
+    fprintf(stderr, "yadif: i_order=%d, i_field=%d\n", i_order, i_field);
     VLC_UNUSED(p_src);
 
     filter_sys_t *p_sys = p_filter->p_sys;
