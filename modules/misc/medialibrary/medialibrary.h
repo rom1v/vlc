@@ -135,6 +135,7 @@ class MediaLibrary : public medialibrary::IMediaLibraryCb
 {
 public:
     MediaLibrary( vlc_medialibrary_module_t* ml );
+    bool Configure();
     bool Init();
     bool Start();
     int Control( int query, va_list args );

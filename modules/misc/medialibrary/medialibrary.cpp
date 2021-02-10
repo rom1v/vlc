@@ -386,14 +386,18 @@ MediaLibrary::MediaLibrary( vlc_medialibrary_module_t* ml )
     m_ml->setLogger( m_logger.get() );
 }
 
+bool MediaLibrary::Configure()
+{
+    auto userDir = vlc::wrap_cptr( config_GetUserDir( VLC_USERDATA_DIR ) );
+    std::string mlDir = std::string{ userDir.get() } + "/ml/";
+    return m_ml->configure( mlDir + "ml.db", mlDir + "/mlstorage/" );
+}
+
 bool MediaLibrary::Init()
 {
     vlc::threads::mutex_locker lock( m_mutex );
     if( m_initialized )
         return true;
-
-    auto userDir = vlc::wrap_cptr( config_GetUserDir( VLC_USERDATA_DIR ) );
-    std::string mlDir = std::string{ userDir.get() } + "/ml/";
 
     m_ml->registerDeviceLister( std::make_shared<vlc::medialibrary::DeviceLister>(
                                     VLC_OBJECT(m_vlc_ml) ), "smb://" );
@@ -401,7 +405,7 @@ bool MediaLibrary::Init()
                                     VLC_OBJECT( m_vlc_ml ), m_ml.get(), "file://") );
     m_ml->addFileSystemFactory( std::make_shared<vlc::medialibrary::SDFileSystemFactory>(
                                     VLC_OBJECT( m_vlc_ml ), m_ml.get(), "smb://") );
-    auto initStatus = m_ml->initialize( mlDir + "ml.db", mlDir + "/mlstorage/", this );
+    auto initStatus = m_ml->initialize( this );
     switch ( initStatus )
     {
         case medialibrary::InitializeResult::AlreadyInitialized:
@@ -1730,7 +1734,14 @@ static int Open( vlc_object_t* obj )
 
     try
     {
-        p_ml->p_sys = new MediaLibrary( p_ml );
+        auto ml = new MediaLibrary( p_ml );
+        if ( !ml->Configure() )
+        {
+            /* The medialib is already used by another process */
+            delete ml;
+            return VLC_EGENERIC;
+        }
+        p_ml->p_sys = ml;
     }
     catch ( const std::exception& ex )
     {
