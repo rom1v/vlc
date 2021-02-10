@@ -134,7 +134,8 @@ private:
 class MediaLibrary : public medialibrary::IMediaLibraryCb
 {
 public:
-    MediaLibrary( vlc_medialibrary_module_t* ml );
+    static MediaLibrary* create( vlc_medialibrary_module_t* ml );
+
     bool Init();
     bool Start();
     int Control( int query, va_list args );
@@ -163,6 +164,8 @@ private:
     static medialibrary::SortingCriteria sortingCriteria( int sort );
 
 private:
+    MediaLibrary( vlc_medialibrary_module_t* vlc_ml, medialibrary::IMediaLibrary* ml );
+
     vlc_medialibrary_module_t* m_vlc_ml;
     std::unique_ptr<Logger> m_logger;
     std::unique_ptr<medialibrary::IMediaLibrary> m_ml;

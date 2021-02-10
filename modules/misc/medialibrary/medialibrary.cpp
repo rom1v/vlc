@@ -375,11 +375,24 @@ void MediaLibrary::onRescanStarted()
     m_vlc_ml->cbs->pf_send_event( m_vlc_ml, &ev );
 }
 
-MediaLibrary::MediaLibrary( vlc_medialibrary_module_t* ml )
-    : m_vlc_ml( ml )
+MediaLibrary* MediaLibrary::create( vlc_medialibrary_module_t* vlc_ml )
 {
-    m_ml.reset( NewMediaLibrary() );
+    auto userDir = vlc::wrap_cptr( config_GetUserDir( VLC_USERDATA_DIR ) );
+    auto mlDir = std::string{ userDir.get() } + "/ml/";
+    auto dbPath = mlDir + "ml.db";
+    auto mlFolderPath = mlDir + "mlstorage/";
+    auto ml = NewMediaLibrary( dbPath.c_str(), mlFolderPath.c_str(), true );
+    if ( !ml )
+        return {};
 
+    return new MediaLibrary( vlc_ml, ml );
+}
+
+MediaLibrary::MediaLibrary( vlc_medialibrary_module_t* vlc_ml,
+                            medialibrary::IMediaLibrary* ml )
+    : m_vlc_ml( vlc_ml )
+    , m_ml( ml )
+{
     m_logger.reset( new Logger( VLC_OBJECT( m_vlc_ml ) ) );
     m_ml->setVerbosity( var_InheritBool( VLC_OBJECT( m_vlc_ml ), "ml-verbose" ) ?
                           medialibrary::LogLevel::Debug : medialibrary::LogLevel::Warning );
@@ -392,16 +405,13 @@ bool MediaLibrary::Init()
     if( m_initialized )
         return true;
 
-    auto userDir = vlc::wrap_cptr( config_GetUserDir( VLC_USERDATA_DIR ) );
-    std::string mlDir = std::string{ userDir.get() } + "/ml/";
-
     m_ml->registerDeviceLister( std::make_shared<vlc::medialibrary::DeviceLister>(
                                     VLC_OBJECT(m_vlc_ml) ), "smb://" );
     m_ml->addFileSystemFactory( std::make_shared<vlc::medialibrary::SDFileSystemFactory>(
                                     VLC_OBJECT( m_vlc_ml ), m_ml.get(), "file://") );
     m_ml->addFileSystemFactory( std::make_shared<vlc::medialibrary::SDFileSystemFactory>(
                                     VLC_OBJECT( m_vlc_ml ), m_ml.get(), "smb://") );
-    auto initStatus = m_ml->initialize( mlDir + "ml.db", mlDir + "/mlstorage/", this );
+    auto initStatus = m_ml->initialize( this );
     switch ( initStatus )
     {
         case medialibrary::InitializeResult::AlreadyInitialized:
@@ -1730,7 +1740,12 @@ static int Open( vlc_object_t* obj )
 
     try
     {
-        p_ml->p_sys = new MediaLibrary( p_ml );
+        auto ml = MediaLibrary::create( p_ml );
+        if ( !ml )
+            /* The medialib is already used by another process */
+            return VLC_EGENERIC;
+
+        p_ml->p_sys = ml;
     }
     catch ( const std::exception& ex )
     {
